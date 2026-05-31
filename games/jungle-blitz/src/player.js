@@ -14,10 +14,12 @@ export class Player {
     this.facing = 1;
     this.prone = false;
     this.hp = PLAYER.hpMax;
+    this.hpMax = PLAYER.hpMax;
     this.lives = PLAYER.lives;
     this.invMs = 0;
     this.shieldMs = 0;
     this.knockMs = 0;
+    this.hitFlashMs = 0;
     this.weapon = DEFAULT_WEAPON;
     this.aim = { x: 1, y: 0 };
     this.fireCooldown = 0;
@@ -41,13 +43,13 @@ export class Player {
     this.invMs = PLAYER.iframeMs;
     this.knockMs = PLAYER.knockbackMs;
     this.vx = (Math.sign(this.x - fromX) || 1) * PLAYER.knockback;
-    this.hitFlash = true;
+    this.hitFlashMs = 120; // brief flash; self-clears in update()
     return this.hp <= 0 ? 'died' : 'hurt';
   }
 
   /** Reset to full health at the given position with respawn i-frames. */
   respawn(x, y) {
-    this.hp = PLAYER.hpMax;
+    this.hp = this.hpMax;
     this.x = x;
     this.y = y;
     this.vx = 0;
@@ -133,6 +135,7 @@ export class Player {
     this.invMs    = Math.max(0, this.invMs    - dt * 1000);
     this.shieldMs = Math.max(0, this.shieldMs - dt * 1000);
     this.knockMs  = Math.max(0, this.knockMs  - dt * 1000);
+    this.hitFlashMs = Math.max(0, this.hitFlashMs - dt * 1000);
   }
 
   jump() {
