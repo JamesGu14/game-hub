@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a2a12" />
+  <title>丛林尖兵 JUNGLE BLITZ · 横版跑射</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Play field -->
+  <canvas id="game"></canvas>
+
+  <!-- Back to Hub (top-left) -->
+  <a id="back-to-hub" href="../../index.html" title="返回游戏中心 / Back to Hub">← HUB</a>
+
+  <!-- Mute toggle (top-right) -->
+  <button id="btn-mute" type="button" title="静音 / 声音 (M)">🔊</button>
+
+  <!-- stage banner (transient) -->
+  <div id="stage-banner" class="stage-banner"><span id="sb-text"></span></div>
+
+  <!-- overlays: menu / pause / stageclear / gameover / win  (panels filled in a later task) -->
+  <div id="overlay-menu" class="overlay show"><div class="panel"><h1 class="game-title">🪖 丛林尖兵</h1><p class="game-sub">横版跑射 · 闯关打 BOSS</p><button id="btn-start" class="big-btn" type="button">▶ 开始游戏</button><p id="menu-best" class="best-line">🏆 最高分 0 · 最远第 1 关</p><div class="hints"></div></div></div>
+  <div id="overlay-pause" class="overlay"><div class="panel"></div></div>
+  <div id="overlay-stageclear" class="overlay"><div class="panel"></div></div>
+  <div id="overlay-gameover" class="overlay"><div class="panel"></div></div>
+  <div id="overlay-win" class="overlay"><div class="panel"></div></div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

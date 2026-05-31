@@ -1,0 +1,49 @@
+// Game registry — metadata the hub uses to render cards and launch games.
+// Covers are generated from CSS gradients + emoji, so no image assets are needed.
+// `path` is relative to the hub root (index.html), launched via full-page navigation.
+export const GAMES = [
+  {
+    id: 'tactical-strike',
+    title: 'TACTICAL STRIKE',
+    subtitle: '3D 战术射击 · FPS',
+    desc: '第一人称射击 · WASD 移动 · 鼠标瞄准 · 购买武器 · Three.js 引擎',
+    icon: '🔫',
+    accent: '#ff5a3c',
+    accent2: '#7a1505',
+    tags: ['单人', 'FPS', '键鼠'],
+    path: 'games/tactical-strike/index.html',
+  },
+  {
+    id: 'snake',
+    title: '蛇蛇王国 SNAKE',
+    subtitle: '多人吞噬竞技',
+    desc: '摇杆操控 · 吞噬成长 · 技能冲刺 · 子弹击败对手 · Canvas 2D',
+    icon: '🐍',
+    accent: '#3cd070',
+    accent2: '#0a5e2e',
+    tags: ['竞技', '休闲', '触屏/鼠标'],
+    path: 'games/snake/dist/index.html',
+  },
+  {
+    id: 'breakout',
+    title: '打砖块 BREAKOUT',
+    subtitle: '糖果消砖 · 益智休闲',
+    desc: '挡板接球 · 击碎糖果砖块 · 掉落道具 · 主题关卡 · 键鼠/手柄',
+    icon: '🧱',
+    accent: '#ff6fae',
+    accent2: '#b3306e',
+    tags: ['休闲', '益智', '键鼠/手柄'],
+    path: 'games/breakout/index.html',
+  },
+  {
+    id: 'jungle-blitz',
+    title: '丛林尖兵 JUNGLE BLITZ',
+    subtitle: '横版跑射 · 闯关打 BOSS',
+    desc: '跑跳射击 · 八方向瞄准 · 武器升级 · 5 关 5 BOSS · 键盘/手柄',
+    icon: '🪖',
+    accent: '#8bc34a',
+    accent2: '#33501a',
+    tags: ['闯关', '动作', '键盘/手柄'],
+    path: 'games/jungle-blitz/index.html',
+  },
+];
