@@ -8,7 +8,7 @@ const POD_COLOR = {
   weaponS: '#ff9f43',
   weaponM: '#7af0ff',
   weaponL: '#b983ff',
-  shield:  '#7af0ff',
+  shield:  '#ffd86b',
   heal:    '#ff5d8f',
 };
 const POD_LABEL = {

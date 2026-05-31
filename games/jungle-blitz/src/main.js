@@ -70,7 +70,10 @@ const BTN = (id, fn) => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('click', fn);
 };
-BTN('btn-start',    () => { Sound.resume(); Sound.ui(); game.startGame(); });
+// Optional ?stage=N (1-based) jumps straight to a stage for replay/testing.
+const stageParam = parseInt(new URLSearchParams(location.search).get('stage'), 10);
+const startIndex = Number.isFinite(stageParam) ? stageParam - 1 : 0;
+BTN('btn-start',    () => { Sound.resume(); Sound.ui(); game.startGame(startIndex); });
 BTN('btn-resume',   () => { Sound.ui(); game.togglePause(); });
 BTN('btn-restart',  () => { Sound.ui(); game.restartStage(); });
 BTN('btn-next',     () => { Sound.ui(); game.nextStage(); });

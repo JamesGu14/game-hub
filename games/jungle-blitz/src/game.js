@@ -38,10 +38,12 @@ export class Game {
     this.best = loadBest();
   }
 
-  startGame() {
+  // startGame(0) for a normal run; an optional index lets a parent jump straight
+  // to a stage for replay/testing (e.g. ?stage=3 in the URL → 0-based index 2).
+  startGame(stageIndex = 0) {
     this.score = 0;
-    this.stageIndex = 0;
-    this.loadStage(0);
+    this.stageIndex = Math.max(0, Math.min(stageCount() - 1, stageIndex | 0));
+    this.loadStage(this.stageIndex);
     this.state = 'playing';
   }
 
