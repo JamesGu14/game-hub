@@ -29,7 +29,7 @@ export const STAGES = [
       { x: 3000, type: 'grunt' },
       { x: 3400, type: 'jumper' },
     ],
-    pods: [{ x: 900, y: 300, kind: 'weaponS' }, { x: 2700, y: 250, kind: 'heal' }],
+    pods: [{ x: 900, y: 430, kind: 'weaponS' }, { x: 2700, y: 410, kind: 'heal' }],
     checkpoints: [1600, 3120],
     bossX: 4150,
     boss: 'gate',
