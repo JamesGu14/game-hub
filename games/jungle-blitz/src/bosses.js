@@ -25,11 +25,13 @@ function _createGate(roomLeftX, world) {
   const portUpperY = gateTopY + gateH * 0.28;
   const portLowerY = gateTopY + gateH * 0.68;
 
-  // Central glowing core — the only weak point.
+  // Central glowing core — the only weak point. Sits LOW on the gate, at roughly
+  // the player's standing gun height, so a 7-year-old can hit it with plain
+  // horizontal fire (aiming up still works too).
   const coreW = 46;
   const coreH = 46;
   const coreX = gateX + (gateW - coreW) / 2;
-  const coreY = gateTopY + (gateH - coreH) / 2;
+  const coreY = gateBottomY - coreH - 24;
 
   let fireTimer = 0.6;   // first shot after half a second
   let portToggle = 0;    // alternates 0/1 between upper/lower port
