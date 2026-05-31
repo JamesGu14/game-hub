@@ -1,7 +1,22 @@
 // Canvas 2D renderer for 丛林尖兵 JUNGLE BLITZ.
 // Draws in FIELD space (960×540) via a letterbox transform; world layer is offset by -camX.
 
-import { FIELD } from './config.js';
+import { FIELD, BULLET } from './config.js';
+
+const POD_COLOR = {
+  weaponS: '#ff9f43',
+  weaponM: '#7af0ff',
+  weaponL: '#b983ff',
+  shield:  '#7af0ff',
+  heal:    '#ff5d8f',
+};
+const POD_LABEL = {
+  weaponS: 'S',
+  weaponM: 'M',
+  weaponL: 'L',
+  shield:  '🛡',
+  heal:    '❤️',
+};
 
 export class Renderer {
   constructor(canvas) {
@@ -34,7 +49,7 @@ export class Renderer {
   }
 
   render(game) {
-    const { world, player } = game;
+    const { world, player, bullets, powerups } = game;
     const ctx = this.ctx;
 
     // Reset transform; clear and fill letterbox bars.
@@ -53,6 +68,8 @@ export class Renderer {
 
     this._background(ctx, world);
     this._worldLayer(ctx, world);
+    if (powerups) this._powerups(ctx, powerups, world.camX);
+    if (bullets)  this._bullets(ctx, bullets, world.camX);
     this._player(ctx, player, world.camX);
   }
 
@@ -186,6 +203,91 @@ export class Renderer {
     ctx.lineTo(x + 16, groundY);
     ctx.closePath();
     ctx.fill();
+  }
+
+  // --- Bullets ---
+  _bullets(ctx, bullets, camX) {
+    bullets.forEachActive(b => {
+      const bx = b.x - camX;
+      const by = b.y;
+      if (b.kind === 'laser') {
+        const angle = Math.atan2(b.vy, b.vx);
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(angle);
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = b.color;
+        const hw = BULLET.laserLen / 2;
+        const hh = BULLET.laserW / 2;
+        const r  = hh;
+        ctx.beginPath();
+        ctx.moveTo(-hw + r, -hh);
+        ctx.lineTo( hw - r, -hh);
+        ctx.arcTo(  hw, -hh,  hw,  hh, r);
+        ctx.lineTo( hw - r,  hh);
+        ctx.lineTo(-hw + r,  hh);
+        ctx.arcTo( -hw,  hh, -hw, -hh, r);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.restore();
+      } else {
+        // normal bullet: filled circle with subtle glow + lighter inner dot
+        ctx.save();
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = b.color;
+        ctx.beginPath();
+        ctx.arc(bx, by, BULLET.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        // inner highlight
+        ctx.fillStyle = '#ffffff88';
+        ctx.beginPath();
+        ctx.arc(bx - 1, by - 1, BULLET.r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    });
+  }
+
+  // --- Power-up pods ---
+  _powerups(ctx, powerups, camX) {
+    for (const p of powerups.list) {
+      if (p.dead) continue;
+      const px = p.x - camX - p.w / 2;
+      const py = p.y - p.h / 2;
+      const color = POD_COLOR[p.kind] || '#ffffff';
+      const label = POD_LABEL[p.kind] || '?';
+
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = color + 'cc';
+      const r = 6;
+      const x = px, y = py, w = p.w, h = p.h;
+      ctx.beginPath();
+      ctx.moveTo(x + r, y);
+      ctx.lineTo(x + w - r, y);
+      ctx.arcTo(x + w, y,     x + w, y + r,     r);
+      ctx.lineTo(x + w, y + h - r);
+      ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+      ctx.lineTo(x + r, y + h);
+      ctx.arcTo(x,     y + h, x,     y + h - r, r);
+      ctx.lineTo(x,     y + r);
+      ctx.arcTo(x,     y,     x + r, y,         r);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(label, px + p.w / 2, py + p.h / 2);
+      ctx.restore();
+    }
   }
 
   // --- Player ---
