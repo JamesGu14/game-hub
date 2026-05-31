@@ -132,7 +132,7 @@ function _createGunship(roomLeftX, world) {
   // Ground reference for dive bottom.
   const midX = roomLeftX + FIELD.W / 2;
   const groundY = world.floorTopAt(midX);
-  const diveBottomY = groundY - 160;   // comes down close but stops above ground
+  const diveBottomY = groundY - 100;   // dives low enough to be hit by standing/jumping fire
 
   // Rotor spin (renderer reads this).
   let rotorAngle = 0;
@@ -405,7 +405,6 @@ function _createMech(roomLeftX, world) {
           const ty = player.y + player.height / 2;
           const baseDx = tx - bx;
           const baseDy = ty - by;
-          const baseLen = Math.hypot(baseDx, baseDy) || 1;
           const baseAngle = Math.atan2(baseDy, baseDx);
 
           // 3-bullet fan: centre ±0.25 rad.
