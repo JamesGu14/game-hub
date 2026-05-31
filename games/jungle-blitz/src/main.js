@@ -1,88 +1,96 @@
-import { World } from './world.js';
+// Thin driver for 丛林尖兵 JUNGLE BLITZ.
+import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
-import { getStage } from './levels.js';
-import { PLAYER, WEAPONS, ITEMS } from './config.js';
-import { Player } from './player.js';
-import { Bullets } from './bullets.js';
-import { PowerUps } from './powerups.js';
-import { Enemies } from './enemies.js';
-import { aabb } from './util/math.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
-const world = new World(getStage(0));
+const game = new Game();
+
 Input.init(canvas, (cx) => renderer.mapClientXToField(cx));
+Input.on((action) => game.handleAction(action));
 
-const spawnY = world.floorTopAt(80) - PLAYER.h;
-const player = new Player(80, spawnY);
-Input.on((a) => { if (a === 'jump') player.jump(); });
+// Overlay map: game state → overlay element id.
+const OVERLAY_IDS = {
+  menu:       'overlay-menu',
+  paused:     'overlay-pause',
+  stageclear: 'overlay-stageclear',
+  gameover:   'overlay-gameover',
+  win:        'overlay-win',
+};
 
-const bullets = new Bullets();
-const powerups = new PowerUps();
-powerups.spawnFromStage(getStage(0));
-
-const enemies = new Enemies();
-enemies.loadStage(getStage(0));
-
-const game = { world, player, bullets, powerups, enemies, score: 0 };
-
-function step(dt) {
-  player.update(dt, Input, world);
-  world.updateCamera(player.x);
-
-  if (Input.fireHeld && player.fireCooldown <= 0) {
-    bullets.fireWeapon(player.weapon, player.muzzle(), player.aim, 'player');
-    player.fireCooldown = WEAPONS[player.weapon].interval / 1000;
+function showOverlay(stateName) {
+  for (const [key, id] of Object.entries(OVERLAY_IDS)) {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('show', key === stateName);
   }
-  player.fireCooldown -= dt;
-
-  bullets.update(dt, world);
-
-  enemies.update(dt, world, player, bullets);
-
-  // Player bullets hit enemies.
-  bullets.forEachActive(b => {
-    if (b.faction !== 'player') return;
-    const box = { x: b.x - 4, y: b.y - 4, w: 8, h: 8 };
-    const e = enemies.hitTest(box);
-    if (e) {
-      if (b.pierce && b.hits.has(e)) return;
-      game.score += enemies.damage(e, b.dmg);
-      if (b.pierce) b.hits.add(e); else b.dead = true;
-    }
-  });
-
-  // Store (do NOT apply yet) player damage flags for the next task.
-  player._enemyContact = enemies.enemyContact(player.aabbBox());
-  player._enemyHitBullet = null;
-  bullets.forEachActive(b => {
-    if (b.faction === 'enemy' && !player._enemyHitBullet &&
-        aabb(player.aabbBox(), { x: b.x - 4, y: b.y - 4, w: 8, h: 8 })) {
-      player._enemyHitBullet = b;
-    }
-  });
-
-  powerups.update(dt);
-
-  const apply = (kind) => {
-    if (!kind) return;
-    const e = powerups.effectFor(kind);
-    if (!e) return;
-    if (e.type === 'weapon') player.weapon = e.weapon;
-    else if (e.type === 'heal') player.hp = Math.min(PLAYER.hpMax, player.hp + ITEMS.healAmount);
-    else if (e.type === 'shield') player.shieldMs = ITEMS.shieldMs;
-  };
-
-  apply(powerups.tryCollect(player.aabbBox()));
-  const popped = powerups.popByBullet(bullets);
-  popped.forEach(apply);
 }
 
+function syncOverlays() {
+  showOverlay(game.state);
+
+  // Menu best score.
+  const menuBest = document.getElementById('menu-best');
+  if (menuBest) {
+    menuBest.textContent = '🏆 最高分 ' + game.best.score + ' · 最远第 ' + game.best.stage + ' 关';
+  }
+
+  // Stage clear.
+  const scTitle = document.getElementById('sc-title');
+  const scScore = document.getElementById('sc-score');
+  if (scScore) scScore.textContent = '本关得分：' + game.score;
+
+  // Game over.
+  const goScore = document.getElementById('go-score');
+  const goBest  = document.getElementById('go-best');
+  if (goScore) goScore.textContent = '得分：' + game.score;
+  if (goBest)  goBest.textContent  = '🏆 最高分 ' + game.best.score;
+
+  // Win.
+  const winScore = document.getElementById('win-score');
+  const winBest  = document.getElementById('win-best');
+  if (winScore) winScore.textContent = '最终得分：' + game.score;
+  if (winBest)  winBest.textContent  = '🏆 最高分 ' + game.best.score;
+
+  // Stage banner.
+  const banner = document.getElementById('stage-banner');
+  const sbText = document.getElementById('sb-text');
+  if (banner && sbText) {
+    const stageLabel = game.stage
+      ? '第 ' + (game.stageIndex + 1) + ' 关 · ' + game.stage.name
+      : '';
+    sbText.textContent = stageLabel;
+    banner.classList.toggle('show', game.bannerMs > 0);
+  }
+}
+
+// Button wiring.
+const BTN = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
+BTN('btn-start',    () => game.startGame());
+BTN('btn-resume',   () => game.togglePause());
+BTN('btn-restart',  () => game.restartStage());
+BTN('btn-next',     () => game.nextStage());
+BTN('btn-continue', () => game.continueFromCheckpoint());
+BTN('btn-go-menu',  () => game.toMenu());
+BTN('btn-win-retry',() => game.startGame());
+
+// Mute button — visual toggle only; audio wired in a later task.
+const btnMute = document.getElementById('btn-mute');
+if (btnMute) {
+  btnMute.addEventListener('click', () => {
+    game.handleAction('mute');
+  });
+}
+
+// RAF loop.
 let last = performance.now();
 function frame(now) {
-  const dt = Math.min((now - last) / 1000, 0.045); last = now;
-  Input.poll(); step(dt); renderer.render(game);
+  const dt = Math.min((now - last) / 1000, 0.045);
+  last = now;
+  Input.poll();
+  game.update(dt);
+  renderer.render(game);
+  syncOverlays();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
