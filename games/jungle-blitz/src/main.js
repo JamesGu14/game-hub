@@ -94,6 +94,7 @@ if (btnMute) {
 // Also handle mute action from keyboard/gamepad input.
 Input.on((action) => {
   if (action === 'mute') {
+    Sound.resume();
     Sound.toggleMuted();
     updateMuteGlyph();
   }

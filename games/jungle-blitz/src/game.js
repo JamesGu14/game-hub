@@ -73,8 +73,10 @@ export class Game {
 
     const { player, bullets, enemies, powerups, world } = this;
 
-    // 1. Player movement.
+    // 1. Player movement (land SFX on air→ground transition).
+    const wasAirborne = !player.onGround;
     player.update(dt, Input, world);
+    if (wasAirborne && player.onGround) Sound.land();
 
     // 2. Firing.
     if (Input.fireHeld && player.fireCooldown <= 0) {
