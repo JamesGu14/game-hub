@@ -143,6 +143,7 @@ export const STAGES = [
     pods: [
       { x: 1250, y: 230, kind: 'weaponL' },   // ~30px above the 260-tier platform top
       { x: 4600, y: 430, kind: 'heal' },
+      { x: 4800, y: 430, kind: 'shield' },     // shield before the mech boss
     ],
     checkpoints: [2100, 4000],
     bossX: 5100,
@@ -183,11 +184,14 @@ export const STAGES = [
       { x: 2400, y: 350, w: 160, h: 18, oneWay: true },
       { x: 2700, y: 270, w: 160, h: 18, oneWay: true },
       { x: 3000, y: 350, w: 180, h: 18, oneWay: true },
+      // Low stepping stone over the third gap (3100-3300) so the cross is gentle
+      { x: 3140, y: 420, w: 160, h: 18, oneWay: true },
     ],
     hazards: [
       // Pits between ground segments
       { type: 'water', x: 900,  w: 200, y: 470 },
       { type: 'water', x: 2000, w: 200, y: 470 },
+      { type: 'water', x: 3100, w: 200, y: 470 },
     ],
     decor: [
       { type: 'tree', x: 300,  y: 470 },
@@ -209,7 +213,7 @@ export const STAGES = [
     ],
     // shield before the hard grenadier stretch; heal on ground before boss room
     pods: [
-      { x: 1000, y: 430, kind: 'shield' },
+      { x: 820, y: 430, kind: 'shield' },   // on floor [0-900], before the first water gap
       { x: 4600, y: 430, kind: 'heal' },
     ],
     checkpoints: [1100, 3300],
@@ -249,6 +253,7 @@ export const STAGES = [
     hazards: [
       { type: 'water', x: 1200, w: 200, y: 470 },
       { type: 'water', x: 2600, w: 200, y: 470 },
+      { type: 'water', x: 3800, w: 200, y: 470 },
     ],
     decor: [
       { type: 'tent', x: 300,  y: 470 },
