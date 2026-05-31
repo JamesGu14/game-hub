@@ -188,31 +188,57 @@ export class Renderer {
     ctx.fill();
   }
 
-  // --- Player placeholder ---
+  // --- Player ---
   _player(ctx, player, camX) {
-    const px = player.x - camX;
-    const py = player.y;
+    // Use aabbBox() so crouch shows a shorter box.
+    const box = typeof player.aabbBox === 'function'
+      ? player.aabbBox()
+      : { x: player.x, y: player.y, w: player.w, h: player.h };
+
+    const px = box.x - camX;
+    const py = box.y;
+    const pw = box.w;
+    const ph = box.h;
 
     // Body.
     ctx.fillStyle = '#cfe8a0';
-    ctx.fillRect(px, py, player.w, player.h);
+    ctx.fillRect(px, py, pw, ph);
 
     // Facing indicator: small darker nub on the facing side.
     ctx.fillStyle = '#5a7a20';
     const nubW = 5;
     const nubH = 8;
-    const nubY = py + player.h * 0.3;
-    if (player.facing >= 0) {
-      ctx.fillRect(px + player.w, nubY, nubW, nubH);
+    const nubY = py + ph * 0.3;
+    const facing = player.facing !== undefined ? player.facing : 1;
+    if (facing >= 0) {
+      ctx.fillRect(px + pw, nubY, nubW, nubH);
     } else {
       ctx.fillRect(px - nubW, nubY, nubW, nubH);
     }
 
     // Simple eye dot.
     ctx.fillStyle = '#1a2a05';
-    const eyeX = player.facing >= 0 ? px + player.w - 7 : px + 4;
+    const eyeX = facing >= 0 ? px + pw - 7 : px + 4;
     ctx.beginPath();
     ctx.arc(eyeX, py + 10, 3, 0, Math.PI * 2);
     ctx.fill();
+
+    // Gun muzzle nub — shows aim direction (real gameplay feature).
+    if (player.aim && typeof player.muzzle === 'function') {
+      const m = player.muzzle();
+      const mx = m.x - camX;
+      const my = m.y;
+      const prone = player.prone || false;
+      const gy = box.y + (prone ? ph - 8 : ph * 0.4);
+      const gx = box.x + pw / 2 - camX;
+
+      ctx.strokeStyle = '#ffe27a';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(gx + player.aim.x * 14, gy + player.aim.y * 14);
+      ctx.stroke();
+    }
   }
 }
