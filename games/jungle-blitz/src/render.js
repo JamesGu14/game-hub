@@ -554,6 +554,11 @@ export class Renderer {
   // --- Boss ---
   _boss(ctx, boss, camX) {
     if (!boss) return;
+    if (boss.type === 'gunship')    { this._bossGunship(ctx, boss, camX);    return; }
+    if (boss.type === 'mech')       { this._bossMech(ctx, boss, camX);       return; }
+    if (boss.type === 'twinCannon') { this._bossTwinCannon(ctx, boss, camX); return; }
+
+    // --- Default: gate ---
     const flash = boss.hitFlashMs > 0;
     const bx = boss.x - camX;
     const by = boss.y;
@@ -645,6 +650,258 @@ export class Renderer {
     }
 
     ctx.restore();
+    ctx.restore();
+  }
+
+  // --- Gunship boss (stage 2) ---
+  _bossGunship(ctx, boss, camX) {
+    const flash = boss.hitFlashMs > 0;
+    const cx = boss.x + boss.w / 2 - camX;
+    const cy = boss.y + boss.h / 2;
+
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(boss.tilt || 0);
+
+    const hw = boss.w / 2;
+    const hh = boss.h / 2;
+
+    // Fuselage (the hittable body).
+    ctx.fillStyle = flash ? '#ffffff' : '#4a7a3a';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Nose cone (front, pointing right).
+    ctx.fillStyle = flash ? '#ffffff' : '#3a6030';
+    ctx.beginPath();
+    ctx.moveTo(hw, -hh * 0.4);
+    ctx.lineTo(hw + 22, 0);
+    ctx.lineTo(hw, hh * 0.4);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tail boom.
+    ctx.fillStyle = flash ? '#ffffff' : '#3a6030';
+    ctx.fillRect(-hw - 28, -5, 28, 10);
+
+    // Tail fin.
+    ctx.fillStyle = flash ? '#ffffff' : '#2a4a20';
+    ctx.beginPath();
+    ctx.moveTo(-hw - 28, -5);
+    ctx.lineTo(-hw - 28, -20);
+    ctx.lineTo(-hw - 8, -5);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main rotor (spinning line on top).
+    ctx.save();
+    ctx.rotate(boss.rotorAngle || 0);
+    ctx.strokeStyle = flash ? '#ffffff' : '#cfe8a0';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.shadowColor = '#cfe8a0';
+    ctx.shadowBlur = flash ? 0 : 5;
+    ctx.beginPath();
+    ctx.moveTo(-46, -hh - 4);
+    ctx.lineTo( 46, -hh - 4);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.restore();
+
+    // Cockpit window.
+    if (!flash) {
+      ctx.fillStyle = '#88ddff88';
+      ctx.beginPath();
+      ctx.ellipse(hw * 0.25, -hh * 0.1, 14, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Gun pod (underside).
+    ctx.fillStyle = flash ? '#ffffff' : '#1a2a10';
+    ctx.fillRect(-10, hh - 2, 20, 12);
+
+    ctx.restore();
+  }
+
+  // --- Heavy Mech boss (stage 3) ---
+  _bossMech(ctx, boss, camX) {
+    const flash = boss.hitFlashMs > 0;
+    const bx = boss.x - camX;
+    const by = boss.y;
+    const W  = boss.w;
+    const H  = boss.h;
+    const step = boss.step || 0;
+
+    ctx.save();
+
+    // Legs (two rects, offset by step phase for walk animation).
+    const legW = W * 0.22;
+    const legH = H * 0.38;
+    const legY  = by + H - legH;
+    const lLegX = bx + W * 0.12;
+    const rLegX = bx + W * 0.62;
+    // Left leg bobs up, right leg bobs down when step > 0.5.
+    const lOff = step < 0.5 ? -step * 10 : -(1 - step) * 10;
+    const rOff = -lOff;
+
+    ctx.fillStyle = flash ? '#ffffff' : '#6a7060';
+    ctx.fillRect(lLegX, legY + lOff, legW, legH - lOff);
+    ctx.fillRect(rLegX, legY + rOff, legW, legH - rOff);
+
+    // Foot pads.
+    ctx.fillStyle = flash ? '#ffffff' : '#3a4030';
+    ctx.fillRect(lLegX - 3, by + H - 8, legW + 6, 8);
+    ctx.fillRect(rLegX - 3, by + H - 8, legW + 6, 8);
+
+    // Torso — main body.
+    ctx.fillStyle = flash ? '#ffffff' : '#5a6050';
+    ctx.fillRect(bx + W * 0.06, by + H * 0.38, W * 0.88, H * 0.50);
+
+    // Shoulders.
+    ctx.fillStyle = flash ? '#ffffff' : '#4a5040';
+    ctx.fillRect(bx - 8,     by + H * 0.36, W * 0.22, H * 0.22);
+    ctx.fillRect(bx + W - 14, by + H * 0.36, W * 0.22, H * 0.22);
+
+    // Cannon barrels on shoulders.
+    ctx.fillStyle = flash ? '#ffffff' : '#2a3020';
+    ctx.fillRect(bx - 20, by + H * 0.40, 14, 8);
+    ctx.fillRect(bx + W + 6, by + H * 0.40, 14, 8);
+
+    // Head / upper hull.
+    ctx.fillStyle = flash ? '#ffffff' : '#4a5040';
+    ctx.fillRect(bx + W * 0.15, by + H * 0.08, W * 0.70, H * 0.32);
+
+    // Cockpit (the weak point) — glowing viewport on the upper-front.
+    const cRelX = W * 0.20;
+    const cRelY = H * 0.12;
+    const cW    = W * 0.38;
+    const cH    = H * 0.25;
+    const pulse  = 0.6 + 0.4 * Math.sin(Date.now() / 200);
+
+    ctx.save();
+    ctx.shadowColor = flash ? '#ffffff' : '#7af0ff';
+    ctx.shadowBlur  = flash ? 30 : 14 * pulse;
+    ctx.fillStyle   = flash ? '#ffffff' : `rgba(80,200,255,${0.7 + 0.3 * pulse})`;
+    ctx.fillRect(bx + cRelX, by + cRelY, cW, cH);
+
+    // Cockpit crosshair.
+    if (!flash) {
+      ctx.strokeStyle = '#ffffff88';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(bx + cRelX + cW / 2, by + cRelY + 3);
+      ctx.lineTo(bx + cRelX + cW / 2, by + cRelY + cH - 3);
+      ctx.moveTo(bx + cRelX + 3, by + cRelY + cH / 2);
+      ctx.lineTo(bx + cRelX + cW - 3, by + cRelY + cH / 2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    ctx.restore();
+  }
+
+  // --- Twin Cannon boss (stage 4) ---
+  _bossTwinCannon(ctx, boss, camX) {
+    const flash  = boss.hitFlashMs > 0;
+    const bx     = boss.x - camX;
+    const by     = boss.y;
+    const bw     = boss.w;
+    const bh     = boss.h;
+    const aliveL = boss.hpLeft > 0;
+    const aliveR = boss.hpRight > 0;
+    const pulse  = 0.6 + 0.4 * Math.sin(Date.now() / 180);
+
+    const tLX = boss.turretLX - camX;
+    const tRX = boss.turretRX - camX;
+    const tLY = boss.turretLY;
+    const tRY = boss.turretRY;
+    const tW  = boss.turretW;
+    const tH  = boss.turretH;
+
+    ctx.save();
+
+    // Central hub — armored box.
+    ctx.fillStyle = flash ? '#ffffff' : '#7a5a30';
+    ctx.fillRect(bx, by, bw, bh);
+
+    // Hub panel lines.
+    if (!flash) {
+      ctx.strokeStyle = '#5a4020';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bx, by + bh / 2);
+      ctx.lineTo(bx + bw, by + bh / 2);
+      ctx.stroke();
+    }
+
+    // Hub cog detail (circle on face).
+    ctx.fillStyle = flash ? '#ffffff' : '#5a4020';
+    ctx.beginPath();
+    ctx.arc(bx + bw * 0.5, by + bh * 0.5, bh * 0.28, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Left turret.
+    const lColor = aliveL
+      ? (flash ? '#ffffff' : '#8a6a3a')
+      : '#3a2a15';   // darkened/broken
+    ctx.fillStyle = lColor;
+    ctx.fillRect(tLX, tLY, tW, tH);
+
+    // Left barrel tip.
+    ctx.fillStyle = aliveL ? (flash ? '#ffffff' : '#4a3a18') : '#1a1008';
+    ctx.fillRect(tLX - 18, tLY + tH * 0.3, 18, tH * 0.4);
+
+    // Left turret glowing weak point (only when alive).
+    if (aliveL) {
+      ctx.save();
+      ctx.shadowColor = flash ? '#ffffff' : '#ff9f43';
+      ctx.shadowBlur  = flash ? 30 : 12 * pulse;
+      ctx.fillStyle   = flash ? '#ffffff' : `rgba(255,${Math.floor(120 + 60 * pulse)},20,0.9)`;
+      const lGlowX = tLX + tW * 0.6;
+      const lGlowY = tLY + tH * 0.2;
+      ctx.fillRect(lGlowX, lGlowY, tW * 0.32, tH * 0.6);
+      ctx.restore();
+    } else {
+      // Broken X on destroyed turret.
+      ctx.strokeStyle = '#5a3a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(tLX + 4, tLY + 4); ctx.lineTo(tLX + tW - 4, tLY + tH - 4);
+      ctx.moveTo(tLX + tW - 4, tLY + 4); ctx.lineTo(tLX + 4, tLY + tH - 4);
+      ctx.stroke();
+    }
+
+    // Right turret.
+    const rColor = aliveR
+      ? (flash ? '#ffffff' : '#8a6a3a')
+      : '#3a2a15';
+    ctx.fillStyle = rColor;
+    ctx.fillRect(tRX, tRY, tW, tH);
+
+    // Right barrel tip.
+    ctx.fillStyle = aliveR ? (flash ? '#ffffff' : '#4a3a18') : '#1a1008';
+    ctx.fillRect(tRX - 18, tRY + tH * 0.3, 18, tH * 0.4);
+
+    // Right turret glowing weak point (only when alive).
+    if (aliveR) {
+      ctx.save();
+      ctx.shadowColor = flash ? '#ffffff' : '#ff9f43';
+      ctx.shadowBlur  = flash ? 30 : 12 * pulse;
+      ctx.fillStyle   = flash ? '#ffffff' : `rgba(255,${Math.floor(120 + 60 * pulse)},20,0.9)`;
+      const rGlowX = tRX + tW * 0.6;
+      const rGlowY = tRY + tH * 0.2;
+      ctx.fillRect(rGlowX, rGlowY, tW * 0.32, tH * 0.6);
+      ctx.restore();
+    } else {
+      ctx.strokeStyle = '#5a3a1a';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(tRX + 4, tRY + 4); ctx.lineTo(tRX + tW - 4, tRY + tH - 4);
+      ctx.moveTo(tRX + tW - 4, tRY + 4); ctx.lineTo(tRX + 4, tRY + tH - 4);
+      ctx.stroke();
+    }
+
     ctx.restore();
   }
 
