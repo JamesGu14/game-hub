@@ -9,6 +9,7 @@ import { Enemies } from './enemies.js';
 import { PowerUps } from './powerups.js';
 import { getStage, stageCount } from './levels.js';
 import { Input } from './input.js';
+import { Sound } from './audio.js';
 
 function loadBest() {
   try {
@@ -60,6 +61,7 @@ export class Game {
     this.respawnY = sy;
     this.takenCheckpoints.clear();
     this.boss = null;
+    this.prevBossPhase = null;
     this.bannerMs = 1600;
   }
 
@@ -78,6 +80,7 @@ export class Game {
     if (Input.fireHeld && player.fireCooldown <= 0) {
       bullets.fireWeapon(player.weapon, player.muzzle(), player.aim, 'player');
       player.fireCooldown = WEAPONS[player.weapon].interval / 1000;
+      Sound.shoot(player.weapon);
     }
     player.fireCooldown -= dt;
 
@@ -99,7 +102,9 @@ export class Game {
         } else {
           b.dead = true;
         }
-        this.score += enemies.damage(e, b.dmg);
+        const scoreGained = enemies.damage(e, b.dmg);
+        this.score += scoreGained;
+        if (scoreGained > 0) Sound.enemyExplode(); else Sound.enemyHit();
       }
     });
 
@@ -113,6 +118,7 @@ export class Game {
       else if (e.type === 'heal') player.hp = Math.min(PLAYER.hpMax, player.hp + ITEMS.healAmount);
       else if (e.type === 'shield') player.shieldMs = ITEMS.shieldMs;
       this.score += SCORE.pickup;
+      Sound.pickup();
     };
     apply(powerups.tryCollect(player.aabbBox()));
     powerups.popByBullet(bullets).forEach(apply);
@@ -125,6 +131,7 @@ export class Game {
       if (aabb(player.aabbBox(), { x: b.x - 4, y: b.y - 4, w: 8, h: 8 })) {
         const r = player.hurt(1, b.x);
         b.dead = true;
+        if (r === 'hurt' || r === 'died') Sound.playerHurt();
         if (r === 'died') this._onDeath();
       }
     });
@@ -133,6 +140,7 @@ export class Game {
     const ce = enemies.enemyContact(player.aabbBox());
     if (ce) {
       const r = player.hurt(1, ce.x);
+      if (r === 'hurt' || r === 'died') Sound.playerHurt();
       if (r === 'died') this._onDeath();
     }
 
@@ -142,6 +150,7 @@ export class Game {
       const dy = (player.y + player.height / 2) - bl.y;
       if (Math.hypot(dx, dy) <= GRENADE.blastR) {
         const r = player.hurt(1, bl.x);
+        if (r === 'hurt' || r === 'died') Sound.playerHurt();
         if (r === 'died') this._onDeath();
       }
     });
@@ -149,6 +158,7 @@ export class Game {
     // Pit / fall.
     if (player.y > world.pitBottomY) {
       const r = player.hurt(1, player.x);
+      if (r === 'hurt' || r === 'died') Sound.playerHurt();
       if (r === 'died') {
         this._onDeath();
       } else {
@@ -164,6 +174,7 @@ export class Game {
           const cy = player.y + player.height / 2;
           if (cx >= hz.x && cx <= hz.x + hz.w && cy >= hz.y) {
             const r = player.hurt(1, player.x);
+            if (r === 'hurt' || r === 'died') Sound.playerHurt();
             if (r === 'died') {
               this._onDeath();
             } else {
@@ -215,6 +226,7 @@ export class Game {
             } else {
               b.dead = true;
             }
+            Sound.bossHit();
             this.boss.hurt(b.dmg, i);
             break;
           }
@@ -225,16 +237,25 @@ export class Game {
       for (const box of this.boss.boxes()) {
         if (aabb(player.aabbBox(), box)) {
           const r = player.hurt(1, box.x + box.w / 2);
+          if (r === 'hurt' || r === 'died') Sound.playerHurt();
           if (r === 'died') this._onDeath();
           break;
         }
       }
+
+      // Boss phase change (edge detection — fires once per transition).
+      const curPhase = this.boss.phase ?? null;
+      if (this.prevBossPhase !== null && curPhase !== this.prevBossPhase && !this.boss.transitioning) {
+        Sound.bossPhase();
+      }
+      this.prevBossPhase = curPhase;
 
       if (this.boss.dead) this._onBossDefeated();
     }
   }
 
   _onBossDefeated() {
+    Sound.bossExplode();
     this.score += BOSSES[this.stage.boss].score;
     const drop = BOSSES[this.stage.boss].dropWeapon;
     if (drop) {
@@ -244,9 +265,11 @@ export class Game {
     this.score += SCORE.stageClear;
     this.boss = null;
     if (this.stageIndex >= stageCount() - 1) {
+      Sound.win();
       this.state = 'win';
       this.persistBest();
     } else {
+      Sound.stageClear();
       this.state = 'stageclear';
       this.persistBest();
     }
@@ -257,6 +280,7 @@ export class Game {
     if (this.player.lives >= 0) {
       this.player.respawn(this.respawnX, this.respawnY);
     } else {
+      Sound.gameOver();
       this.state = 'gameover';
       this.persistBest();
     }
@@ -306,8 +330,10 @@ export class Game {
   handleAction(action) {
     switch (action) {
       case 'jump':
-        if (this.state === 'playing') this.player.jump();
-        else this.confirm();
+        if (this.state === 'playing') {
+          if (this.player.onGround) Sound.jump();
+          this.player.jump();
+        } else this.confirm();
         break;
       case 'confirm':
         if (this.state !== 'playing') this.confirm();
@@ -318,9 +344,7 @@ export class Game {
       case 'back':
         if (this.state === 'paused') this.togglePause();
         break;
-      case 'mute':
-        // Audio wired in a later task.
-        break;
+      // 'mute' is handled in main.js (owns the mute button + glyph).
     }
   }
 

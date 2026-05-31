@@ -2,6 +2,7 @@
 import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
+import { Sound } from './audio.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -65,22 +66,38 @@ function syncOverlays() {
 }
 
 // Button wiring.
-const BTN = (id, fn) => { const el = document.getElementById(id); if (el) el.addEventListener('click', fn); };
-BTN('btn-start',    () => game.startGame());
-BTN('btn-resume',   () => game.togglePause());
-BTN('btn-restart',  () => game.restartStage());
-BTN('btn-next',     () => game.nextStage());
-BTN('btn-continue', () => game.continueFromCheckpoint());
-BTN('btn-go-menu',  () => game.toMenu());
-BTN('btn-win-retry',() => game.startGame());
+const BTN = (id, fn) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', fn);
+};
+BTN('btn-start',    () => { Sound.resume(); Sound.ui(); game.startGame(); });
+BTN('btn-resume',   () => { Sound.ui(); game.togglePause(); });
+BTN('btn-restart',  () => { Sound.ui(); game.restartStage(); });
+BTN('btn-next',     () => { Sound.ui(); game.nextStage(); });
+BTN('btn-continue', () => { Sound.ui(); game.continueFromCheckpoint(); });
+BTN('btn-go-menu',  () => { Sound.ui(); game.toMenu(); });
+BTN('btn-win-retry',() => { Sound.ui(); game.startGame(); });
 
-// Mute button — visual toggle only; audio wired in a later task.
+// Mute button — toggles audio and updates glyph.
 const btnMute = document.getElementById('btn-mute');
+function updateMuteGlyph() {
+  if (btnMute) btnMute.textContent = Sound.isMuted() ? '🔇' : '🔊';
+}
 if (btnMute) {
   btnMute.addEventListener('click', () => {
-    game.handleAction('mute');
+    Sound.resume();
+    Sound.toggleMuted();
+    updateMuteGlyph();
   });
 }
+
+// Also handle mute action from keyboard/gamepad input.
+Input.on((action) => {
+  if (action === 'mute') {
+    Sound.toggleMuted();
+    updateMuteGlyph();
+  }
+});
 
 // RAF loop.
 let last = performance.now();
