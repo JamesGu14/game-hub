@@ -1,7 +1,7 @@
 // Canvas 2D renderer for 丛林尖兵 JUNGLE BLITZ.
 // Draws in FIELD space (960×540) via a letterbox transform; world layer is offset by -camX.
 
-import { FIELD, BULLET, GRENADE } from './config.js';
+import { FIELD, BULLET, GRENADE, PLAYER, WEAPONS } from './config.js';
 const GRENADE_BLAST_R = GRENADE.blastR;
 
 const POD_COLOR = {
@@ -50,7 +50,6 @@ export class Renderer {
   }
 
   render(game) {
-    const { world, player, bullets, powerups, enemies } = game;
     const ctx = this.ctx;
 
     // Reset transform; clear and fill letterbox bars.
@@ -67,12 +66,105 @@ export class Renderer {
       this.offsetY * this.dpr,
     );
 
+    // Menu state: draw jungle background only (HTML overlay covers it).
+    if (game.state === 'menu' || !game.world) {
+      this._menuBackground(ctx);
+      return;
+    }
+
+    const { world, player, bullets, powerups, enemies } = game;
+
     this._background(ctx, world);
     this._worldLayer(ctx, world);
     if (powerups) this._powerups(ctx, powerups, world.camX);
     if (enemies)  this._enemies(ctx, enemies, world.camX);
     if (bullets)  this._bullets(ctx, bullets, world.camX);
-    this._player(ctx, player, world.camX);
+
+    // Player blink during i-frames.
+    const showPlayer = player.invMs <= 0 || (Math.floor(player.invMs / 80) % 2 === 0);
+    if (showPlayer) this._player(ctx, player, world.camX);
+
+    // Shield ring.
+    if (player.shieldMs > 0) this._shieldRing(ctx, player, world.camX);
+
+    // HUD (screen-space, drawn last on top).
+    this._hud(ctx, game);
+  }
+
+  // Simple jungle gradient for the menu background.
+  _menuBackground(ctx) {
+    const W = FIELD.W;
+    const H = FIELD.H;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#274b1a');
+    grad.addColorStop(1, '#0c1408');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+  }
+
+  // HUD drawn in field-space screen coordinates (not camera-offset).
+  _hud(ctx, game) {
+    const { player, score, stageIndex, stage } = game;
+    const W = FIELD.W;
+    const barH = 36;
+    const pad = 10;
+
+    // Translucent background strip.
+    ctx.save();
+    ctx.fillStyle = 'rgba(10,20,6,0.55)';
+    ctx.fillRect(0, 0, W, barH + pad * 2);
+
+    // -- Left: HP bar --
+    const segW = 18;
+    const segH = 12;
+    const segGap = 3;
+    const hpX = pad + 6;
+    const hpY = pad + (barH - segH) / 2;
+    for (let i = 0; i < PLAYER.hpMax; i++) {
+      ctx.fillStyle = i < player.hp ? '#8bc34a' : '#2a3a18';
+      ctx.fillRect(hpX + i * (segW + segGap), hpY, segW, segH);
+    }
+    // Lives.
+    const livesX = hpX + PLAYER.hpMax * (segW + segGap) + 10;
+    ctx.fillStyle = '#cfe8a0';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('\uD83E\uDAAB \xD7 ' + Math.max(0, player.lives), livesX, pad + barH / 2);
+
+    // -- Center: stage label --
+    ctx.fillStyle = '#cfe8a0';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('第 ' + (stageIndex + 1) + ' 关 · ' + (stage ? stage.name : ''), W / 2, pad + barH / 2);
+
+    // -- Right: weapon name + score --
+    const weaponName = WEAPONS[player.weapon] ? WEAPONS[player.weapon].name : player.weapon;
+    ctx.fillStyle = '#ffe27a';
+    ctx.font = 'bold 14px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(weaponName + '   ' + score, W - pad - 6, pad + barH / 2);
+
+    ctx.restore();
+  }
+
+  // Translucent shield ring around player.
+  _shieldRing(ctx, player, camX) {
+    const cx = player.x + player.w / 2 - camX;
+    const cy = player.y + player.height / 2;
+    const r = Math.max(player.w, player.height) * 0.75;
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.strokeStyle = '#7af0ff';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#7af0ff';
+    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   // --- Background / parallax ---

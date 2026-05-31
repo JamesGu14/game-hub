@@ -31,9 +31,38 @@ export class Player {
     return { x: this.x, y: this.y, w: this.w, h: this.height };
   }
 
+  /**
+   * Apply damage from a hit originating at world-x fromX.
+   * Returns 'safe' (i-frames/shield active), 'hurt', or 'died'.
+   */
+  hurt(amount, fromX) {
+    if (this.invMs > 0 || this.shieldMs > 0) return 'safe';
+    this.hp -= amount;
+    this.invMs = PLAYER.iframeMs;
+    this.knockMs = PLAYER.knockbackMs;
+    this.vx = (Math.sign(this.x - fromX) || 1) * PLAYER.knockback;
+    this.hitFlash = true;
+    return this.hp <= 0 ? 'died' : 'hurt';
+  }
+
+  /** Reset to full health at the given position with respawn i-frames. */
+  respawn(x, y) {
+    this.hp = PLAYER.hpMax;
+    this.x = x;
+    this.y = y;
+    this.vx = 0;
+    this.vy = 0;
+    this.invMs = PLAYER.respawnIframeMs;
+    this.onGround = false;
+    this.prone = false;
+  }
+
   update(dt, input, world) {
-    // 1. Horizontal movement + facing
-    this.vx = input.moveX * PHYSICS.moveSpeed;
+    // 1. Horizontal movement + facing (blocked while knockback is active)
+    if (this.knockMs <= 0) {
+      this.vx = input.moveX * PHYSICS.moveSpeed;
+    }
+    // always update facing from input even during knockback
     if (input.moveX !== 0) this.facing = Math.sign(input.moveX);
 
     // 2. Crouch / prone — keep feet planted
