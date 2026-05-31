@@ -190,6 +190,7 @@ body {
   animation: fade 0.25s ease;
 }
 .stage-banner span {
+  display: block;
   font-size: clamp(36px, 8vw, 72px);
   font-weight: 900;
   color: #8bc34a;
