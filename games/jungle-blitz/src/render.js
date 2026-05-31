@@ -1,7 +1,8 @@
 // Canvas 2D renderer for 丛林尖兵 JUNGLE BLITZ.
 // Draws in FIELD space (960×540) via a letterbox transform; world layer is offset by -camX.
 
-import { FIELD, BULLET } from './config.js';
+import { FIELD, BULLET, GRENADE } from './config.js';
+const GRENADE_BLAST_R = GRENADE.blastR;
 
 const POD_COLOR = {
   weaponS: '#ff9f43',
@@ -49,7 +50,7 @@ export class Renderer {
   }
 
   render(game) {
-    const { world, player, bullets, powerups } = game;
+    const { world, player, bullets, powerups, enemies } = game;
     const ctx = this.ctx;
 
     // Reset transform; clear and fill letterbox bars.
@@ -69,6 +70,7 @@ export class Renderer {
     this._background(ctx, world);
     this._worldLayer(ctx, world);
     if (powerups) this._powerups(ctx, powerups, world.camX);
+    if (enemies)  this._enemies(ctx, enemies, world.camX);
     if (bullets)  this._bullets(ctx, bullets, world.camX);
     this._player(ctx, player, world.camX);
   }
@@ -288,6 +290,140 @@ export class Renderer {
       ctx.fillText(label, px + p.w / 2, py + p.h / 2);
       ctx.restore();
     }
+  }
+
+  // --- Enemies + grenades ---
+  _enemies(ctx, enemies, camX) {
+    enemies.forEachActive(e => this._drawEnemy(ctx, e, camX));
+    enemies.forEachBlast(g => this._drawBlast(ctx, g, camX));
+    // Draw in-flight grenades.
+    for (const g of enemies.grenades) {
+      if (g.dead || g.exploded) continue;
+      const gx = g.x - camX;
+      ctx.fillStyle = '#ffd23f';
+      ctx.beginPath();
+      ctx.arc(gx, g.y, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  _drawEnemy(ctx, e, camX) {
+    const ex = e.x - camX;
+    const ey = e.y;
+    const color = e.hitFlashMs > 0 ? '#ffffff' : e.color;
+
+    ctx.save();
+    ctx.fillStyle = color;
+
+    switch (e.type) {
+      case 'grunt': {
+        // Body rect.
+        ctx.fillRect(ex + 4, ey + 12, e.w - 8, e.h - 12);
+        // Head.
+        ctx.beginPath();
+        ctx.arc(ex + e.w / 2, ey + 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Gun nub.
+        ctx.fillStyle = e.hitFlashMs > 0 ? '#ffffff' : '#7a1a1a';
+        const nubX = e.facing >= 0 ? ex + e.w : ex - 6;
+        ctx.fillRect(nubX, ey + 16, 6, 3);
+        break;
+      }
+      case 'turret': {
+        // Trapezoid base.
+        ctx.beginPath();
+        ctx.moveTo(ex + 4, ey + e.h);
+        ctx.lineTo(ex + e.w - 4, ey + e.h);
+        ctx.lineTo(ex + e.w, ey + e.h * 0.5);
+        ctx.lineTo(ex, ey + e.h * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        // Barrel toward facing.
+        ctx.fillStyle = e.hitFlashMs > 0 ? '#ffffff' : '#5a6066';
+        const barrelX = e.facing >= 0 ? ex + e.w * 0.6 : ex;
+        ctx.fillRect(barrelX, ey + e.h * 0.3, e.w * 0.5 * e.facing, 6);
+        break;
+      }
+      case 'drone': {
+        // Horizontal diamond/ellipse body.
+        ctx.beginPath();
+        ctx.ellipse(ex + e.w / 2, ey + e.h / 2, e.w / 2, e.h / 2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Blinking light.
+        if (Math.floor(e.t * 4) % 2 === 0) {
+          ctx.fillStyle = '#ff4444';
+          ctx.beginPath();
+          ctx.arc(ex + e.w / 2, ey + e.h / 2, 3, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case 'jumper': {
+        // Body.
+        ctx.fillRect(ex + 2, ey + 10, e.w - 4, e.h - 14);
+        // Head.
+        ctx.beginPath();
+        ctx.arc(ex + e.w / 2, ey + 7, 7, 0, Math.PI * 2);
+        ctx.fill();
+        // Legs (two small rects).
+        ctx.fillStyle = e.hitFlashMs > 0 ? '#ffffff' : '#a06018';
+        ctx.fillRect(ex + 3,      ey + e.h - 4, 6, 4);
+        ctx.fillRect(ex + e.w - 9, ey + e.h - 4, 6, 4);
+        break;
+      }
+      case 'grenadier': {
+        // Body.
+        ctx.fillRect(ex + 4, ey + 12, e.w - 8, e.h - 12);
+        // Head.
+        ctx.beginPath();
+        ctx.arc(ex + e.w / 2, ey + 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        // Pack on back.
+        ctx.fillStyle = e.hitFlashMs > 0 ? '#ffffff' : '#5a4020';
+        const packX = e.facing >= 0 ? ex : ex + e.w - 8;
+        ctx.fillRect(packX, ey + 14, 8, 14);
+        break;
+      }
+      case 'nest': {
+        // Bunker dome.
+        ctx.beginPath();
+        ctx.arc(ex + e.w / 2, ey + e.h, e.w / 2, Math.PI, 0);
+        ctx.closePath();
+        ctx.fill();
+        // Darker slit.
+        ctx.fillStyle = e.hitFlashMs > 0 ? '#ffffff' : '#3a2a10';
+        ctx.fillRect(ex + 6, ey + e.h - 14, e.w - 12, 6);
+        break;
+      }
+    }
+
+    // HP pip strip above enemy.
+    if (e.hpMax > 1) {
+      const pipW = 4;
+      const gap  = 2;
+      const totalW = e.hpMax * (pipW + gap) - gap;
+      const startX = ex + (e.w - totalW) / 2;
+      for (let i = 0; i < e.hpMax; i++) {
+        ctx.fillStyle = i < e.hp ? '#44ff44' : '#333';
+        ctx.fillRect(startX + i * (pipW + gap), ey - 7, pipW, 3);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  _drawBlast(ctx, g, camX) {
+    const progress = g.blastT / 0.25;
+    const r = GRENADE_BLAST_R * progress;
+    const gx = g.x - camX;
+    ctx.save();
+    ctx.globalAlpha = 0.55 * (1 - progress);
+    ctx.fillStyle = '#ffd23f';
+    ctx.beginPath();
+    ctx.arc(gx, g.y, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+    ctx.restore();
   }
 
   // --- Player ---
