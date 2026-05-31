@@ -78,6 +78,7 @@ export class Renderer {
     this._worldLayer(ctx, world);
     if (powerups) this._powerups(ctx, powerups, world.camX);
     if (enemies)  this._enemies(ctx, enemies, world.camX);
+    if (game.boss) this._boss(ctx, game.boss, world.camX);
     if (bullets)  this._bullets(ctx, bullets, world.camX);
 
     // Player blink during i-frames.
@@ -132,12 +133,44 @@ export class Renderer {
     ctx.textBaseline = 'middle';
     ctx.fillText('\uD83E\uDAAB \xD7 ' + Math.max(0, player.lives), livesX, pad + barH / 2);
 
-    // -- Center: stage label --
-    ctx.fillStyle = '#cfe8a0';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('第 ' + (stageIndex + 1) + ' 关 · ' + (stage ? stage.name : ''), W / 2, pad + barH / 2);
+    // -- Center: boss HP bar (when boss active) or stage label --
+    if (game.boss) {
+      const boss = game.boss;
+      const barW = 260;
+      const bBarH = 14;
+      const bBarX = W / 2 - barW / 2;
+      const bBarY = pad + (barH - bBarH) / 2 - 2;
+      const fillW = Math.max(0, (boss.hp / boss.hpMax) * barW);
+
+      // Track (dark).
+      ctx.fillStyle = '#1a0a0a';
+      ctx.fillRect(bBarX, bBarY, barW, bBarH);
+
+      // Fill: red → orange gradient.
+      const hpGrad = ctx.createLinearGradient(bBarX, 0, bBarX + barW, 0);
+      hpGrad.addColorStop(0, '#c0392b');
+      hpGrad.addColorStop(1, '#e67e22');
+      ctx.fillStyle = hpGrad;
+      ctx.fillRect(bBarX, bBarY, fillW, bBarH);
+
+      // Border.
+      ctx.strokeStyle = '#7a3a00';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(bBarX, bBarY, barW, bBarH);
+
+      // Boss name label above bar.
+      ctx.fillStyle = '#ffe0b0';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(boss.name, W / 2, bBarY);
+    } else {
+      ctx.fillStyle = '#cfe8a0';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('第 ' + (stageIndex + 1) + ' 关 · ' + (stage ? stage.name : ''), W / 2, pad + barH / 2);
+    }
 
     // -- Right: weapon name + score --
     const weaponName = WEAPONS[player.weapon] ? WEAPONS[player.weapon].name : player.weapon;
@@ -515,6 +548,103 @@ export class Renderer {
     ctx.arc(gx, g.y, r, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // --- Boss ---
+  _boss(ctx, boss, camX) {
+    if (!boss) return;
+    const flash = boss.hitFlashMs > 0;
+    const bx = boss.x - camX;
+    const by = boss.y;
+    const bw = boss.w;
+    const bh = boss.h;
+
+    ctx.save();
+
+    // Gate body — armored steel pillar.
+    ctx.fillStyle = flash ? '#ffffff' : '#5a6270';
+    ctx.fillRect(bx, by, bw, bh);
+
+    // Riveted panel lines (horizontal stripes for armored look).
+    if (!flash) {
+      ctx.strokeStyle = '#3a4250';
+      ctx.lineWidth = 2;
+      const stripes = 6;
+      for (let i = 1; i < stripes; i++) {
+        const sy = by + (bh / stripes) * i;
+        ctx.beginPath();
+        ctx.moveTo(bx, sy);
+        ctx.lineTo(bx + bw, sy);
+        ctx.stroke();
+      }
+      // Vertical center seam.
+      ctx.beginPath();
+      ctx.moveTo(bx + bw / 2, by);
+      ctx.lineTo(bx + bw / 2, by + bh);
+      ctx.stroke();
+    }
+
+    // Left-face accent border.
+    ctx.fillStyle = flash ? '#ffffff' : '#3a4250';
+    ctx.fillRect(bx, by, 6, bh);
+
+    // Cannon port — upper.
+    const portX = bx;
+    const portUpperY = boss.portUpperY;
+    const portLowerY = boss.portLowerY;
+    const portR = 10;
+    ctx.fillStyle = flash ? '#ffffff' : '#1a1a2a';
+    ctx.beginPath();
+    ctx.arc(portX, portUpperY, portR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#888fa0';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Cannon port — lower.
+    ctx.fillStyle = flash ? '#ffffff' : '#1a1a2a';
+    ctx.beginPath();
+    ctx.arc(portX, portLowerY, portR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#888fa0';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Central glowing core (the weak point).
+    const cx = boss.coreX - camX;
+    const cy = boss.coreY;
+    const cw = boss.coreW;
+    const ch = boss.coreH;
+    const pulse = 0.6 + 0.4 * Math.sin(Date.now() / 180);
+
+    ctx.save();
+    ctx.shadowColor = flash ? '#ffffff' : '#ff6600';
+    ctx.shadowBlur = flash ? 30 : 18 * pulse;
+
+    // Core backing rect.
+    ctx.fillStyle = flash ? '#ffffff' : '#2a1000';
+    ctx.fillRect(cx, cy, cw, ch);
+
+    // Core fill — glowing orange/yellow.
+    const coreColor = flash ? '#ffffff' : `rgba(255,${Math.floor(100 + 80 * pulse)},0,1)`;
+    ctx.fillStyle = coreColor;
+    const inset = 5;
+    ctx.fillRect(cx + inset, cy + inset, cw - inset * 2, ch - inset * 2);
+
+    // Core crosshair lines.
+    if (!flash) {
+      ctx.strokeStyle = '#ffdd88';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(cx + cw / 2, cy + inset);
+      ctx.lineTo(cx + cw / 2, cy + ch - inset);
+      ctx.moveTo(cx + inset, cy + ch / 2);
+      ctx.lineTo(cx + cw - inset, cy + ch / 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
     ctx.restore();
   }
 

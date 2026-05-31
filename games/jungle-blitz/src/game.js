@@ -1,6 +1,7 @@
 // Game state machine for 丛林尖兵 JUNGLE BLITZ.
-import { PLAYER, WEAPONS, ITEMS, SCORE, STORAGE_KEY, GRENADE } from './config.js';
-import { aabb } from './util/math.js';
+import { PLAYER, WEAPONS, ITEMS, SCORE, STORAGE_KEY, GRENADE, BOSSES, POD_KIND_TO_WEAPON, FIELD } from './config.js';
+import { aabb, clamp } from './util/math.js';
+import { createBoss } from './bosses.js';
 import { World } from './world.js';
 import { Player } from './player.js';
 import { Bullets } from './bullets.js';
@@ -182,12 +183,72 @@ export class Game {
       }
     }
 
-    // 9. Camera.
-    if (!this.boss) world.updateCamera(player.x);
+    // 9. Camera + boss room lock.
+    if (!this.boss) {
+      world.updateCamera(player.x);
+    } else {
+      // Lock player inside boss room.
+      player.x = clamp(player.x, world.camX, world.camX + FIELD.W - player.w);
+    }
 
-    // 10. Boss trigger placeholder (boss spawns in a later task).
+    // 10. Boss trigger.
     if (player.x >= this.stage.bossX && !this.boss) {
-      // Boss logic wired in next task.
+      const roomLeftX = clamp(this.stage.bossX - 120, 0, this.world.worldWidth - FIELD.W);
+      world.camX = roomLeftX;
+      this.boss = createBoss(this.stage.boss, roomLeftX, world);
+    }
+
+    // 11. Boss update + combat.
+    if (this.boss && !this.boss.dead) {
+      this.boss.update(dt, player, bullets, { addEnemy: (s) => enemies.spawnNow(s, world) });
+
+      // Player bullets damage boss weak points.
+      bullets.forEachActive(b => {
+        if (b.faction !== 'player') return;
+        const bb = { x: b.x - 4, y: b.y - 4, w: 8, h: 8 };
+        const boxes = this.boss.boxes();
+        for (let i = 0; i < boxes.length; i++) {
+          if (aabb(bb, boxes[i])) {
+            if (b.pierce) {
+              if (b.hits.has(this.boss)) break;
+              b.hits.add(this.boss);
+            } else {
+              b.dead = true;
+            }
+            this.boss.hurt(b.dmg, i);
+            break;
+          }
+        }
+      });
+
+      // Boss body contact damages player.
+      for (const box of this.boss.boxes()) {
+        if (aabb(player.aabbBox(), box)) {
+          const r = player.hurt(1, box.x + box.w / 2);
+          if (r === 'died') this._onDeath();
+          break;
+        }
+      }
+
+      if (this.boss.dead) this._onBossDefeated();
+    }
+  }
+
+  _onBossDefeated() {
+    this.score += BOSSES[this.stage.boss].score;
+    const drop = BOSSES[this.stage.boss].dropWeapon;
+    if (drop) {
+      const kind = Object.keys(POD_KIND_TO_WEAPON).find(k => POD_KIND_TO_WEAPON[k] === drop);
+      if (kind) this.powerups.spawnPod(this.player.x, this.player.y - 60, kind);
+    }
+    this.score += SCORE.stageClear;
+    this.boss = null;
+    if (this.stageIndex >= stageCount() - 1) {
+      this.state = 'win';
+      this.persistBest();
+    } else {
+      this.state = 'stageclear';
+      this.persistBest();
     }
   }
 
