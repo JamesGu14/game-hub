@@ -9,6 +9,7 @@ export function createBoss(type, roomLeftX, world) {
     case 'gunship':     return _createGunship(roomLeftX, world);
     case 'mech':        return _createMech(roomLeftX, world);
     case 'twinCannon':  return _createTwinCannon(roomLeftX, world);
+    case 'core':        return _createCore(roomLeftX, world);
     default: throw new Error('Unknown boss type: ' + type);
   }
 }
@@ -585,6 +586,368 @@ function _createTwinCannon(roomLeftX, world) {
       if (hpL <= 0 && hpR <= 0) {
         this.hp = 0;
         this.dead = true;
+      }
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Stage 5 — 核心 Core (multi-phase, phaseHp [40,40,40] = 120 total)
+//
+// Phase 1 — shielded: two side generators are the ONLY weak points.
+//           Both must be destroyed to advance. Fires aimed volleys.
+// Phase 2 — exposed core: central core rect is the target.
+//           Radial ring bursts + occasional enemy summons via ctx.addEnemy.
+// Phase 3 — enraged: denser/faster ring bursts + aimed shots.
+//           On hp ≤ 0 → exploding (1.2s timer) → dead = true → game.js win.
+//
+// Transition between phases: ~0.9s invulnerable gap (boxes() returns []).
+// ---------------------------------------------------------------------------
+function _createCore(roomLeftX, world) {
+  const cfg = BOSSES.core;
+  const phaseHp = cfg.phaseHp;   // [40, 40, 40]
+
+  // ── Geometry ────────────────────────────────────────────────────────────
+  // Main body: large central structure anchored against the right wall.
+  const bodyW = 100;
+  const bodyH = 160;
+  const bodyX = roomLeftX + FIELD.W - bodyW - 20;
+  const groundY = world.floorTopAt(bodyX + bodyW / 2);
+  const bodyY = groundY - bodyH;
+
+  // Central glowing core rect (exposed in phases 2 & 3).
+  // Positioned at roughly mid-height of the body, player-reachable by jumping.
+  const coreW = 44;
+  const coreH = 44;
+  const coreX = bodyX + (bodyW - coreW) / 2;
+  const coreY = bodyY + bodyH * 0.38;   // ~60% up from bottom → ~96px above ground
+
+  // Side generators (phase 1 weak points).
+  // Both protrude to the LEFT of the body at player-reachable heights.
+  // genL = upper generator, genR = lower generator.
+  const genW = 36;
+  const genH = 26;
+  const genLX = bodyX - genW;           // left of body
+  const genLY = bodyY + bodyH * 0.20;   // upper — ~32px from top of body
+  const genRX = bodyX - genW;           // left of body
+  const genRY = bodyY + bodyH * 0.58;   // lower — ~93px from top of body
+
+  // ── State ────────────────────────────────────────────────────────────────
+  let phase = 1;
+  let transitioning = false;
+  let transTimer = 0;
+  const TRANS_DUR = 0.9;
+
+  let exploding = false;
+  let explodeTimer = 0;
+  const EXPLODE_DUR = 1.2;
+  let explodeT = 0;   // 0→1 progress, exposed to renderer
+
+  // Phase 1 generator hp (each = phaseHp[0]/2 = 20).
+  let genL = phaseHp[0] / 2;
+  let genR = phaseHp[0] / 2;
+
+  // Fire timers.
+  let fireTimer = 1.3;            // aimed volley timer (phases 1 + 3)
+  let ringTimer = 2.0;            // radial ring timer (phases 2 + 3)
+  let summonTimer = 5.0;          // enemy summon timer (phase 2 + 3)
+  const SUMMON_INTERVAL = 5.0;
+
+  // Phase-advance helper (called at end of each phase to start transition).
+  function _beginTransition() {
+    transitioning = true;
+    transTimer = TRANS_DUR;
+    // NOTE: phase-change SFX hook — trigger audio here when audio is wired.
+  }
+
+  // Set new phase stats after transition completes.
+  function _applyPhase(boss, p) {
+    phase = p;
+    boss.phase = p;
+    if (p === 2) {
+      boss.hp    = phaseHp[1];
+      boss.hpMax = phaseHp[1];
+      fireTimer  = 2.0;   // ring bursts in phase 2
+      ringTimer  = 2.0;
+      summonTimer = 5.0;
+    } else if (p === 3) {
+      boss.hp    = phaseHp[2];
+      boss.hpMax = phaseHp[2];
+      fireTimer  = 1.1;   // aimed shots return in phase 3 (faster)
+      ringTimer  = 1.4;   // denser ring cadence
+      summonTimer = 5.0;
+    }
+  }
+
+  // Spawn a radial ring of bullets from the core centre.
+  function _spawnRing(boss, bullets, count, speed) {
+    const cx = coreX + coreW / 2;
+    const cy = coreY + coreH / 2;
+    for (let i = 0; i < count; i++) {
+      const a = (Math.PI * 2 * i) / count;
+      bullets.spawn({
+        x: cx, y: cy,
+        dx: Math.cos(a),
+        dy: Math.sin(a),
+        speed,
+        dmg: 1,
+        faction: 'enemy',
+        kind: 'normal',
+        color: ENEMY_BULLET.color,
+      });
+    }
+  }
+
+  // Spawn a single aimed shot from the core centre toward the player.
+  function _spawnAimed(bullets, player) {
+    const cx = coreX + coreW / 2;
+    const cy = coreY + coreH / 2;
+    const tx = player.x + player.w / 2;
+    const ty = player.y + player.height / 2;
+    const ddx = tx - cx;
+    const ddy = ty - cy;
+    const len = Math.hypot(ddx, ddy) || 1;
+    bullets.spawn({
+      x: cx, y: cy,
+      dx: ddx / len,
+      dy: ddy / len,
+      speed: ENEMY_BULLET.speed,
+      dmg: 1,
+      faction: 'enemy',
+      kind: 'normal',
+      color: ENEMY_BULLET.color,
+    });
+  }
+
+  return {
+    type: 'core',
+    name: '核心',
+
+    // Overall body bounds (renderer).
+    x: bodyX,
+    y: bodyY,
+    w: bodyW,
+    h: bodyH,
+
+    // Generator rects (renderer reads these; alive flags exposed via getters).
+    genLX, genLY, genW, genH,
+    genRX, genRY,
+
+    // Core rect (renderer reads these).
+    coreX, coreY, coreW, coreH,
+
+    // Phase/state flags.
+    phase,
+    transitioning,
+    exploding,
+    explodeT,
+
+    hp:    phaseHp[0],
+    hpMax: phaseHp[0],
+    dead:  false,
+    hitFlashMs: 0,
+
+    // Alive flags as getters (renderer: dim/break destroyed generators).
+    get genLAlive() { return genL > 0; },
+    get genRAlive() { return genR > 0; },
+
+    update(dt, player, bullets, ctx) {
+      if (this.hitFlashMs > 0) this.hitFlashMs -= dt * 1000;
+
+      // ── Exploding finale ─────────────────────────────────────────────
+      if (exploding) {
+        explodeTimer -= dt;
+        explodeT = Math.max(0, 1 - explodeTimer / EXPLODE_DUR);
+        this.explodeT = explodeT;
+        if (explodeTimer <= 0 && !this.dead) {
+          this.dead = true;   // triggers game.js → win; fires exactly once
+        }
+        return;
+      }
+
+      // ── Transition gap (invulnerable between phases) ──────────────────
+      if (transitioning) {
+        transTimer -= dt;
+        if (transTimer <= 0) {
+          transitioning = false;
+          this.transitioning = false;
+          _applyPhase(this, phase);
+        }
+        return;
+      }
+
+      // ── Phase 1 — shield generators ──────────────────────────────────
+      if (phase === 1) {
+        // Update composite hp for the HUD bar.
+        this.hp = genL + genR;
+
+        // Aimed volley at the player from the generator positions.
+        fireTimer -= dt;
+        if (fireTimer <= 0) {
+          fireTimer = 1.3;
+          // Fire from whichever generators are still alive.
+          if (genL > 0) {
+            const bx = genLX;
+            const by = genLY + genH / 2;
+            const tx = player.x + player.w / 2;
+            const ty = player.y + player.height / 2;
+            const ddx = tx - bx; const ddy = ty - by;
+            const len = Math.hypot(ddx, ddy) || 1;
+            bullets.spawn({ x: bx, y: by, dx: ddx / len, dy: ddy / len,
+              speed: ENEMY_BULLET.speed, dmg: 1, faction: 'enemy', kind: 'normal', color: ENEMY_BULLET.color });
+          }
+          if (genR > 0) {
+            const bx = genRX;
+            const by = genRY + genH / 2;
+            const tx = player.x + player.w / 2;
+            const ty = player.y + player.height / 2;
+            const ddx = tx - bx; const ddy = ty - by;
+            const len = Math.hypot(ddx, ddy) || 1;
+            bullets.spawn({ x: bx, y: by, dx: ddx / len, dy: ddy / len,
+              speed: ENEMY_BULLET.speed, dmg: 1, faction: 'enemy', kind: 'normal', color: ENEMY_BULLET.color });
+          }
+        }
+        return;
+      }
+
+      // ── Phase 2 — core exposed ────────────────────────────────────────
+      if (phase === 2) {
+        // Radial ring bursts.
+        ringTimer -= dt;
+        if (ringTimer <= 0) {
+          ringTimer = 2.0;
+          _spawnRing(this, bullets, 10, 200);
+        }
+
+        // Occasional enemy summons (capped at every SUMMON_INTERVAL seconds).
+        summonTimer -= dt;
+        if (summonTimer <= 0) {
+          summonTimer = SUMMON_INTERVAL;
+          if (ctx && ctx.addEnemy) {
+            // Summon a grunt near the player, but not outside the boss room.
+            const spawnX = Math.max(roomLeftX + 60,
+              Math.min(roomLeftX + FIELD.W - 80, player.x - 60));
+            ctx.addEnemy({ x: spawnX, type: 'grunt' });
+            // Second summon: drone from right side of room.
+            ctx.addEnemy({ x: roomLeftX + FIELD.W - 100, type: 'drone' });
+          }
+        }
+        return;
+      }
+
+      // ── Phase 3 — enraged ─────────────────────────────────────────────
+      if (phase === 3) {
+        // Denser, faster ring bursts.
+        ringTimer -= dt;
+        if (ringTimer <= 0) {
+          ringTimer = 1.4;
+          _spawnRing(this, bullets, 14, 260);
+        }
+
+        // Aimed shots toward the player (3-bullet burst at fire cadence).
+        fireTimer -= dt;
+        if (fireTimer <= 0) {
+          fireTimer = 1.1;
+          // 3 slightly spread aimed shots.
+          const cx = coreX + coreW / 2;
+          const cy = coreY + coreH / 2;
+          const tx = player.x + player.w / 2;
+          const ty = player.y + player.height / 2;
+          const baseAngle = Math.atan2(ty - cy, tx - cx);
+          for (const offset of [-0.18, 0, 0.18]) {
+            const a = baseAngle + offset;
+            bullets.spawn({
+              x: cx, y: cy,
+              dx: Math.cos(a), dy: Math.sin(a),
+              speed: ENEMY_BULLET.speed,
+              dmg: 1, faction: 'enemy', kind: 'normal', color: ENEMY_BULLET.color,
+            });
+          }
+        }
+
+        // Occasional summons continue in phase 3.
+        summonTimer -= dt;
+        if (summonTimer <= 0) {
+          summonTimer = SUMMON_INTERVAL;
+          if (ctx && ctx.addEnemy) {
+            const spawnX = Math.max(roomLeftX + 60,
+              Math.min(roomLeftX + FIELD.W - 80, player.x - 80));
+            ctx.addEnemy({ x: spawnX, type: 'grunt' });
+          }
+        }
+        return;
+      }
+    },
+
+    boxes() {
+      if (this.dead || exploding || transitioning) return [];
+
+      if (phase === 1) {
+        // Stable order: upper generator (L) first, lower generator (R) second.
+        const result = [];
+        if (genL > 0) result.push({ x: genLX, y: genLY, w: genW, h: genH });
+        if (genR > 0) result.push({ x: genRX, y: genRY, w: genW, h: genH });
+        return result;
+      }
+
+      // Phases 2 & 3: central core rect.
+      return [{ x: coreX, y: coreY, w: coreW, h: coreH }];
+    },
+
+    hurt(dmg, which) {
+      if (exploding || transitioning) return;   // invulnerable
+
+      this.hitFlashMs = 90;
+
+      if (phase === 1) {
+        // Reconstruct alive ordering matching boxes() — same pattern as twinCannon.
+        const alive = [];
+        if (genL > 0) alive.push('L');
+        if (genR > 0) alive.push('R');
+
+        const target = alive[which] ?? alive[0];
+        if (!target) return;
+
+        if (target === 'L') {
+          genL = Math.max(0, genL - dmg);
+        } else {
+          genR = Math.max(0, genR - dmg);
+        }
+
+        this.hp = genL + genR;
+
+        if (genL <= 0 && genR <= 0) {
+          // Both generators destroyed → transition to phase 2.
+          this.hp = 0;
+          phase = 2;   // set closure var so _applyPhase applies phase 2 after gap
+          this.phase = 2;  // sync object property for renderer/HUD
+          _beginTransition();
+          this.transitioning = true;
+        }
+        return;
+      }
+
+      // Phases 2 & 3: direct core damage.
+      this.hp = Math.max(0, this.hp - dmg);
+
+      if (this.hp <= 0) {
+        if (phase === 2) {
+          // Transition to phase 3.
+          this.hp = 0;
+          phase = 3;   // closure var
+          this.phase = 3;  // sync object property
+          _beginTransition();
+          this.transitioning = true;
+        } else {
+          // Phase 3 hp depleted → begin explosion sequence.
+          this.hp = 0;
+          exploding = true;
+          this.exploding = true;
+          explodeTimer = EXPLODE_DUR;
+          explodeT = 0;
+          this.explodeT = 0;
+          // NOTE: death SFX hook — trigger explosion audio here when audio is wired.
+        }
       }
     },
   };

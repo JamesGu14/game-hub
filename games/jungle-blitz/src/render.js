@@ -19,6 +19,44 @@ const POD_LABEL = {
   heal:    '❤️',
 };
 
+// Helper: draw a shield generator rect (phase 1 weak point).
+// Called in world-space (ctx already translated by -camX).
+function _drawGenerator(ctx, gx, gy, gw, gh, alive, flash, pulse) {
+  const color = alive
+    ? (flash ? '#ffffff' : '#4a8a60')
+    : '#2a2a2a';   // destroyed/dim
+  ctx.fillStyle = color;
+  ctx.fillRect(gx, gy, gw, gh);
+
+  if (alive) {
+    // Glowing emitter on the face of the generator.
+    ctx.save();
+    ctx.shadowColor = flash ? '#ffffff' : '#44ff88';
+    ctx.shadowBlur  = flash ? 25 : 14 * pulse;
+    ctx.fillStyle   = flash ? '#ffffff' : `rgba(60,${Math.floor(200 + 50 * pulse)},100,0.9)`;
+    const emitX = gx + gw * 0.55;
+    const emitY = gy + gh * 0.2;
+    ctx.fillRect(emitX, emitY, gw * 0.36, gh * 0.6);
+    ctx.restore();
+
+    // Connector line to body.
+    ctx.strokeStyle = flash ? '#ffffff' : '#3a7a50';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(gx + gw, gy + gh / 2);
+    ctx.lineTo(gx + gw + 6, gy + gh / 2);
+    ctx.stroke();
+  } else {
+    // Broken X on destroyed generator.
+    ctx.strokeStyle = '#3a3a3a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(gx + 4, gy + 4); ctx.lineTo(gx + gw - 4, gy + gh - 4);
+    ctx.moveTo(gx + gw - 4, gy + 4); ctx.lineTo(gx + 4, gy + gh - 4);
+    ctx.stroke();
+  }
+}
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -557,6 +595,7 @@ export class Renderer {
     if (boss.type === 'gunship')    { this._bossGunship(ctx, boss, camX);    return; }
     if (boss.type === 'mech')       { this._bossMech(ctx, boss, camX);       return; }
     if (boss.type === 'twinCannon') { this._bossTwinCannon(ctx, boss, camX); return; }
+    if (boss.type === 'core')       { this._bossCore(ctx, boss, camX);       return; }
 
     // --- Default: gate ---
     const flash = boss.hitFlashMs > 0;
@@ -903,6 +942,196 @@ export class Renderer {
     }
 
     ctx.restore();
+  }
+
+  // --- Core boss (stage 5) ---
+  _bossCore(ctx, boss, camX) {
+    const flash  = boss.hitFlashMs > 0;
+    const now    = Date.now();
+    const pulse  = 0.6 + 0.4 * Math.sin(now / 180);
+    const bx     = boss.x - camX;
+    const by     = boss.y;
+    const bw     = boss.w;
+    const bh     = boss.h;
+
+    // ── Explosion effect ─────────────────────────────────────────────────
+    if (boss.exploding) {
+      const t = boss.explodeT || 0;
+      ctx.save();
+      const cx = bx + bw / 2;
+      const cy = by + bh / 2;
+      // Draw three expanding concentric rings.
+      for (let i = 0; i < 3; i++) {
+        const rp = Math.min(1, t * 1.4 - i * 0.22);
+        if (rp <= 0) continue;
+        const r = rp * (80 + i * 30);
+        ctx.globalAlpha = (1 - rp) * 0.7;
+        ctx.strokeStyle = i === 0 ? '#ff6600' : i === 1 ? '#ffcc00' : '#ffffff';
+        ctx.lineWidth = 6 - i * 1.5;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.5 * (1 - t);
+      ctx.fillStyle = '#ff8800';
+      ctx.beginPath();
+      ctx.arc(cx, cy, t * 50, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.restore();
+      return;
+    }
+
+    ctx.save();
+    ctx.translate(-camX, 0);  // switch to world-space for all draws
+
+    const wx = boss.x;   // world-space x
+    const wy = boss.y;
+
+    // ── Main body shell ───────────────────────────────────────────────────
+    // Color varies by phase; flash overrides to white.
+    const bodyColor = flash ? '#ffffff'
+      : boss.phase === 3 ? '#6a1a1a'
+      : boss.phase === 2 ? '#2a3a5a'
+      : '#3a4a3a';
+    ctx.fillStyle = bodyColor;
+    ctx.fillRect(wx, wy, bw, bh);
+
+    // Armored panel lines on body (horizontal).
+    if (!flash) {
+      ctx.strokeStyle = boss.phase === 3 ? '#4a0a0a' : '#1e2e2e';
+      ctx.lineWidth = 2;
+      const stripes = 5;
+      for (let i = 1; i < stripes; i++) {
+        const sy = wy + (bh / stripes) * i;
+        ctx.beginPath();
+        ctx.moveTo(wx, sy);
+        ctx.lineTo(wx + bw, sy);
+        ctx.stroke();
+      }
+      // Vertical center seam.
+      ctx.beginPath();
+      ctx.moveTo(wx + bw / 2, wy);
+      ctx.lineTo(wx + bw / 2, wy + bh);
+      ctx.stroke();
+    }
+
+    // Left-face accent.
+    ctx.fillStyle = flash ? '#ffffff' : '#1a2a1a';
+    ctx.fillRect(wx, wy, 6, bh);
+
+    // ── Phase 1: shield generators (weak points) ─────────────────────────
+    const { genLX, genLY, genRX, genRY, genW, genH } = boss;
+    const aliveL = boss.genLAlive;
+    const aliveR = boss.genRAlive;
+
+    if (boss.phase === 1 || (boss.transitioning && boss.phase === 2)) {
+      // Upper generator (L).
+      _drawGenerator(ctx, genLX, genLY, genW, genH, aliveL, flash, pulse);
+      // Lower generator (R).
+      _drawGenerator(ctx, genRX, genRY, genW, genH, aliveR, flash, pulse);
+
+      // Shield flicker during transition.
+      if (boss.transitioning) {
+        const flicker = Math.sin(Date.now() / 40) > 0;
+        if (flicker) {
+          ctx.save();
+          ctx.globalAlpha = 0.25;
+          ctx.fillStyle = '#7af0ff';
+          ctx.fillRect(wx - genW, wy, bw + genW, bh);
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      }
+    }
+
+    // ── Phases 2 & 3: exposed glowing core ───────────────────────────────
+    const { coreX, coreY, coreW, coreH } = boss;
+    if (boss.phase >= 2 && !boss.transitioning) {
+      // Phase 3 = red/enraged; phase 2 = cyan/blue.
+      const coreGlow  = boss.phase === 3 ? '#ff3300' : '#00ccff';
+      const coreInner = boss.phase === 3
+        ? `rgba(255,${Math.floor(40 + 60 * pulse)},0,1)`
+        : `rgba(0,${Math.floor(160 + 80 * pulse)},255,1)`;
+
+      ctx.save();
+      ctx.shadowColor = flash ? '#ffffff' : coreGlow;
+      ctx.shadowBlur  = flash ? 35 : 22 * pulse;
+
+      // Core backing.
+      ctx.fillStyle = flash ? '#ffffff' : '#0a0a1a';
+      ctx.fillRect(coreX, coreY, coreW, coreH);
+
+      // Core fill — glowing.
+      ctx.fillStyle = flash ? '#ffffff' : coreInner;
+      const inset = 5;
+      ctx.fillRect(coreX + inset, coreY + inset, coreW - inset * 2, coreH - inset * 2);
+
+      // Crosshair.
+      if (!flash) {
+        ctx.strokeStyle = boss.phase === 3 ? '#ffaa8888' : '#88ddff88';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(coreX + coreW / 2, coreY + inset);
+        ctx.lineTo(coreX + coreW / 2, coreY + coreH - inset);
+        ctx.moveTo(coreX + inset,     coreY + coreH / 2);
+        ctx.lineTo(coreX + coreW - inset, coreY + coreH / 2);
+        ctx.stroke();
+      }
+
+      // Phase 3 crack lines on the body shell.
+      if (boss.phase === 3 && !flash) {
+        ctx.strokeStyle = '#ff330055';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(wx + bw * 0.3, wy + bh * 0.1);
+        ctx.lineTo(wx + bw * 0.5, wy + bh * 0.35);
+        ctx.lineTo(wx + bw * 0.4, wy + bh * 0.55);
+        ctx.moveTo(wx + bw * 0.7, wy + bh * 0.15);
+        ctx.lineTo(wx + bw * 0.55, wy + bh * 0.4);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    } else if (boss.phase === 1) {
+      // Core is shielded in phase 1 — draw dim/locked center.
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = '#334455';
+      ctx.fillRect(coreX, coreY, coreW, coreH);
+      ctx.globalAlpha = 1;
+      // Lock icon suggestion: small circle.
+      ctx.fillStyle = '#556677';
+      ctx.beginPath();
+      ctx.arc(coreX + coreW / 2, coreY + coreH / 2, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    // ── Phase pips on HUD boss bar (drawn in field-space, after world restore) ──
+    // The shared HUD bar already shows boss.name. Draw small phase pips below it.
+    const barW   = 260;
+    const barCX  = 480;   // FIELD.W / 2
+    const pipY   = 22;    // below boss name label area
+    const pipR   = 5;
+    const pipGap = 14;
+    const phaseCount = 3;
+    for (let i = 0; i < phaseCount; i++) {
+      const px2 = barCX - (phaseCount - 1) * pipGap / 2 + i * pipGap;
+      const active = i < boss.phase || (i === boss.phase - 1);
+      ctx.save();
+      ctx.fillStyle = i < boss.phase - 1 ? '#555'      // destroyed
+        : i === boss.phase - 1 ? '#ff4400'              // current
+        : '#334';                                        // future
+      ctx.shadowColor = i === boss.phase - 1 ? '#ff8800' : 'transparent';
+      ctx.shadowBlur  = i === boss.phase - 1 ? 8 : 0;
+      ctx.beginPath();
+      ctx.arc(px2, pipY, pipR, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   // --- Player ---
