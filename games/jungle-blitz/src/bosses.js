@@ -840,21 +840,20 @@ function _createCore(roomLeftX, world) {
         // Denser, faster ring bursts.
         ringTimer -= dt;
         if (ringTimer <= 0) {
-          ringTimer = 1.4;
-          _spawnRing(this, bullets, 14, 260);
+          ringTimer = 2.2;
+          _spawnRing(this, bullets, 8, 200);
         }
 
-        // Aimed shots toward the player (3-bullet burst at fire cadence).
+        // Aimed shot toward the player (single shot — kid-friendly phase 3).
         fireTimer -= dt;
         if (fireTimer <= 0) {
           fireTimer = 1.1;
-          // 3 slightly spread aimed shots.
           const cx = coreX + coreW / 2;
           const cy = coreY + coreH / 2;
           const tx = player.x + player.w / 2;
           const ty = player.y + player.height / 2;
           const baseAngle = Math.atan2(ty - cy, tx - cx);
-          for (const offset of [-0.18, 0, 0.18]) {
+          for (const offset of [0]) {
             const a = baseAngle + offset;
             bullets.spawn({
               x: cx, y: cy,
