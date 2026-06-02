@@ -1,6 +1,7 @@
 // Enemy system for 丛林尖兵 JUNGLE BLITZ.
 import { ENEMIES, ENEMY_BULLET, GRENADE, PHYSICS, FIELD } from './config.js';
 import { aabb, clamp } from './util/math.js';
+import { spawnAimedBullet } from './util/combat.js';
 
 export class Enemies {
   list     = [];
@@ -157,15 +158,7 @@ export class Enemies {
     if (e.timer <= 0) {
       const mx = e.x + e.w / 2;
       const my = e.y + e.h * 0.3;
-      const dx = px - mx;
-      const dy = py - my;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      bullets.spawn({
-        x: mx, y: my,
-        dx: dx / len, dy: dy / len,
-        speed: ENEMY_BULLET.speed, dmg: 1,
-        faction: 'enemy', kind: 'normal', color: ENEMY_BULLET.color,
-      });
+      spawnAimedBullet(bullets, mx, my, px, py);
       e.timer = ENEMIES.turret.fireMs;
     }
   }
@@ -186,15 +179,7 @@ export class Enemies {
       // Drop bullet aimed toward player (slightly downward).
       const mx = e.x + e.w / 2;
       const my = e.y + e.h;
-      const dx = px - mx;
-      const dy = py - my;
-      const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      bullets.spawn({
-        x: mx, y: my,
-        dx: dx / len, dy: dy / len,
-        speed: ENEMY_BULLET.speed, dmg: 1,
-        faction: 'enemy', kind: 'normal', color: ENEMY_BULLET.color,
-      });
+      spawnAimedBullet(bullets, mx, my, px, py);
       e.timer = ENEMIES.drone.dropMs;
     }
   }

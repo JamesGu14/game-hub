@@ -567,7 +567,7 @@ export class Renderer {
       const totalW = e.hpMax * (pipW + gap) - gap;
       const startX = ex + (e.w - totalW) / 2;
       for (let i = 0; i < e.hpMax; i++) {
-        ctx.fillStyle = i < e.hp ? '#44ff44' : '#333';
+        ctx.fillStyle = i < e.hp ? '#ffe87a' : '#333';
         ctx.fillRect(startX + i * (pipW + gap), ey - 7, pipW, 3);
       }
     }

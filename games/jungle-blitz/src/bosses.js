@@ -1,5 +1,6 @@
 // Boss definitions for 丛林尖兵 JUNGLE BLITZ. Logic-only — no canvas drawing.
 import { BOSSES, ENEMY_BULLET, FIELD, PHYSICS } from './config.js';
+import { spawnAimedBullet } from './util/combat.js';
 
 // Factory: returns a boss object by type. roomLeftX is the world-x of the left edge
 // of the locked camera room. world is the World instance (for floorTopAt).
@@ -227,18 +228,7 @@ function _createGunship(roomLeftX, world) {
             const by = this.y + H;
             const tx = player.x + player.w / 2;
             const ty = player.y + player.height / 2;
-            const ddx = tx - bx;
-            const ddy = ty - by;
-            const len = Math.hypot(ddx, ddy) || 1;
-            bullets.spawn({
-              x: bx, y: by,
-              dx: ddx / len, dy: ddy / len,
-              speed: ENEMY_BULLET.speed,
-              dmg: 1,
-              faction: 'enemy',
-              kind: 'normal',
-              color: ENEMY_BULLET.color,
-            });
+            spawnAimedBullet(bullets, bx, by, tx, ty);
           }
         }
 
@@ -538,19 +528,7 @@ function _createTwinCannon(roomLeftX, world) {
 
           const tx = player.x + player.w / 2;
           const ty = player.y + player.height / 2;
-          const ddx = tx - bx;
-          const ddy = ty - by;
-          const len = Math.hypot(ddx, ddy) || 1;
-
-          bullets.spawn({
-            x: bx, y: by,
-            dx: ddx / len, dy: ddy / len,
-            speed: ENEMY_BULLET.speed,
-            dmg: 1,
-            faction: 'enemy',
-            kind: 'normal',
-            color: ENEMY_BULLET.color,
-          });
+          spawnAimedBullet(bullets, bx, by, tx, ty);
           break;
         }
       }
@@ -704,19 +682,7 @@ function _createCore(roomLeftX, world) {
     const cy = coreY + coreH / 2;
     const tx = player.x + player.w / 2;
     const ty = player.y + player.height / 2;
-    const ddx = tx - cx;
-    const ddy = ty - cy;
-    const len = Math.hypot(ddx, ddy) || 1;
-    bullets.spawn({
-      x: cx, y: cy,
-      dx: ddx / len,
-      dy: ddy / len,
-      speed: ENEMY_BULLET.speed,
-      dmg: 1,
-      faction: 'enemy',
-      kind: 'normal',
-      color: ENEMY_BULLET.color,
-    });
+    spawnAimedBullet(bullets, cx, cy, tx, ty);
   }
 
   return {

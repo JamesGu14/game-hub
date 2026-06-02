@@ -30,7 +30,7 @@ export const ITEMS = { shieldMs: 6000, healAmount: 2 };
 export const POWERUP = { w: 30, h: 30, driftSpeed: 30, bobAmp: 8, bobHz: 1.2 };
 
 export const BULLET = { r: 5, enemyR: 6, lifeS: 2.5, laserLen: 26, laserW: 6 };
-export const ENEMY_BULLET = { speed: 300, color: '#ff5d5d' };
+export const ENEMY_BULLET = { speed: 220, color: '#ff5d5d' };
 export const GRENADE = { gravity: 1400, vx: 160, vy: -420, color: '#ffd23f', fuseS: 1.4, blastR: 36 };
 
 export const ENEMIES = {

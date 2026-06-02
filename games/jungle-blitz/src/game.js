@@ -249,7 +249,7 @@ export class Game {
 
       // Boss phase change (edge detection — fires once per transition).
       const curPhase = this.boss.phase ?? null;
-      if (this.prevBossPhase !== null && curPhase !== this.prevBossPhase && !this.boss.transitioning) {
+      if (this.prevBossPhase !== null && curPhase !== this.prevBossPhase) {
         Sound.bossPhase();
       }
       this.prevBossPhase = curPhase;

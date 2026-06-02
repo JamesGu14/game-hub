@@ -142,6 +142,7 @@ export const STAGES = [
     // weaponL on a platform-reachable y; heal on ground path before boss
     pods: [
       { x: 1250, y: 230, kind: 'weaponL' },   // ~30px above the 260-tier platform top
+      { x: 3300, y: 430, kind: 'heal' },       // recovery before the dense nest at x3500
       { x: 4600, y: 430, kind: 'heal' },
       { x: 4800, y: 430, kind: 'shield' },     // shield before the mech boss
     ],
@@ -202,11 +203,11 @@ export const STAGES = [
     ],
     spawns: [
       { x: 500,  type: 'grunt' },
-      { x: 1200, type: 'grenadier' },
+      { x: 1400, type: 'grenadier' },  // moved back from 1200: give landing room after the first pit
       { x: 1700, type: 'drone' },
-      { x: 2300, type: 'grenadier' },
+      { x: 2500, type: 'grenadier' },  // moved back from 2300: room after the second pit
       { x: 2600, type: 'drone' },
-      { x: 3000, type: 'grenadier' },
+      { x: 3000, type: 'grunt' },      // was grenadier: don't stack a grenade-thrower right before the third pit
       { x: 3500, type: 'turret' },
       { x: 4200, type: 'grunt' },
       { x: 4800, type: 'grenadier' },
