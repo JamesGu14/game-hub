@@ -16,10 +16,10 @@ export const PHYSICS = {
   brake: 16000,       // 主动减速
   cruise: 2600,       // 自动巡航底速（绝不熄火）
   offRoadMul: 0.5,    // 出界时的极速倍率
-  steer: 2.4,         // 横向转向系数
+  steer: 2.8,         // 转向力度（朝车头方向横移，越大越灵敏）
   centrifugal: 0.00004,// 弯道把车甩向外侧的强度（乘 speed*curve）
-  assistSteer: 0.8,   // 辅助转向强度（0..1，抵消大部分离心力，过弯不易冲出）
-  recenter: 1.8,      // 松方向时自动把车拉回路中的强度（儿童友好：不会卡在草地）
+  assistSteer: 0.75,  // 辅助转向强度（0..1，过弯不易冲出，孩子不打方向也能跟弯）
+  recenter: 1.5,      // 松方向时自动回正到路中（不会卡在边上）
 };
 
 export const DRIFT = {

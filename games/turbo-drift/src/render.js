@@ -14,7 +14,7 @@ function rr(ctx, x, y, w, h, r) {
 }
 
 function drawCar(ctx, x, y, w, color, tilt = 0, glow = false) {
-  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt * 0.15);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(tilt * 0.3);
   const h = w * 0.62;
   ctx.fillStyle = 'rgba(0,0,0,0.3)'; ctx.beginPath();
   ctx.ellipse(0, h * 0.2, w * 0.55, h * 0.18, 0, 0, 7); ctx.fill();

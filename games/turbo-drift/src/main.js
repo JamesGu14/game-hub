@@ -73,7 +73,7 @@ function startRace() {
   hideAll();
   const car = carById(state.carId);
   // 玩家略微领先起跑，3 个 AI 在身后正向错位（z 都 >= 0，保证 floor(z/len) 圈数正确）
-  state.player = { id: 'player', z: 900, x: 0, speed: 0, spinTimer: 0, shield: 0, hitGraceTimer: 0, lap: 0, _prevZ: 900, color: car.color, car };
+  state.player = { id: 'player', z: 900, x: 0, speed: 0, spinTimer: 0, shield: 0, hitGraceTimer: 0, steerAngle: 0, lap: 0, _prevZ: 900, color: car.color, car };
   const oppCars = CARS.filter(c => c.id !== car.id).slice(0, 3);
   state.ai = oppCars.map((c, i) => {
     const z = (2 - i) * 300; // 600 / 300 / 0，都在玩家身后但 >= 0
@@ -255,7 +255,7 @@ function draw() {
   render(ctx, {
     track,
     cam: { x: state.player.x * RENDER.roadW, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
-    player: { color: state.player.color, tilt: state.drift.active ? clamp(state.player.x * 0.4, -0.8, 0.8) : 0, nitro: state.nitroTimer > 0 },
+    player: { color: state.player.color, tilt: clamp((state.player.steerAngle || 0) * 0.9 + (state.drift.active ? state.player.x * 0.3 : 0), -1.2, 1.2), nitro: state.nitroTimer > 0 },
     ai: aiSprites, boxes,
     hud: {
       place: pPlace, total: RACE.racers, lap: Math.min(state.player.lap + 1, RACE.laps), laps: RACE.laps,
