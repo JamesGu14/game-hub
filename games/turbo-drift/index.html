@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a1230" />
+  <title>极速飞车 TURBO DRIFT · 伪3D 竞速</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <a id="back-to-hub" href="../../index.html" title="返回游戏中心 / Back to Hub">← HUB</a>
+  <button id="btn-mute" type="button" title="静音 / 声音 (M)">🔊</button>
+  <div id="banner" class="banner"><span id="banner-text"></span></div>
+
+  <!-- 菜单 -->
+  <div id="overlay-menu" class="overlay show">
+    <div class="panel">
+      <h1 class="game-title">🏎️ 极速飞车</h1>
+      <p class="game-sub">伪3D 漂移竞速 · 从下往上开</p>
+      <button id="btn-play" class="big-btn" type="button">▶ 开始游戏</button>
+      <p id="menu-best" class="best-line"></p>
+      <div class="hints">
+        <span><b>← →</b> 转向</span>
+        <span><b>↑/W</b> 加速</span>
+        <span><b>空格</b> 漂移（+转向）</span>
+        <span><b>Z/↓</b> 道具</span>
+        <span><b>Shift</b> 氮气</span>
+        <span><b>Esc</b> 暂停</span>
+        <span><b>手柄</b> 摇杆转向 · RT 加速 · L1 漂移 · □ 道具</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 车库（选车） -->
+  <div id="overlay-garage" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">🚗 选择赛车</h1>
+      <div id="garage-cars" class="garage-grid"></div>
+      <div class="btn-col">
+        <button id="btn-garage-go" class="big-btn" type="button">选好了 →</button>
+        <button id="btn-garage-back" class="big-btn ghost" type="button">← 返回</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 选赛道 -->
+  <div id="overlay-track" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">🗺️ 选择赛道</h1>
+      <div id="track-list" class="garage-grid"></div>
+      <button id="btn-track-back" class="big-btn ghost" type="button">← 返回</button>
+    </div>
+  </div>
+
+  <!-- 暂停 -->
+  <div id="overlay-pause" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">⏸ 暂停</h1>
+      <div class="btn-col">
+        <button id="btn-resume" class="big-btn" type="button">▶ 继续</button>
+        <button id="btn-restart" class="big-btn ghost" type="button">↻ 重新开始</button>
+        <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结算 -->
+  <div id="overlay-finish" class="overlay">
+    <div class="panel">
+      <h1 id="finish-title" class="game-title">🏁 完赛！</h1>
+      <p id="finish-place" class="best-line"></p>
+      <p id="finish-unlock" class="tiny"></p>
+      <div class="btn-col">
+        <button id="btn-next" class="big-btn" type="button">继续 →</button>
+        <button id="btn-finish-menu" class="big-btn ghost" type="button">主菜单</button>
+        <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

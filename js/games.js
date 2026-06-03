@@ -57,4 +57,15 @@ export const GAMES = [
     tags: ['冒险', '跳跃', '键鼠/手柄'],
     path: 'games/pixel-quest/index.html',
   },
+  {
+    id: 'turbo-drift',
+    title: '极速飞车 TURBO DRIFT',
+    subtitle: '伪3D 漂移竞速 · 从下往上开',
+    desc: '伪3D 第三人称竞速 · 漂移攒氮气 · 道具战 · 4 赛道 4 车 · 键鼠/手柄',
+    icon: '🏎️',
+    accent: '#5161ff',
+    accent2: '#1a2270',
+    tags: ['竞速', '漂移', '键鼠/手柄'],
+    path: 'games/turbo-drift/index.html',
+  },
 ];
