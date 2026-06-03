@@ -1,7 +1,11 @@
-// 群雄逐鹿·孟德篇 — main.js（Task C4 集成总指挥）
+// 群雄逐鹿·孟德篇 — main.js（Task F 章节流程总指挥）
 //
-// 串起全流程：标题 → 开场剧情 → 第一战（玩家相：点选/移动/行动菜单/攻击/计略）→
-// 敌方 AI 相 → 胜负 → 战后剧情 → 存档 → 返回 hub。
+// 串起整章流程（CH01「起兵讨董」共 5 战）：
+//   标题 →（新游戏 battleIndex=0 / 读档续进）→ 章节循环：
+//     intro 剧情 → 建场 → 玩家/敌方相位 → 胜负 → outro 剧情（仅胜）
+//     → 应用 joinsAfter（剧情登场加入常驻 roster）→ 若非末战：整军(intermission) + 自动存档
+//     → battleIndex++ → 下一战 ；末战胜 → 章末结算字幕 → 返回 hub。
+//   战败：结算屏（重打本战 / 返回标题）。
 // 逻辑层（battle/*）经 core/eventBus 把状态变化驱动到渲染(render3d/*)、UI(ui/*)、
 // 音频(audio/*)、剧情(story/*)。本文件只做编排与「事件→演出」绑定，不内置战斗规则。
 //
@@ -16,8 +20,7 @@ import { makeRng } from './core/rng.js';
 import { GENERALS } from './data/generals.js';
 import { CLASSES } from './data/classes.js';
 import { SKILLS } from './data/skills.js';
-import MAP from './data/chapters/ch01/b1_chenliu.map.js';
-import STORY from './data/chapters/ch01/b1_chenliu.story.js';
+import { CH01 } from './data/chapters/ch01/index.js';
 
 import { BattleController } from './battle/battleController.js';
 import { gainExp } from './battle/leveling.js';
@@ -27,8 +30,9 @@ import { Duel } from './battle/duel.js';
 import { createSceneManager } from './render3d/sceneManager.js';
 import { moveAlong, hitFlash, floatText } from './render3d/fx.js';
 
-import { run as runScenario } from './story/scenarioRunner.js';
+import { run as runScenario, setActiveStory } from './story/scenarioRunner.js';
 import { duelView } from './ui/duelView.js';
+import * as intermission from './ui/intermission.js';
 
 import * as hud from './ui/hud.js';
 import * as menus from './ui/menus.js';
@@ -39,7 +43,14 @@ import { sfx } from './audio/audio.js';
 // 全局编排状态
 // ---------------------------------------------------------------------------
 const AUTO_SLOT = 1; // 战后自动存档槽
-const BATTLE_SEED = 'ch01_b1'; // 可复现 rng 种子
+const CHAPTER = CH01; // 当前章节清单
+
+// 当前战的 map / story / seed（章节循环逐战切换；下方多处沿用模块级 MAP/STORY 引用）。
+let currentBattle = null; // CH01.battles[i]
+let MAP = null; // 当前战 map（已合并 story.triggers）
+let STORY = null; // 当前战 story
+let BATTLE_SEED = 'ch01_b1'; // 可复现 rng 种子（按战序变化）
+let battleResolver = null; // 当前战的胜负 resolve（runBattle ↔ onBattleEnd）
 
 const canvas = document.getElementById('game');
 const dialogueEl = document.getElementById('dialogue');
@@ -183,26 +194,31 @@ function showTitle() {
     onStart: () => {
       sfx.resume();
       game.newGame();
-      seedRosterFromMap();
-      startBattle();
+      seedRosterFromMap(CHAPTER.battles[0].map);
+      game.state.battleIndex = 0;
+      runChapter();
     },
     onContinue: (slot) => {
       sfx.resume();
       game.load(slot);
+      // 读档若无 roster（异常）：用首战部署补一份基线。
       if (!Array.isArray(game.state.roster) || game.state.roster.length === 0) {
-        seedRosterFromMap();
+        seedRosterFromMap(CHAPTER.battles[0].map);
       }
-      startBattle();
+      runChapter();
     },
   });
 }
 
-// 新游戏：把第一战我方武将（map.deploy → wei）写入 roster，建立升级持久化基线。
-function seedRosterFromMap() {
+// 新游戏：把首战我方武将（map.deploy → wei，且非客将）写入 roster，建立升级持久化基线。
+// 客将（仅在某战 deploy、faction 仍为 'wei'）通过 GENERALS[].guest 标记排除——
+// 但首战(b1)本无客将，这里仍按标记过滤以稳妥。
+function seedRosterFromMap(map) {
   const roster = [];
-  for (const d of MAP.deploy || []) {
+  for (const d of (map && map.deploy) || []) {
     const def = GENERALS[d.generalId];
     if (!def || def.faction !== 'wei') continue;
+    if (def.guest) continue; // 客将不入常驻
     roster.push({
       generalId: d.generalId,
       level: 1,
@@ -216,9 +232,107 @@ function seedRosterFromMap() {
 }
 
 // ---------------------------------------------------------------------------
+// 章节循环：从 game.state.battleIndex 续进，逐战编排 intro→战斗→outro→整军。
+// ---------------------------------------------------------------------------
+async function runChapter() {
+  const battles = CHAPTER.battles || [];
+  // 钳制起始索引（读档/异常兜底）。
+  let idx = clampIndex(game.state.battleIndex || 0, battles.length);
+
+  while (idx < battles.length) {
+    game.state.battleIndex = idx;
+    const battle = battles[idx];
+    const isLast = idx === battles.length - 1;
+
+    // 打一场（返回 true=胜）。失败时 runBattle 内部已弹结算屏（重打/返回）并不 resolve，
+    // 由那两个回调接管后续流程；故这里仅在胜利分支继续推进。
+    const win = await runBattle(battle);
+    if (!win) return; // 败北：结算屏的 onRetry/onMenu 接管，章节循环就此让出。
+
+    // —— 战后：剧情登场加入常驻 roster（客将不在 joinsAfter）——
+    applyJoins(battle);
+
+    if (!isLast) {
+      // 整军（查看/装备/学计略/存档）。
+      try {
+        await intermission.run({
+          battleIndex: idx,
+          nextBattleName: nameOfBattle(battles[idx + 1]),
+        });
+      } catch (err) {
+        console.error('[main] intermission failed:', err);
+      }
+      // 推进 + 自动存档（续进点）。
+      idx += 1;
+      game.state.battleIndex = idx;
+      game.save(AUTO_SLOT);
+    } else {
+      // 末战告捷：章末结算字幕 → 返回 hub。
+      game.state.battleIndex = battles.length; // 标记本章已通关
+      game.save(AUTO_SLOT);
+      await showChapterEnd();
+      return;
+    }
+  }
+
+  // 越界（读档指向已通关章节）：直接进章末。
+  await showChapterEnd();
+}
+
+function clampIndex(i, len) {
+  if (!Number.isFinite(i) || i < 0) return 0;
+  if (i >= len) return Math.max(0, len - 1);
+  return i;
+}
+
+function nameOfBattle(battle) {
+  return (battle && battle.map && battle.map.name) || '';
+}
+
+// 应用 battle.joinsAfter：把剧情登场武将加入常驻 roster（幂等）。
+function applyJoins(battle) {
+  const joins = (battle && battle.joinsAfter) || [];
+  for (const gid of joins) {
+    if (!GENERALS[gid]) {
+      console.warn('[main] joinsAfter unknown generalId:', gid);
+      continue;
+    }
+    game.addToRoster(gid);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 开战：剧情 → 建场 → 玩家相位
 // ---------------------------------------------------------------------------
-async function startBattle() {
+// 把一场战斗从「装配 → intro → 玩家相位」串起，返回一个在胜负结算后 resolve(win) 的 Promise。
+// onBattleEnd 通过 battleResolver 在胜利（已演完 outro）/失败时 resolve；
+// 失败分支由结算屏的 onRetry/onMenu 接管，故 resolve(false) 仅作让出标记。
+function runBattle(battle) {
+  return new Promise((resolve) => {
+    battleResolver = resolve;
+    setupBattle(battle).catch((err) => {
+      console.error('[main] setupBattle failed:', err);
+    });
+  });
+}
+
+// 当前战的种子：按 map.id 派生（ch01_b1 …），保证可复现且逐战不同。
+function seedForBattle(battle) {
+  const id = battle && battle.map && battle.map.id;
+  return id ? String(id) : 'ch01_battle';
+}
+
+// 装配某场战斗：切换 MAP/STORY/seed → 构造 controller → 建场 → intro → 玩家回合。
+async function setupBattle(battle) {
+  currentBattle = battle;
+  STORY = battle.story;
+  BATTLE_SEED = seedForBattle(battle);
+  // 合并 story.triggers → map.triggers（引擎只读 map.triggers 派发 turnStart）。
+  MAP = withMergedTriggers(battle.map, battle.story);
+  // 让 scenarioRunner 按本战 STORY 解析 trigger scenarioId（camera:cinematic）。
+  setActiveStory(battle.story);
+
+  battleEnded = false;
   interactionLocked = true;
   resetInteraction();
 
@@ -246,8 +360,20 @@ async function startBattle() {
   await runScenario(STORY.intro, scenarioCtx());
 
   // 进入玩家回合。
-  await hud.turnBanner('第 1 回合 · 我军', 1200);
+  await hud.turnBanner(`${MAP.name || '战'} · 我军`, 1200);
   beginPlayerPhase();
+}
+
+// 返回一份合并了 story.triggers 的 map 浅拷贝（不改原内容模块）。
+// 若 map 已自带 triggers（如 b4/b5），以 map.triggers 为准（避免重复派发）；
+// 否则用 story.triggers 填充，使 b1/b2/b3 的 turnStart 小演出也能由引擎触发。
+function withMergedTriggers(map, story) {
+  if (!map) return map;
+  const mapTriggers = Array.isArray(map.triggers) ? map.triggers : null;
+  if (mapTriggers && mapTriggers.length) return map; // 已有，原样用
+  const storyTriggers = story && Array.isArray(story.triggers) ? story.triggers : [];
+  if (!storyTriggers.length) return map;
+  return { ...map, triggers: storyTriggers.map((t) => ({ ...t })) };
 }
 
 function beginPlayerPhase() {
@@ -867,37 +993,47 @@ async function onBattleEnd(win) {
   win ? sfx.win() : sfx.lose();
   await delay(600);
 
-  // 升级总结 + 把战场进度回写 roster（持久化等级/经验/curHp）。
-  const luLines = win ? collectLevelUpSummary() : [];
   if (win) {
+    // 升级总结 + 把战场进度回写常驻 roster（持久化等级/经验/curHp；客将不回写）。
+    const luLines = collectLevelUpSummary();
     persistRosterFromBattle();
-  }
 
-  // 战后剧情（仅胜利播 outro）。
-  if (win) {
+    // 战后剧情（仅胜利播 outro）。
     await runScenario(STORY.outro, scenarioCtx());
     cameraRig.setIso();
-    // 推进进度并自动存档。
-    game.state.battleIndex = (game.state.battleIndex || 0) + 1;
-    game.save(AUTO_SLOT);
+
+    // 结算屏：点「继续」→ resolve 让章节循环推进（整军 / 下一战 / 章末）。
+    menus.result({
+      win: true,
+      lines: luLines,
+      onNext: () => {
+        menus.close();
+        resolveBattle(true);
+      },
+      onMenu: () => backToTitle(),
+    });
+    return;
   }
 
+  // 战败：保留章节循环让出，由结算屏接管（重打本战 / 返回标题）。
   menus.result({
-    win,
-    lines: luLines,
-    onNext: win
-      ? () => {
-          // v1 仅一战：返回标题（后续章节在此续接）。
-          backToTitle();
-        }
-      : undefined,
-    onRetry: !win
-      ? () => {
-          restartBattle();
-        }
-      : undefined,
+    win: false,
+    lines: [],
+    onRetry: () => {
+      menus.close();
+      restartBattle();
+    },
     onMenu: () => backToTitle(),
   });
+  // 通知 runBattle 让出（不再自动推进；后续由上面两个回调驱动）。
+  resolveBattle(false);
+}
+
+// resolve 当前战的 Promise（仅一次）。
+function resolveBattle(win) {
+  const r = battleResolver;
+  battleResolver = null;
+  if (r) r(win);
 }
 
 // 把战场单位的等级/经验/当前血量回写到 roster。
@@ -932,14 +1068,41 @@ function collectLevelUpSummary() {
 
 function backToTitle() {
   battleEnded = false;
+  battleResolver = null;
   controller = null;
   cameraRig && cameraRig.setIso();
   showTitle();
 }
 
+// 战败重打本战：保持 battleIndex 不变，重新 runChapter（会从当前 idx 重打）。
 function restartBattle() {
   battleEnded = false;
-  startBattle();
+  battleResolver = null;
+  controller = null;
+  // battleIndex 未推进（战败不存档），直接续跑章节循环即重入本战。
+  runChapter();
+}
+
+// ---------------------------------------------------------------------------
+// 章末结算字幕（末战告捷后）→ 返回标题/hub。
+// ---------------------------------------------------------------------------
+async function showChapterEnd() {
+  interactionLocked = true;
+  hideEndTurnButton();
+  clearSelection();
+  cameraRig && cameraRig.setIso();
+  menus.result({
+    win: true,
+    lines: [
+      `【${CHAPTER.name}】 圆满`,
+      '讨董之盟将散，曹操东归，转图兖州——霸业自此启程。',
+    ],
+    onNext: () => {
+      menus.close();
+      backToTitle();
+    },
+    onMenu: () => backToTitle(),
+  });
 }
 
 // ---------------------------------------------------------------------------

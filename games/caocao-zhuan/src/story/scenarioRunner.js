@@ -24,7 +24,20 @@ import { bus } from '../core/eventBus.js';
 import { game } from '../core/gameState.js';
 import { playStep, hideDialogue } from './dialogue.js';
 import { Duel } from '../battle/duel.js';
-import STORY from '../data/chapters/ch01/b1_chenliu.story.js';
+import DEFAULT_STORY from '../data/chapters/ch01/b1_chenliu.story.js';
+
+// 当前活动战役的 STORY（章节循环逐战切换）。默认 b1 以兼容单战旧路径/单测。
+// 集成层（main.js）每进入一战前调用 setActiveStory(battle.story)，使触发器按
+// scenarioId 解析时命中本战的 intro/outro/scenarios，而非永远落到 b1。
+let STORY = DEFAULT_STORY;
+
+/**
+ * 切换当前活动战役剧本。供章节循环每战调用一次。
+ * @param {object} story  { id?, intro, outro, scenarios?, triggers? }
+ */
+export function setActiveStory(story) {
+  STORY = story || DEFAULT_STORY;
+}
 
 // 把字符串 id 解析为 scenario 对象（intro/outro/scenarios[id]/triggers→scenarioId）。
 function resolveScenario(scenario) {

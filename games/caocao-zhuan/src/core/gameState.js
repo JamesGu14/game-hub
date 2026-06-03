@@ -78,6 +78,26 @@ export const game = {
     return this.state;
   },
 
+  // 把一名武将加入常驻 roster（剧情登场加入；客将不走此路）。
+  // 幂等：已在 roster 则不重复；新加入者按 1 级满血基线（curHp=null）。
+  // 返回新加入的 RosterEntry，或已存在时返回其现有条目（不变更）。
+  addToRoster(generalId, init = {}) {
+    if (!generalId) return null;
+    if (!Array.isArray(this.state.roster)) this.state.roster = [];
+    const existing = this.state.roster.find((e) => e && e.generalId === generalId);
+    if (existing) return existing;
+    const entry = normalizeRosterEntry({
+      generalId,
+      level: init.level,
+      exp: init.exp,
+      items: init.items,
+      skillsLearned: init.skillsLearned,
+      curHp: init.curHp,
+    });
+    this.state.roster.push(entry);
+    return entry;
+  },
+
   save(slot) {
     const store = getStore();
     if (!store) return false;
