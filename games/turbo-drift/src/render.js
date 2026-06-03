@@ -33,9 +33,11 @@ export function render(ctx, world) {
   const cam = world.cam;
   const baseSeg = Math.floor(cam.z / RENDER.segLen) % N;
 
-  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.55);
   sky.addColorStop(0, theme.sky[0]); sky.addColorStop(1, theme.sky[1]);
   ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // 地面底色：地平线 40%（与投影一致），路面梯形画在其上，避免地平线处露天空缝
+  ctx.fillStyle = theme.grass[1]; ctx.fillRect(0, Math.round(H * 0.40), W, H);
 
   // 赛道：从远到近，记录每段投影供精灵使用
   let x = 0, dx = 0, maxy = H;
@@ -56,10 +58,11 @@ export function render(ctx, world) {
     const road = dark ? theme.road[0] : theme.road[1];
     const rumble = dark ? theme.rumble[0] : theme.rumble[1];
     ctx.fillStyle = grass; ctx.fillRect(0, p.y, W, prev.y - p.y + 1);
-    // 先画较宽的路肩，再把路面盖在上面 → 只在两侧露出红白路肩
-    trap(ctx, prev.x, prev.y, prev.w * 1.12, p.x, p.y, p.w * 1.12, rumble);
-    trap(ctx, prev.x, prev.y, prev.w, p.x, p.y, p.w, road);
-    if (dark) trap(ctx, prev.x, prev.y, prev.w * 0.04, p.x, p.y, p.w * 0.04, '#f5f5f5');
+    // 近端 y 下移 1px，让相邻梯形互相重叠盖住接缝；先宽路肩再窄路面，只在两侧露红白
+    const yb = prev.y + 1;
+    trap(ctx, prev.x, yb, prev.w * 1.12, p.x, p.y, p.w * 1.12, rumble);
+    trap(ctx, prev.x, yb, prev.w, p.x, p.y, p.w, road);
+    if (dark) trap(ctx, prev.x, yb, prev.w * 0.04, p.x, p.y, p.w * 0.04, '#f5f5f5');
   }
 
   // 道具箱（先画，远）
