@@ -1,0 +1,857 @@
+// Canvas 2D renderer for 炮炮虫 BOOM WORMS.
+// Draws in FIELD space (960x540) via a letterbox transform.
+// Read-only over game — no logic here.
+
+import { FIELD, WORM, WEAPONS, CRATE, AIM } from './config.js';
+import { simulate } from './util/trajectory.js';
+import { vecFromAngle } from './util/math.js';
+
+// ---------------------------------------------------------------------------
+// Theme palettes: sky gradient colors + deco emoji for parallax layers
+// ---------------------------------------------------------------------------
+const THEMES = {
+  grass:   { skyTop: '#87ceeb', skyBot: '#d4f0a0', deco: ['🌳', '☁️', '🌿'] },
+  candy:   { skyTop: '#ffccee', skyBot: '#ffe4f8', deco: ['🍭', '🍬', '☁️'] },
+  beach:   { skyTop: '#87d7e8', skyBot: '#fce4a0', deco: ['🌊', '🌴', '☀️'] },
+  jungle:  { skyTop: '#2d6a1e', skyBot: '#8bc34a', deco: ['🌿', '🌳', '🦋'] },
+  sky:     { skyTop: '#1a2a6c', skyBot: '#b0c4de', deco: ['☁️', '⭐', '🌙'] },
+  rainbow: { skyTop: '#ff9f43', skyBot: '#ffd700', deco: ['🌈', '⭐', '✨'] },
+};
+
+// Team colors: team0 = warm, team1 = blue/cool
+const TEAM_COLORS = ['#ff7043', '#42a5f5'];
+const TEAM_HAT_COLORS = ['#b71c1c', '#0d47a1'];
+
+export class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.scale = 1;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    this._time = 0; // accumulated time for animations
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = Math.floor(w * this.dpr);
+    this.canvas.height = Math.floor(h * this.dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.scale = Math.min(w / FIELD.W, h / FIELD.H);
+    this.offsetX = (w - FIELD.W * this.scale) / 2;
+    this.offsetY = (h - FIELD.H * this.scale) / 2;
+  }
+
+  /** Screen (CSS px) -> field coords, for pointer input. */
+  mapClientXToField(clientX) {
+    return (clientX - this.offsetX) / this.scale;
+  }
+
+  mapClientToField(clientX, clientY) {
+    return {
+      x: (clientX - this.offsetX) / this.scale,
+      y: (clientY - this.offsetY) / this.scale,
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Main render entry point
+  // -------------------------------------------------------------------------
+  render(game, dt = 0) {
+    this._time += dt;
+    const ctx = this.ctx;
+
+    // Reset transform; fill letterbox bars
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Enter field-space (0..960 x 0..540)
+    ctx.setTransform(
+      this.scale * this.dpr, 0,
+      0, this.scale * this.dpr,
+      this.offsetX * this.dpr,
+      this.offsetY * this.dpr,
+    );
+
+    if (game.state === 'menu' || !game.terrain) {
+      this._menuBackground(ctx, game.level);
+      return;
+    }
+
+    const camX = game.camX || 0;
+
+    // 1. Sky gradient + parallax deco
+    this._sky(ctx, game);
+
+    // 2. Animated water band
+    this._water(ctx, game.level ? game.level.waterY : 512, camX);
+
+    // 3. Terrain (offscreen canvas blit)
+    game.terrain.draw(ctx, camX);
+
+    // 4. Crates
+    if (game.crates) this._crates(ctx, game.crates, camX);
+
+    // 5. Worms
+    const allTeams = game.teams || [];
+    for (const team of allTeams) {
+      for (const worm of team.worms) {
+        if (!worm.alive) continue;
+        const isActive = game.active &&
+          game.active.team === worm.team &&
+          game.active.wormIdx === team.worms.indexOf(worm);
+        this._worm(ctx, worm, team, isActive, camX);
+      }
+    }
+
+    // 6. Projectiles + particle effects
+    if (game.projectiles) this._projectiles(ctx, game.projectiles, camX);
+    if (game.effects) this._effects(ctx, game.effects, camX);
+
+    // 7. Aim indicator + power bar (only during aim/firing states)
+    const inAimState = game.state === 'aim' || game.state === 'firing';
+    if (inAimState && game.aim && game.active) {
+      const activeTeam = allTeams[game.active.team];
+      if (activeTeam) {
+        const activeWorm = activeTeam.worms[game.active.wormIdx];
+        if (activeWorm && activeWorm.alive) {
+          this._aimIndicator(ctx, activeWorm, game.aim, game.level, camX);
+          if (game.aim.charging) {
+            this._powerBar(ctx, game.aim);
+          }
+        }
+      }
+    }
+
+    // 8. HUD (screen-space, drawn last)
+    this._hud(ctx, game, camX);
+
+    // Turn banner
+    if (game.bannerMs > 0 && game.bannerText) {
+      this._turnBanner(ctx, game.bannerText, game.bannerMs);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Menu background
+  // -------------------------------------------------------------------------
+  _menuBackground(ctx) {
+    const W = FIELD.W;
+    const H = FIELD.H;
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, '#1a2a6c');
+    grad.addColorStop(0.5, '#5b6fa3');
+    grad.addColorStop(1, '#8bc34a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Decorative clouds
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#ffffff';
+    for (let i = 0; i < 5; i++) {
+      const cx = 80 + i * 200;
+      const cy = 60 + (i % 2) * 30;
+      ctx.beginPath();
+      ctx.arc(cx, cy, 35, 0, Math.PI * 2);
+      ctx.arc(cx + 40, cy - 10, 28, 0, Math.PI * 2);
+      ctx.arc(cx + 70, cy + 5, 30, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+
+    // Title hint
+    ctx.save();
+    ctx.fillStyle = '#ffe082';
+    ctx.font = 'bold 40px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff9f43';
+    ctx.shadowBlur = 20;
+    ctx.fillText('炮炮虫 BOOM WORMS', W / 2, H / 2 - 40);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px sans-serif';
+    ctx.fillText('回合制炮战 · 打飞小虫', W / 2, H / 2 + 10);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Sky + parallax decorations
+  // -------------------------------------------------------------------------
+  _sky(ctx, game) {
+    const W = FIELD.W;
+    const H = FIELD.H;
+    const theme = (game.level && game.level.theme) ? game.level.theme : 'grass';
+    const t = THEMES[theme] || THEMES.grass;
+
+    const grad = ctx.createLinearGradient(0, 0, 0, H);
+    grad.addColorStop(0, t.skyTop);
+    grad.addColorStop(0.7, t.skyBot);
+    grad.addColorStop(1, t.skyBot);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Parallax emoji deco at 20% scroll speed
+    const camX = game.camX || 0;
+    const decos = t.deco;
+    ctx.save();
+    ctx.font = '28px sans-serif';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < 8; i++) {
+      const emoji = decos[i % decos.length];
+      const baseX = 60 + i * 130;
+      const px = ((baseX - camX * 0.2) % (W + 60) + W + 60) % (W + 60) - 30;
+      const py = 40 + (i % 3) * 30;
+      ctx.fillText(emoji, px, py);
+    }
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Animated water band
+  // -------------------------------------------------------------------------
+  _water(ctx, waterY, camX) {
+    const W = FIELD.W;
+    const H = FIELD.H;
+    const t = this._time;
+
+    ctx.save();
+    // Semi-transparent water fill
+    ctx.fillStyle = 'rgba(30, 120, 220, 0.55)';
+    ctx.fillRect(0, waterY, W, H - waterY);
+
+    // Animated wave crests
+    ctx.strokeStyle = 'rgba(150, 210, 255, 0.6)';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    const step = 30;
+    for (let x = 0; x <= W + step; x += step) {
+      const wx = x - (camX * 0.1 + t * 40) % step;
+      const wy = waterY + Math.sin((wx + camX * 0.1) * 0.06 + t * 2) * 4;
+      if (x === 0) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy);
+    }
+    ctx.stroke();
+
+    // Lighter surface highlight
+    ctx.globalAlpha = 0.15;
+    ctx.fillStyle = '#aef';
+    ctx.fillRect(0, waterY, W, 8);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Crate (weapon/health box)
+  // -------------------------------------------------------------------------
+  _crates(ctx, crates, camX) {
+    for (const c of crates) {
+      if (c.dead) continue;
+      const x = c.x - camX - CRATE.w / 2;
+      const y = c.y - CRATE.h / 2;
+      const w = CRATE.w;
+      const h = CRATE.h;
+
+      ctx.save();
+      // Shadow
+      ctx.fillStyle = 'rgba(0,0,0,0.25)';
+      ctx.fillRect(x + 2, y + 2, w, h);
+
+      // Box body
+      const isHeal = c.kind === 'heal';
+      ctx.fillStyle = isHeal ? '#f48fb1' : '#ffd54f';
+      ctx.fillRect(x, y, w, h);
+
+      // Cross/star decoration
+      ctx.fillStyle = isHeal ? '#e91e63' : '#e65100';
+      if (isHeal) {
+        // Red cross
+        ctx.fillRect(x + w / 2 - 3, y + 4, 6, h - 8);
+        ctx.fillRect(x + 4, y + h / 2 - 3, w - 8, 6);
+      } else {
+        // Star on weapon crate
+        ctx.font = '14px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⭐', x + w / 2, y + h / 2);
+      }
+
+      // Parachute line (floating crate)
+      if (!c.landed) {
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y);
+        ctx.lineTo(x + w / 2, y - 30);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x + w / 2, y - 30, 12, Math.PI, 0);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Worm
+  // -------------------------------------------------------------------------
+  _worm(ctx, worm, team, isActive, camX) {
+    const wx = worm.x - camX;
+    const wy = worm.y;
+    const hw = WORM.w / 2;
+    const hh = WORM.h / 2;
+
+    const teamColor = TEAM_COLORS[team.id] || '#aaa';
+    const hatColor = TEAM_HAT_COLORS[team.id] || '#444';
+
+    const flash = worm.hitFlashMs > 0;
+
+    ctx.save();
+
+    // Hit flash
+    const bodyColor = flash ? '#ffffff' : teamColor;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.2)';
+    ctx.beginPath();
+    ctx.ellipse(wx, wy + hh + 2, hw * 0.8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Body (rounded rect)
+    ctx.fillStyle = bodyColor;
+    ctx.beginPath();
+    ctx.roundRect(wx - hw, wy - hh, WORM.w, WORM.h, 8);
+    ctx.fill();
+
+    // Hat
+    ctx.fillStyle = flash ? '#ffffff' : hatColor;
+    ctx.fillRect(wx - hw + 2, wy - hh - 8, WORM.w - 4, 8);
+    ctx.fillRect(wx - hw + 6, wy - hh - 13, WORM.w - 12, 6);
+
+    // Eyes (2 dots)
+    const eyeOffX = worm.facing >= 0 ? 3 : -3;
+    ctx.fillStyle = flash ? '#ffcc00' : '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(wx + eyeOffX - 3, wy - hh / 2, 3, 0, Math.PI * 2);
+    ctx.arc(wx + eyeOffX + 4, wy - hh / 2, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Smile
+    ctx.strokeStyle = flash ? '#ffcc00' : '#1a1a1a';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(wx + eyeOffX / 2, wy, 5, 0.2, Math.PI - 0.2);
+    ctx.stroke();
+
+    // HP bar above worm
+    this._hpBar(ctx, wx, wy - hh - 18, WORM.w + 10, worm.hp, 100, teamColor);
+
+    // Active-worm: arrow indicator
+    if (isActive) {
+      ctx.fillStyle = '#ffe082';
+      ctx.shadowColor = '#ffcc00';
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(wx, wy - hh - 28);
+      ctx.lineTo(wx - 6, wy - hh - 22);
+      ctx.lineTo(wx + 6, wy - hh - 22);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      // Active worm name
+      ctx.fillStyle = '#ffe082';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText(team.name, wx, wy - hh - 30);
+    }
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // HP bar helper
+  // -------------------------------------------------------------------------
+  _hpBar(ctx, cx, y, barW, hp, maxHp, color) {
+    const x = cx - barW / 2;
+    const h = 5;
+    const fill = Math.max(0, hp / maxHp);
+
+    // Track
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(x, y, barW, h);
+
+    // Fill
+    ctx.fillStyle = fill > 0.5 ? '#66bb6a' : fill > 0.25 ? '#ffa726' : '#ef5350';
+    ctx.fillRect(x, y, barW * fill, h);
+
+    // Border
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(x, y, barW, h);
+  }
+
+  // -------------------------------------------------------------------------
+  // Projectiles
+  // -------------------------------------------------------------------------
+  _projectiles(ctx, projectiles, camX) {
+    for (const p of projectiles) {
+      if (p.dead) continue;
+      const px = p.x - camX;
+      const py = p.y;
+
+      ctx.save();
+      const wdef = WEAPONS[p.kind] || {};
+      const color = wdef.color || '#ffd23f';
+
+      switch (p.kind) {
+        case 'bazooka':
+        case 'projectile': {
+          // Rocket: elongated oval pointing in direction of travel
+          const angle = Math.atan2(p.vy, p.vx);
+          ctx.translate(px, py);
+          ctx.rotate(angle);
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.ellipse(0, 0, 10, 4, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Flame tail
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#ff6600';
+          ctx.beginPath();
+          ctx.ellipse(-8, 0, 6, 3, 0, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+        case 'grenade':
+        case 'holy': {
+          // Grenade: circle with fuse timer arc
+          ctx.fillStyle = color;
+          ctx.shadowColor = color;
+          ctx.shadowBlur = 6;
+          ctx.beginPath();
+          ctx.arc(px, py, p.r || 6, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          // Fuse arc (shows remaining time)
+          const maxFuse = (WEAPONS[p.kind] && WEAPONS[p.kind].fuse) || 3;
+          const ratio = Math.max(0, p.fuse / maxFuse);
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(px, py, (p.r || 6) + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ratio);
+          ctx.stroke();
+          break;
+        }
+        case 'dynamite': {
+          ctx.fillStyle = color;
+          ctx.fillRect(px - 5, py - 12, 10, 20);
+          ctx.fillStyle = '#ffcc00';
+          ctx.font = '10px sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('💣', px, py);
+          break;
+        }
+        case 'airstrike': {
+          // Falling bomb
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.ellipse(px, py, 5, 8, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Tail fin
+          ctx.fillStyle = '#9aa0a6';
+          ctx.fillRect(px - 4, py - 8, 3, 5);
+          ctx.fillRect(px + 1, py - 8, 3, 5);
+          break;
+        }
+        default: {
+          ctx.fillStyle = color;
+          ctx.beginPath();
+          ctx.arc(px, py, p.r || 5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Particle effects (explosions, splashes, sparkles)
+  // -------------------------------------------------------------------------
+  _effects(ctx, effects, camX) {
+    for (const e of effects) {
+      if (e.dead) continue;
+      const ex = e.x - camX;
+      const ey = e.y;
+      const t = e.t || 0;     // 0..1 lifetime progress
+      const alpha = Math.max(0, 1 - t);
+
+      ctx.save();
+      ctx.globalAlpha = alpha;
+
+      switch (e.type) {
+        case 'explosion': {
+          const r = e.r * t;
+          // Outer blast circle
+          ctx.fillStyle = '#ff8800';
+          ctx.shadowColor = '#ff4400';
+          ctx.shadowBlur = 20 * (1 - t);
+          ctx.beginPath();
+          ctx.arc(ex, ey, r, 0, Math.PI * 2);
+          ctx.fill();
+          // Inner bright core
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = '#ffe082';
+          ctx.beginPath();
+          ctx.arc(ex, ey, r * 0.5, 0, Math.PI * 2);
+          ctx.fill();
+          // Smoke ring
+          ctx.globalAlpha = alpha * 0.4;
+          ctx.fillStyle = '#555';
+          ctx.beginPath();
+          ctx.arc(ex, ey, r * 1.3, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+        case 'splash': {
+          // Water splash particles
+          ctx.strokeStyle = '#42a5f5';
+          ctx.lineWidth = 2;
+          const drops = 6;
+          for (let i = 0; i < drops; i++) {
+            const a = (i / drops) * Math.PI * 2;
+            const len = e.r * 0.5 * (1 - t);
+            const dx = Math.cos(a) * e.r * 0.6 * t;
+            const dy = Math.sin(a) * e.r * 0.6 * t - e.r * 0.3 * t;
+            ctx.beginPath();
+            ctx.moveTo(ex + dx, ey + dy);
+            ctx.lineTo(ex + dx + Math.cos(a) * len, ey + dy + Math.sin(a) * len);
+            ctx.stroke();
+          }
+          break;
+        }
+        case 'sparkle': {
+          // Charge sparkle for power bar
+          ctx.fillStyle = '#ffe082';
+          ctx.shadowColor = '#ffcc00';
+          ctx.shadowBlur = 8;
+          const sr = (e.r || 3) * (1 - t * 0.5);
+          ctx.beginPath();
+          ctx.arc(ex, ey, sr, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+        case 'debris': {
+          // Small flying debris chunk
+          ctx.fillStyle = e.color || '#8d6e63';
+          const dr = (e.r || 4) * (1 - t * 0.5);
+          ctx.beginPath();
+          ctx.arc(ex, ey, dr, 0, Math.PI * 2);
+          ctx.fill();
+          break;
+        }
+      }
+      ctx.restore();
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Aim indicator: dotted predicted arc
+  // -------------------------------------------------------------------------
+  _aimIndicator(ctx, worm, aim, level, camX) {
+    const wx = worm.x - camX;
+    const wy = worm.y;
+
+    // Direction line from worm center
+    const lineLen = 40;
+    const endX = wx + Math.cos(aim.angle) * lineLen;
+    const endY = wy + Math.sin(aim.angle) * lineLen;
+
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(wx, wy);
+    ctx.lineTo(endX, endY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Predicted arc (dotted)
+    const gravity = 480; // PHYSICS.projGravity
+    const wind = (level && level.wind) || 0;
+    const speed = aim.power || AIM.minSpeed;
+    const vel = vecFromAngle(aim.angle, speed);
+
+    try {
+      const result = simulate(
+        { x: worm.x, y: worm.y },
+        vel,
+        { gravity, wind, dt: 1 / 30, maxSteps: 60 },
+        (x, y) => y > (level ? level.waterY : 512) + 20,
+      );
+
+      ctx.strokeStyle = 'rgba(255,255,150,0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([3, 6]);
+      ctx.beginPath();
+      let first = true;
+      for (let i = 0; i < result.points.length; i += 2) {
+        const pt = result.points[i];
+        const px = pt.x - camX;
+        const py = pt.y;
+        if (first) { ctx.moveTo(px, py); first = false; }
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } catch (_) {
+      // simulate may throw in edge cases; just skip the arc
+    }
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Power bar (shown while charging)
+  // -------------------------------------------------------------------------
+  _powerBar(ctx, aim) {
+    const W = FIELD.W;
+    const barW = 200;
+    const barH = 22;
+    const x = W / 2 - barW / 2;
+    const y = FIELD.H - 50;
+    const fill = (aim.power - AIM.minSpeed) / (AIM.maxSpeed - AIM.minSpeed);
+
+    ctx.save();
+
+    // Background track
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.roundRect(x - 2, y - 2, barW + 4, barH + 4, 6);
+    ctx.fill();
+
+    // Gradient fill
+    const grad = ctx.createLinearGradient(x, 0, x + barW, 0);
+    grad.addColorStop(0, '#66bb6a');
+    grad.addColorStop(0.6, '#ffa726');
+    grad.addColorStop(1, '#ef5350');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW * fill, barH, 4);
+    ctx.fill();
+
+    // Border
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, barH, 4);
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('🔥 蓄力', W / 2, y + barH / 2);
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // HUD: team label, weapon bar, wind arrow, turn banner
+  // -------------------------------------------------------------------------
+  _hud(ctx, game, camX) {
+    const W = FIELD.W;
+    const barH = 44;
+    const pad = 8;
+
+    ctx.save();
+
+    // Top HUD strip
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, W, barH);
+
+    if (!game.teams) { ctx.restore(); return; }
+
+    const allTeams = game.teams;
+
+    // -- Left side: active team + worm info --
+    if (game.active) {
+      const activeTeam = allTeams[game.active.team];
+      if (activeTeam) {
+        const activeWorm = activeTeam.worms[game.active.wormIdx];
+        const teamColor = TEAM_COLORS[activeTeam.id] || '#aaa';
+
+        ctx.fillStyle = teamColor;
+        ctx.font = 'bold 14px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(activeTeam.name, pad + 6, barH / 2);
+
+        if (activeWorm) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = '12px sans-serif';
+          ctx.fillText(`HP: ${Math.max(0, activeWorm.hp)}`, pad + 6 + 100, barH / 2);
+        }
+      }
+    }
+
+    // -- Center: level name --
+    if (game.level) {
+      ctx.fillStyle = '#ffe082';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const modeLabel = game.mode === 'duo' ? '双人对战' : '第 ' + (game.levelIndex + 1) + ' 关';
+      ctx.fillText(modeLabel + ' · ' + game.level.name, W / 2, barH / 2);
+    }
+
+    // -- Right: weapon name + ammo --
+    if (game.active && game.weaponKey) {
+      const wdef = WEAPONS[game.weaponKey];
+      const activeTeam = allTeams[game.active.team];
+      const ammoVal = activeTeam && activeTeam.ammo ? activeTeam.ammo[game.weaponKey] : 0;
+      const ammoStr = ammoVal === Infinity ? '∞' : String(Math.max(0, ammoVal));
+
+      ctx.fillStyle = '#ffe082';
+      ctx.font = 'bold 13px sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      const icon = wdef ? wdef.icon : '';
+      const name = wdef ? wdef.name : game.weaponKey;
+      ctx.fillText(`${icon} ${name}  ×${ammoStr}`, W - pad - 6, barH / 2);
+    }
+
+    // -- Wind indicator (bottom center, if wind != 0) --
+    if (game.level && game.level.wind !== 0 && game.windEnabled) {
+      this._windArrow(ctx, game.level.wind);
+    }
+
+    // -- Weapon bar (bottom strip) --
+    this._weaponBar(ctx, game);
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Weapon bar (bottom of screen)
+  // -------------------------------------------------------------------------
+  _weaponBar(ctx, game) {
+    if (!game.teams || !game.active) return;
+    const activeTeam = game.teams[game.active.team];
+    if (!activeTeam) return;
+
+    const weapons = Object.keys(WEAPONS).filter(k => {
+      const a = activeTeam.ammo ? activeTeam.ammo[k] : 0;
+      return a === Infinity || a > 0;
+    });
+    if (weapons.length === 0) return;
+
+    const slotW = 52;
+    const slotH = 44;
+    const pad = 6;
+    const totalW = weapons.length * (slotW + pad) - pad;
+    const startX = FIELD.W / 2 - totalW / 2;
+    const startY = FIELD.H - slotH - 10;
+
+    ctx.save();
+
+    // Bar background
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.beginPath();
+    ctx.roundRect(startX - 6, startY - 4, totalW + 12, slotH + 8, 8);
+    ctx.fill();
+
+    for (let i = 0; i < weapons.length; i++) {
+      const key = weapons[i];
+      const wdef = WEAPONS[key];
+      const isSelected = key === game.weaponKey;
+      const sx = startX + i * (slotW + pad);
+
+      // Slot background
+      ctx.fillStyle = isSelected ? 'rgba(255,224,100,0.3)' : 'rgba(255,255,255,0.08)';
+      ctx.strokeStyle = isSelected ? '#ffe082' : 'rgba(255,255,255,0.2)';
+      ctx.lineWidth = isSelected ? 2 : 1;
+      ctx.beginPath();
+      ctx.roundRect(sx, startY, slotW, slotH, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Weapon icon
+      ctx.font = '22px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(wdef.icon, sx + slotW / 2, startY + slotH / 2 - 6);
+
+      // Ammo count
+      const ammoVal = activeTeam.ammo ? activeTeam.ammo[key] : 0;
+      const ammoStr = ammoVal === Infinity ? '∞' : String(Math.max(0, ammoVal));
+      ctx.fillStyle = isSelected ? '#ffe082' : '#cccccc';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(ammoStr, sx + slotW / 2, startY + slotH - 7);
+    }
+
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Wind arrow
+  // -------------------------------------------------------------------------
+  _windArrow(ctx, wind) {
+    const W = FIELD.W;
+    const y = FIELD.H - 110;
+    const strength = Math.abs(wind);
+    const dir = wind > 0 ? 1 : -1;
+    const label = '💨 ' + (wind > 0 ? '→' : '←') + ' ' + Math.round(strength);
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.beginPath();
+    ctx.roundRect(W / 2 - 50, y - 14, 100, 24, 6);
+    ctx.fill();
+
+    ctx.fillStyle = '#b0c4de';
+    ctx.font = 'bold 12px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, W / 2, y);
+    ctx.restore();
+  }
+
+  // -------------------------------------------------------------------------
+  // Turn banner (flash text in center)
+  // -------------------------------------------------------------------------
+  _turnBanner(ctx, text, bannerMs) {
+    const W = FIELD.W;
+    const H = FIELD.H;
+    // Fade in/out over ~400ms each end
+    const alpha = Math.min(1, bannerMs / 400);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, H / 2 - 35, W, 60);
+
+    ctx.fillStyle = '#ffe082';
+    ctx.font = 'bold 32px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#ff9f43';
+    ctx.shadowBlur = 12;
+    ctx.fillText(text, W / 2, H / 2 - 5);
+    ctx.shadowBlur = 0;
+    ctx.restore();
+  }
+}
