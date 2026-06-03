@@ -54,10 +54,9 @@ export function render(ctx, world) {
     if (prev.y >= maxy || prev.scale <= 0) continue;
     maxy = prev.y;
     const dark = Math.floor(n / RENDER.rumble) % 2 === 0;
-    const grass = dark ? theme.grass[0] : theme.grass[1];
     const road = dark ? theme.road[0] : theme.road[1];
     const rumble = dark ? theme.rumble[0] : theme.rumble[1];
-    ctx.fillStyle = grass; ctx.fillRect(0, p.y, W, prev.y - p.y + 1);
+    // 不再逐段铺草（已有整片地面底色），只画路肩/路面/中线，彻底消除横穿绿线。
     // 近端 y 下移 1px，让相邻梯形互相重叠盖住接缝；先宽路肩再窄路面，只在两侧露红白
     const yb = prev.y + 1;
     trap(ctx, prev.x, yb, prev.w * 1.12, p.x, p.y, p.w * 1.12, rumble);
@@ -82,7 +81,7 @@ export function render(ctx, world) {
 
   // 玩家车 + 氮气尾焰（相机固定路中，车按横向位置在屏幕上左右滑动）
   const pl = world.player;
-  const px = W / 2 + (pl.lateral || 0) * W * 0.38 + (pl.tilt || 0) * 30;
+  const px = W / 2 + (pl.tilt || 0) * 40;
   if (pl.nitro) {
     ctx.fillStyle = 'rgba(0,229,255,0.7)';
     ctx.beginPath(); ctx.moveTo(px - 14, H - 14); ctx.lineTo(px + 14, H - 14);

@@ -18,7 +18,7 @@ export const PHYSICS = {
   offRoadMul: 0.5,    // 出界时的极速倍率
   steer: 2.4,         // 横向转向系数
   centrifugal: 0.00004,// 弯道把车甩向外侧的强度（乘 speed*curve）
-  assistSteer: 0.72,  // 辅助转向强度（0..1，抵消大部分离心力）
+  assistSteer: 0.8,   // 辅助转向强度（0..1，抵消大部分离心力，过弯不易冲出）
   recenter: 1.8,      // 松方向时自动把车拉回路中的强度（儿童友好：不会卡在草地）
 };
 

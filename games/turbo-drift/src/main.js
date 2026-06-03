@@ -170,13 +170,17 @@ function update(dt) {
   }
   state.oilSlicks = state.oilSlicks.filter(o => o.life > 0);
 
-  // 车-车碰撞（仅减速 + 轻推，永不出局）
+  // 车-车碰撞（仅减速 + 横向弹开，永不出局；窗口放大避免高速穿模）
   const all = [state.player, ...state.ai];
   for (let i = 0; i < all.length; i++) for (let j = i + 1; j < all.length; j++) {
     const A = all[i], B = all[j];
-    if (Math.abs(wrap(A.z, len) - wrap(B.z, len)) < 100 && Math.abs(A.x - B.x) < 0.28) {
-      A.speed *= 0.93; B.speed *= 0.93;
-      const push = A.x < B.x ? 0.02 : -0.02; A.x -= push; B.x += push;
+    let dz = Math.abs(wrap(A.z, len) - wrap(B.z, len)); dz = Math.min(dz, len - dz);
+    if (dz < 240 && Math.abs(A.x - B.x) < 0.42) {
+      A.speed *= 0.88; B.speed *= 0.88;
+      // 谁在左谁被推得更左，弹开避免重叠穿模
+      const dir = A.x <= B.x ? 1 : -1;
+      A.x = clamp(A.x - dir * 0.06, -0.95, 0.95);
+      B.x = clamp(B.x + dir * 0.06, -0.95, 0.95);
     }
   }
 
@@ -250,8 +254,8 @@ function draw() {
   const pPlace = place([state.player, ...state.ai], len, 'player');
   render(ctx, {
     track,
-    cam: { x: 0, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
-    player: { color: state.player.color, lateral: state.player.x, tilt: state.drift.active ? clamp(state.player.x * 0.4, -0.8, 0.8) : 0, nitro: state.nitroTimer > 0 },
+    cam: { x: state.player.x * RENDER.roadW, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
+    player: { color: state.player.color, tilt: state.drift.active ? clamp(state.player.x * 0.4, -0.8, 0.8) : 0, nitro: state.nitroTimer > 0 },
     ai: aiSprites, boxes,
     hud: {
       place: pPlace, total: RACE.racers, lap: Math.min(state.player.lap + 1, RACE.laps), laps: RACE.laps,

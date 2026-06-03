@@ -38,7 +38,7 @@ export function stepPlayer(state, input, ctx, dt) {
   }
   dx *= (2 - car.grip);                                              // 抓地差→更滑
 
-  x = clamp(x + dx, -1.0, 1.0);                                      // 收紧边界：永远飞不进深草卡住
+  x = clamp(x + dx, -0.95, 0.95);                                    // 收紧边界：始终在路面内，相机也不会甩出赛道
   z += speed * dt;
   return { z, x, speed, spinTimer };
 }
