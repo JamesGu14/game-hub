@@ -32,10 +32,13 @@ export function stepPlayer(state, input, ctx, dt) {
   const driftMul = input.drifting ? DRIFT.steerBoost : 1;
   let dx = input.steer * PHYSICS.steer * driftMul * speedRatio * dt;
   dx -= ctx.curve * PHYSICS.centrifugal * speed * dt;                 // 离心：弯外
-  if (ctx.assist) dx += ctx.curve * PHYSICS.centrifugal * speed * PHYSICS.assistSteer * dt; // 辅助：抵消部分
+  if (ctx.assist) {
+    dx += ctx.curve * PHYSICS.centrifugal * speed * PHYSICS.assistSteer * dt; // 辅助：抵消大部分离心
+    if (Math.abs(input.steer) < 0.15) dx -= x * (PHYSICS.recenter || 0) * dt; // 松方向：自动拉回路中
+  }
   dx *= (2 - car.grip);                                              // 抓地差→更滑
 
-  x = clamp(x + dx, -1.8, 1.8);
+  x = clamp(x + dx, -1.0, 1.0);                                      // 收紧边界：永远飞不进深草卡住
   z += speed * dt;
   return { z, x, speed, spinTimer };
 }

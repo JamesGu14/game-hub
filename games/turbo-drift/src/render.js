@@ -77,14 +77,15 @@ export function render(ctx, world) {
   }
   ctx.textAlign = 'left';
 
-  // 玩家车 + 氮气尾焰
+  // 玩家车 + 氮气尾焰（相机固定路中，车按横向位置在屏幕上左右滑动）
   const pl = world.player;
+  const px = W / 2 + (pl.lateral || 0) * W * 0.38 + (pl.tilt || 0) * 30;
   if (pl.nitro) {
     ctx.fillStyle = 'rgba(0,229,255,0.7)';
-    ctx.beginPath(); ctx.moveTo(W / 2 - 14, H - 14); ctx.lineTo(W / 2 + 14, H - 14);
-    ctx.lineTo(W / 2, H - 14 + 22); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(px - 14, H - 14); ctx.lineTo(px + 14, H - 14);
+    ctx.lineTo(px, H - 14 + 22); ctx.fill();
   }
-  drawCar(ctx, W / 2 + (pl.tilt || 0) * 40, H - 46, 150, pl.color, pl.tilt, pl.nitro);
+  drawCar(ctx, px, H - 46, 150, pl.color, pl.tilt, pl.nitro);
 
   drawHud(ctx, world.hud);
 }

@@ -250,8 +250,8 @@ function draw() {
   const pPlace = place([state.player, ...state.ai], len, 'player');
   render(ctx, {
     track,
-    cam: { x: state.player.x * RENDER.roadW, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
-    player: { color: state.player.color, tilt: state.drift.active ? clamp(state.player.x * 0.4, -0.8, 0.8) : 0, nitro: state.nitroTimer > 0 },
+    cam: { x: 0, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
+    player: { color: state.player.color, lateral: state.player.x, tilt: state.drift.active ? clamp(state.player.x * 0.4, -0.8, 0.8) : 0, nitro: state.nitroTimer > 0 },
     ai: aiSprites, boxes,
     hud: {
       place: pPlace, total: RACE.racers, lap: Math.min(state.player.lap + 1, RACE.laps), laps: RACE.laps,

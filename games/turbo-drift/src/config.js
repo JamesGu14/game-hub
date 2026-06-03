@@ -17,8 +17,9 @@ export const PHYSICS = {
   cruise: 2600,       // 自动巡航底速（绝不熄火）
   offRoadMul: 0.5,    // 出界时的极速倍率
   steer: 2.4,         // 横向转向系数
-  centrifugal: 0.00006,// 弯道把车甩向外侧的强度（乘 speed*curve）
-  assistSteer: 0.5,   // 辅助转向强度（0..1）
+  centrifugal: 0.00004,// 弯道把车甩向外侧的强度（乘 speed*curve）
+  assistSteer: 0.72,  // 辅助转向强度（0..1，抵消大部分离心力）
+  recenter: 1.8,      // 松方向时自动把车拉回路中的强度（儿童友好：不会卡在草地）
 };
 
 export const DRIFT = {
