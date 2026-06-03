@@ -68,4 +68,15 @@ export const GAMES = [
     tags: ['竞速', '漂移', '键鼠/手柄'],
     path: 'games/turbo-drift/index.html',
   },
+  {
+    id: 'caocao-zhuan',
+    title: '群雄逐鹿·孟德篇',
+    subtitle: '三国战棋 · 回合制 SRPG',
+    desc: '等距3D战棋 · 兵种相克 · 计略单挑 · 剧情演出 · 键鼠',
+    icon: '⚔️',
+    accent: '#d4af37',
+    accent2: '#7a1f1f',
+    tags: ['策略', '战棋', '三国', '键鼠'],
+    path: 'games/caocao-zhuan/index.html',
+  },
 ];
