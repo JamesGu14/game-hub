@@ -16,7 +16,7 @@ export const WATER = { defaultY: 512 };  // worm center below this => drowned
 // power (hold) maps linearly to projectile launch speed
 export const AIM = {
   minSpeed: 180, maxSpeed: 720, // px/s
-  chargeSeconds: 1.2,           // hold time from min->max
+  chargeSeconds: 1.7,           // hold time from min->max (ping-pong: up then back down)
   angleStepRad: 1.4,            // radians/sec when adjusting angle by key/pad
 };
 

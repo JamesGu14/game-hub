@@ -10,6 +10,7 @@ export const Aim = {
   charging: false,
   power: AIM.minSpeed,
   mode: 'angle',        // 'mouse' | 'angle'
+  _dir: 1,              // charge direction: +1 rising / -1 falling (ping-pong)
 
   // --- Aiming ---
 
@@ -38,13 +39,16 @@ export const Aim = {
   startCharge() {
     this.charging = true;
     this.power = AIM.minSpeed;
+    this._dir = 1;
   },
 
-  /** Advance charge each frame while held. */
+  /** Advance charge each frame while held — ping-pongs between min and max. */
   stepCharge(dt) {
     if (!this.charging) return;
     const rampRate = (AIM.maxSpeed - AIM.minSpeed) / AIM.chargeSeconds;
-    this.power = Math.min(AIM.maxSpeed, this.power + rampRate * dt);
+    this.power += this._dir * rampRate * dt;
+    if (this.power >= AIM.maxSpeed) { this.power = AIM.maxSpeed; this._dir = -1; }      // hit top → fall back
+    else if (this.power <= AIM.minSpeed) { this.power = AIM.minSpeed; this._dir = 1; }  // hit bottom → rise again
   },
 
   /**
@@ -64,5 +68,6 @@ export const Aim = {
     this.charging = false;
     this.power = AIM.minSpeed;
     this.mode = 'angle';
+    this._dir = 1;
   },
 };

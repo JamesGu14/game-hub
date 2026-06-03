@@ -46,8 +46,8 @@ export function jitterAim(sol, errLevel, rng) {
 }
 
 // ---------------------------------------------------------------------------
-// AIController — drives an AI worm's complete turn via timed steps.
-// Call AIController.takeTurn(game) when nextActive lands on an AI worm.
+// AIController — drives an AI worm's turn frame-by-frame so the aim is visible.
+// Call AIController.step(game, dt) every frame while the active team is AI.
 // ---------------------------------------------------------------------------
 
 // Check if the direct ballistic arc from (sx,sy) to (tx,ty) hits terrain
@@ -94,78 +94,84 @@ function _chooseWeapon(worm, target, team, terrain, gravity, wind) {
 
 export const AIController = {
   /**
-   * Execute one full AI turn on `game`.
-   * game must expose: active, teams, level, terrain, wind, weaponKey,
-   * _activeWorm(), _fireActiveWorm(launchParams), _advanceTurn(), aim (Aim singleton).
+   * Drive one AI turn frame-by-frame so the player sees the AI "aim" like a
+   * human: think delay → rotate the reticle to the target angle → charge the
+   * power bar up to the chosen speed → fire. Progress is held in `game._aiState`
+   * (null between turns). Called every frame from game.js `_updateAim` while the
+   * active team is AI.
    *
-   * Called from game.js _runAITurn() after the telegraph delay has elapsed.
+   * game must expose: active, teams, level, terrain, wind, weaponKey, aim,
+   * _activeWorm(), _fireActiveWorm(launchParams), _advanceTurn().
    */
-  takeTurn(game) {
-    const worm = game._activeWorm();
-    if (!worm || !worm.alive) {
-      game._advanceTurn();
-      return;
-    }
+  step(game, dt) {
+    let st = game._aiState;
 
-    // 1. Select target: alive team-0 worm with lowest HP (nearest as tiebreak)
-    const targets = game.teams[0].worms.filter(w => w.alive);
-    if (!targets.length) {
-      game._advanceTurn();
-      return;
-    }
-    const target = targets.reduce((best, w) => {
-      if (w.hp < best.hp) return w;
-      if (w.hp === best.hp && dist(worm.x, worm.y, w.x, w.y) < dist(worm.x, worm.y, best.x, best.y)) return w;
-      return best;
-    });
+    // --- First frame of the turn: pick target/weapon and the final aim, then
+    //     seed the state machine starting from a near-horizontal angle. ---
+    if (!st) {
+      const worm = game._activeWorm();
+      if (!worm || !worm.alive) { game._advanceTurn(); return; }
+      const targets = game.teams[0].worms.filter(w => w.alive);
+      if (!targets.length) { game._advanceTurn(); return; }
+      const target = targets.reduce((b, w) =>
+        w.hp < b.hp || (w.hp === b.hp && dist(worm.x, worm.y, w.x, w.y) < dist(worm.x, worm.y, b.x, b.y)) ? w : b);
 
-    const activeTeam = game.teams[game.active.team];
-    const gravity = PHYSICS.projGravity;
-    const wind = game.wind;
-    const terrain = game.terrain;
+      const gravity = PHYSICS.projGravity, wind = game.wind, terrain = game.terrain;
+      const team = game.teams[game.active.team];
+      const weaponKey = _chooseWeapon(worm, target, team, terrain, gravity, wind);
+      game.weaponKey = weaponKey;
 
-    // 2. Choose weapon
-    const weaponKey = _chooseWeapon(worm, target, activeTeam, terrain, gravity, wind);
-    game.weaponKey = weaponKey;
-
-    // 3. Compute aim solution
-    let launchParams;
-    if (weaponKey === 'firepunch') {
-      // Melee: face toward target, speed doesn't matter much
       const dx = target.x - worm.x;
       worm.facing = dx >= 0 ? 1 : -1;
-      launchParams = { angle: dx >= 0 ? 0 : Math.PI, speed: AIM.minSpeed };
-    } else {
-      try {
-        const sol = solveAim(
-          worm.x, worm.y, target.x, target.y,
-          gravity, AIM.minSpeed, AIM.maxSpeed, wind
-        );
-        if (sol) {
-          launchParams = jitterAim(sol, game.level.aiError, Math.random);
-        }
-      } catch {
-        // solver threw — use fallback below
+      let tgt;
+      if (weaponKey === 'firepunch') {
+        tgt = { angle: dx >= 0 ? 0 : Math.PI, speed: AIM.minSpeed };
+      } else {
+        let sol;
+        try { sol = solveAim(worm.x, worm.y, target.x, target.y, gravity, AIM.minSpeed, AIM.maxSpeed, wind); } catch { /* fall through */ }
+        tgt = sol ? jitterAim(sol, game.level.aiError, Math.random)
+                  : { angle: dx >= 0 ? -Math.PI / 4 : Math.PI + Math.PI / 4, speed: 420 };
       }
+      tgt.speed = Math.max(AIM.minSpeed, Math.min(AIM.maxSpeed, tgt.speed));
 
-      if (!launchParams) {
-        // Fallback: lob at 45° toward target
-        const dx = target.x - worm.x;
-        const angle = dx >= 0 ? -Math.PI / 4 : Math.PI + Math.PI / 4;
-        launchParams = { angle, speed: 420 };
-      }
+      const Aim = game.aim;
+      Aim.charging = false; Aim.power = AIM.minSpeed;
+      Aim.angle = dx >= 0 ? -0.05 : Math.PI + 0.05;   // start near-horizontal so the rotation is visible
+      game._aiState = { phase: 'delay', t: 0, target: tgt };
+      game._aiAiming = true;
+      return;
     }
 
-    // 4. Sync Aim singleton so renderer shows the chosen angle
-    const { Aim } = game._getAim();
-    if (Aim) {
-      Aim.angle = launchParams.angle;
-      Aim.power = launchParams.speed;
+    const Aim = game.aim;
+    st.t += dt;
+
+    // 1. Think delay (telegraph the upcoming shot).
+    if (st.phase === 'delay') {
+      if (st.t > 0.5) { st.phase = 'aim'; st.t = 0; }
+      return;
     }
 
-    // 5. Fire through the same path the human uses
-    game._fireActiveWorm(launchParams);
-    game._aiPending = false;
+    // 2. Rotate the reticle toward the target angle.
+    if (st.phase === 'aim') {
+      const diff = st.target.angle - Aim.angle;
+      Aim.angle += Math.sign(diff) * Math.min(Math.abs(diff), 2.2 * dt);
+      if (Math.abs(st.target.angle - Aim.angle) < 0.02) {
+        Aim.angle = st.target.angle; st.phase = 'charge'; st.t = 0; Aim.startCharge();
+      }
+      return;
+    }
+
+    // 3. Charge the power bar up to the chosen speed, then fire.
+    if (st.phase === 'charge') {
+      Aim.stepCharge(dt);
+      if (Aim.power >= st.target.speed || st.t > 3) {
+        const lp = Aim.release();
+        lp.angle = st.target.angle; lp.speed = st.target.speed;
+        game._aiAiming = false; game._aiState = null;
+        game._fireActiveWorm(lp); game._aiPending = false;
+      }
+      return;
+    }
   },
 };
 

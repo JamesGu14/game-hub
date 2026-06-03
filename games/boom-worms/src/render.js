@@ -122,7 +122,7 @@ export class Renderer {
       const activeTeam = allTeams[game.active.team];
       if (activeTeam) {
         const activeWorm = activeTeam.worms[game.active.wormIdx];
-        if (activeWorm && activeWorm.alive && !activeTeam.isAI) {
+        if (activeWorm && activeWorm.alive && (!activeTeam.isAI || game._aiAiming)) {
           this._aimIndicator(ctx, activeWorm, game.aim, game, camX);
           if (game.aim.charging) {
             this._powerBar(ctx, game.aim);

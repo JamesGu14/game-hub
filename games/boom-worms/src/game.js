@@ -83,6 +83,8 @@ export class Game {
     this._introTimer = 0;
     this._aiPending = false;      // guard against double AI fire
     this._aiTimer = 0;
+    this._aiState = null;         // AI aiming state machine (null = not mid-aim)
+    this._aiAiming = false;       // true while AI is visibly aiming (renderer shows the guide)
 
     this.best = _loadBest();
   }
@@ -100,6 +102,8 @@ export class Game {
     this.effects = [];
     this._aiPending = false;
     this._aiTimer = 0;
+    this._aiState = null;
+    this._aiAiming = false;
 
     this.level = buildLevel(levelIndex);
     this.wind = this.windEnabled ? (Math.random() * 80 - 40) : 0;
@@ -253,6 +257,15 @@ export class Game {
       if (e.vx !== undefined) { e.x += e.vx * dt; e.y += e.vy * dt; e.vy += 200 * dt; }
     }
 
+    // Crates fall under gravity during live play (and slide into freshly-blown
+    // pits) — but stay frozen while paused / on menu / after the round ends.
+    if (this.terrain &&
+        (this.state === 'aim' || this.state === 'firing' ||
+         this.state === 'projectile' || this.state === 'resolve')) {
+      this._updateCrates(dt);
+      this._checkCratePickups(this._allWorms());
+    }
+
     switch (this.state) {
       case 'aim':    this._updateAim(dt); break;
       case 'firing': this._updateFiring(dt); break;
@@ -275,17 +288,9 @@ export class Game {
 
     const activeTeam = this.teams[this.active.team];
 
-    // AI: schedule turn
-    if (activeTeam.isAI && !this._aiPending) {
-      this._aiPending = true;
-      this._aiTimer = 0.8; // brief pause before AI fires
-    }
-
+    // AI: drive the aiming state machine frame-by-frame (rotate + charge + fire).
     if (activeTeam.isAI) {
-      this._aiTimer -= dt;
-      if (this._aiTimer <= 0) {
-        this._runAITurn();
-      }
+      AIController.step(this, dt);
       return;
     }
 
@@ -378,8 +383,7 @@ export class Game {
     // Cull dead projectiles
     this.projectiles = this.projectiles.filter(p => !p.dead);
 
-    // Check crate pickups
-    this._checkCratePickups(allWorms);
+    // (Crate gravity + pickups are handled centrally in update().)
 
     // Camera: follow last live projectile if any
     const liveProj = this.projectiles.find(p => !p.dead);
@@ -482,9 +486,11 @@ export class Game {
     this.weaponKey = 'bazooka';
     Aim.reset(worm ? worm.facing : 1);
 
-    // Reset AI flag for next turn
+    // Reset AI flags for next turn
     this._aiPending = false;
     this._aiTimer = 0;
+    this._aiState = null;
+    this._aiAiming = false;
 
     if (worm) this._trackCamera(worm);
     const teamName = this.teams[next.team].name;
@@ -617,8 +623,8 @@ export class Game {
     }
     this.crates.push({
       x,
-      y: -20,         // starts above screen; falls in _updateProjectile
-      vy: 60,         // fall speed
+      y: -20,         // starts above screen; falls via _updateCrates gravity
+      vy: 60,         // initial fall speed (gravity takes over)
       landed: false,
       dead: false,
       kind,
@@ -626,52 +632,53 @@ export class Game {
     });
   }
 
+  /**
+   * Crates fall under gravity each frame. They settle on solid terrain, keep
+   * falling when the ground beneath them is blown away (sliding into pits), and
+   * vanish with a splash if they reach the water.
+   */
+  _updateCrates(dt) {
+    if (!this.crates.length || !this.terrain) return;
+    const halfH = CRATE.h / 2;
+    for (const c of this.crates) {
+      if (c.dead) continue;
+      c.vy = Math.min((c.vy || 0) + 900 * dt, 800);          // gravity
+      const ny = c.y + c.vy * dt;
+      if (this.terrain.solid(c.x | 0, (ny + halfH) | 0)) {   // solid underfoot → settle on the surface
+        let gy = (ny + halfH) | 0;
+        while (gy > 0 && this.terrain.solid(c.x | 0, gy - 1)) gy--;
+        c.y = gy - halfH; c.vy = 0; c.landed = true;
+      } else { c.y = ny; c.landed = false; }                 // nothing underfoot → keep falling (pits included)
+      if (c.y >= this.level.waterY) { c.dead = true; this._spawnEffect('splash', c.x, this.level.waterY, 24); }
+    }
+    this.crates = this.crates.filter(c => !c.dead);
+  }
+
   _checkCratePickups(allWorms) {
     for (const c of this.crates) {
       if (c.dead) continue;
-      // Animate crate fall
-      if (!c.landed) {
-        c.y += c.vy * (1 / 60); // approximate step
-        const gy = this.terrain.ground(c.x | 0, c.y | 0);
-        if (gy !== null && c.y >= gy) { c.y = gy; c.landed = true; }
-        if (c.y >= this.level.waterY) { c.dead = true; continue; }
-      }
-      // Check if any worm touches it
       for (const w of allWorms) {
         if (!w.alive) continue;
-        const dx = w.x - c.x;
-        const dy = w.y - c.y;
-        if (Math.hypot(dx, dy) < 24) {
+        if (Math.hypot(w.x - c.x, w.y - c.y) < 24) {
           c.dead = true;
           if (c.kind === 'heal') {
-            const team = this.teams[w.team];
-            if (team) {
-              // Heal all worms in the team (just the one worm for simplicity)
-              w.hp = Math.min(100, w.hp + 30);
-            }
+            w.hp = Math.min(100, w.hp + (CRATE.healAmount || 30));
           } else if (c.weaponReward) {
             const team = this.teams[w.team];
             if (team) {
               const cur = team.ammo[c.weaponReward] || 0;
-              if (cur !== Infinity) team.ammo[c.weaponReward] = (cur) + 2;
+              if (cur !== Infinity) team.ammo[c.weaponReward] = cur + 2;
             }
           }
+          this._spawnEffect('explosion', c.x, c.y, 16);
           break;
         }
       }
     }
-    // Cull fallen-off crates
     this.crates = this.crates.filter(c => !c.dead);
   }
 
-  // -------------------------------------------------------------------------
-  // AI turn — delegated to AIController in ai.js
-  // -------------------------------------------------------------------------
-  _runAITurn() {
-    AIController.takeTurn(this);
-  }
-
-  /** Returns the Aim singleton so AIController can sync the render state. */
+  /** Returns the Aim singleton (used by main.js / debugging). */
   _getAim() {
     return { Aim };
   }
