@@ -7,17 +7,23 @@
 //   'narrate' / 'say' / 'choice' -> 交给 dialogue（playStep）
 //   'camera'  -> ctx.camera?.setIso() 或 ctx.camera?.cinematic(preset/focus/zoom)
 //   'setFlag' -> 写 game.state.storyFlags
+//   'duel'    -> { type:'duel', a, b, forced:true } 剧情指定的强制单挑（如三英战吕布）：
+//                按 id 从 ctx.controller.units（或 ctx.units）解析双方 → new Duel(a,b,{rng})
+//                → await ctx.duelView.run(duel, {sceneManager,camera,fx,audio})
+//                → ctx.controller.applyDuelOutcome(outcome) → 继续剧本。
 //   其它未知类型 -> 跳过（向前兼容）
 // 结束时关闭对话框并在 bus 上 emit 'scenario:done' { scenarioId }。
 //
 // scenario 入参可为：
 //   - 对象 { id, steps:[...] }
 //   - 字符串 id（如 'ch01_b1_intro' / 'ch01_b1_reinforce'）→ 从 STORY 解析
-// ctx = { camera, sceneManager }（均可选；纯过场无渲染时 camera 为 undefined）。
+// ctx = { camera, sceneManager, controller?, duelView?, fx?, audio?, rng? }
+//   （均可选；纯过场无渲染时 camera 为 undefined；duel 步需要 controller + duelView）。
 
 import { bus } from '../core/eventBus.js';
 import { game } from '../core/gameState.js';
 import { playStep, hideDialogue } from './dialogue.js';
+import { Duel } from '../battle/duel.js';
 import STORY from '../data/chapters/ch01/b1_chenliu.story.js';
 
 // 把字符串 id 解析为 scenario 对象（intro/outro/scenarios[id]/triggers→scenarioId）。
@@ -84,10 +90,60 @@ function applyCamera(step, ctx) {
   }
 }
 
+// 在活动战场里按 id 解析单位（优先 ctx.controller.units，其次 ctx.units / ctx.lookup）。
+function resolveUnit(id, ctx) {
+  if (id == null) return null;
+  // 已经是 unit 对象（带 id 字段）直接用。
+  if (typeof id === 'object') return id;
+  const controller = ctx && ctx.controller;
+  if (controller && Array.isArray(controller.units)) {
+    const u = controller.units.find((x) => x.id === id);
+    if (u) return u;
+  }
+  if (ctx && Array.isArray(ctx.units)) {
+    const u = ctx.units.find((x) => x && x.id === id);
+    if (u) return u;
+  }
+  if (ctx && typeof ctx.lookup === 'function') {
+    return ctx.lookup(id) || null;
+  }
+  return null;
+}
+
+// 处理 'duel' step（剧情指定的强制单挑）：解析双方 → Duel → duelView.run → applyDuelOutcome。
+// 缺少 controller / duelView（纯过场或未集成）时静默跳过，保持向前兼容。
+async function applyDuel(step, ctx) {
+  const controller = ctx && ctx.controller;
+  const duelView = ctx && ctx.duelView;
+  if (!controller || !duelView || typeof duelView.run !== 'function') return;
+
+  const a = resolveUnit(step.a, ctx);
+  const b = resolveUnit(step.b, ctx);
+  if (!a || !b) {
+    console.warn('[scenarioRunner] duel step: 无法解析双方单位', step.a, step.b);
+    return;
+  }
+
+  const rng = (ctx && ctx.rng) || (controller && controller.rng) || Math.random;
+  const duel = new Duel(a, b, { rng });
+  bus.emit('duel:start', { aId: a.id, bId: b.id, forced: !!step.forced });
+
+  const outcome = await duelView.run(duel, {
+    sceneManager: ctx.sceneManager,
+    camera: ctx.camera,
+    fx: ctx.fx,
+    audio: ctx.audio,
+  });
+
+  if (typeof controller.applyDuelOutcome === 'function') {
+    controller.applyDuelOutcome(outcome);
+  }
+}
+
 /**
  * 运行一段剧本。
  * @param {object|string} scenario  scenario 对象或其 id
- * @param {object} [ctx]            { camera, sceneManager }（可选）
+ * @param {object} [ctx]            { camera, sceneManager, controller?, duelView?, fx?, audio?, rng? }（可选）
  * @returns {Promise<void>}
  */
 export async function run(scenario, ctx = {}) {
@@ -111,6 +167,9 @@ export async function run(scenario, ctx = {}) {
           break;
         case 'setFlag':
           applyFlag(step.flag || step.setFlag);
+          break;
+        case 'duel':
+          await applyDuel(step, ctx);
           break;
         default:
           // 未知 step：忽略以保持向前兼容

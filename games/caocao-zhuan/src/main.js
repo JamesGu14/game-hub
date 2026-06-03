@@ -22,11 +22,13 @@ import STORY from './data/chapters/ch01/b1_chenliu.story.js';
 import { BattleController } from './battle/battleController.js';
 import { gainExp } from './battle/leveling.js';
 import { evaluate as evaluateVictory } from './battle/victory.js';
+import { Duel } from './battle/duel.js';
 
 import { createSceneManager } from './render3d/sceneManager.js';
 import { moveAlong, hitFlash, floatText } from './render3d/fx.js';
 
 import { run as runScenario } from './story/scenarioRunner.js';
+import { duelView } from './ui/duelView.js';
 
 import * as hud from './ui/hud.js';
 import * as menus from './ui/menus.js';
@@ -51,8 +53,9 @@ let selectedUnit = null; // 当前选中的我方单位
 let moveCells = []; // 当前移动高亮格 [{c,r}]
 let attackCells = []; // 当前攻击高亮格 [{c,r}]
 let interactionLocked = true; // 演出/动画/敌方相位期间锁定点选
-let pendingMode = null; // 'attack' | 'skill' 目标选择待定模式
+let pendingMode = null; // 'attack' | 'skill' | 'duel' 目标选择待定模式
 let pendingSkillId = null; // skill 模式下待施放的计略 id
+let pendingDuelUnit = null; // duel 模式下发起单挑的我方单位（多目标时点选敌将）
 const skillUses = new Map(); // `${unitId}:${skillId}` -> 剩余次数（本场）
 const buffs = new Map(); // unitId -> { def?:增益倍率, turns }（guard 类）
 
@@ -81,6 +84,31 @@ function fxCtx() {
     camera: sceneManager ? sceneManager.camera : null,
     renderer: sceneManager ? sceneManager.renderer : null,
     overlay: document.body,
+  };
+}
+
+// duelView / scenarioRunner duel 步用的 ctx：把渲染/音频/特效门面打包。
+// fx 暴露 duelView 需要的 hitFlash(group,color) 与 floatText(ctx,pos,text,color)。
+function duelViewCtx() {
+  return {
+    sceneManager,
+    camera: cameraRig,
+    fx: { hitFlash, floatText },
+    audio: sfx,
+  };
+}
+
+// scenarioRunner 的 ctx：含运镜/场景 + 单挑所需（controller/duelView/fx/audio/rng），
+// 以支持剧情指定的 { type:'duel', a, b, forced } 步（如第 4 战「三英战吕布」）。
+function scenarioCtx() {
+  return {
+    camera: cameraRig,
+    sceneManager,
+    controller,
+    duelView,
+    fx: { hitFlash, floatText },
+    audio: sfx,
+    rng: controller ? controller.rng : undefined,
   };
 }
 
@@ -214,8 +242,8 @@ async function startBattle() {
   sceneManager.buildBattle(MAP, controller.units);
   cameraRig.setIso();
 
-  // 开场剧情（运镜交给 cameraRig）。
-  await runScenario(STORY.intro, { camera: cameraRig, sceneManager });
+  // 开场剧情（运镜交给 cameraRig；ctx 含单挑钩子以支持剧情强制单挑步）。
+  await runScenario(STORY.intro, scenarioCtx());
 
   // 进入玩家回合。
   await hud.turnBanner('第 1 回合 · 我军', 1200);
@@ -250,9 +278,13 @@ function onPick(clientX, clientY) {
     return;
   }
 
-  // 目标选择模式（攻击 / 计略）优先消费点击。
+  // 目标选择模式（攻击 / 单挑 / 计略）优先消费点击。
   if (pendingMode === 'attack') {
     handleAttackPick(hitInfo);
+    return;
+  }
+  if (pendingMode === 'duel') {
+    handleDuelPick(hitInfo);
     return;
   }
   if (pendingMode === 'skill') {
@@ -307,6 +339,7 @@ function clearSelection() {
   attackCells = [];
   pendingMode = null;
   pendingSkillId = null;
+  pendingDuelUnit = null;
   if (sceneManager) sceneManager.clearHighlight();
   hud.hideUnit();
 }
@@ -336,21 +369,29 @@ async function doMove(unit, cell) {
 
 let movementDone = null; // 行走动画完成回调（doMove ↔ bus 'unit:moved'）
 
-// 行动菜单：攻击 / 计略 / 待机。
+// 行动菜单：攻击 / 单挑 / 计略 / 待机。
 async function openActionMenu(unit) {
   const targets = attackableEnemiesOf(unit);
   const usableSkills = (unit.skills || []).filter((sid) => (skillUses.get(`${unit.id}:${sid}`) || 0) > 0);
+  // 近战我方贴敌将（曼哈顿 1）即可发起单挑——含第一战「贴黄巾渠帅 yt_capt」的演示路径。
+  const duelTargets = controller.canDuelTargets(unit);
 
   const actions = [
     { id: 'attack', label: '攻击', disabled: targets.length === 0 },
-    { id: 'skill', label: '计略', disabled: usableSkills.length === 0 },
-    { id: 'wait', label: '待机' },
   ];
+  if (duelTargets.length > 0) {
+    actions.push({ id: 'duel', label: '单挑 ⚔' });
+  }
+  actions.push({ id: 'skill', label: '计略', disabled: usableSkills.length === 0 });
+  actions.push({ id: 'wait', label: '待机' });
+
   hud.showUnit(unit);
   const choice = await hud.actionMenu(actions);
 
   if (choice === 'attack') {
     enterAttackMode(unit);
+  } else if (choice === 'duel') {
+    await beginDuelAction(unit, duelTargets);
   } else if (choice === 'skill') {
     await chooseSkill(unit, usableSkills);
   } else {
@@ -395,6 +436,95 @@ function handleAttackPick(hitInfo) {
   controller.attack(attacker, target);
   // 攻击为结束动作。
   finishUnitAction(attacker);
+}
+
+// --- 单挑（武将对决）-------------------------------------------------------
+// 选「单挑」后：单目标→立即开打；多目标→进入点选敌将模式。
+async function beginDuelAction(unit, duelTargets) {
+  const targets = duelTargets && duelTargets.length ? duelTargets : controller.canDuelTargets(unit);
+  if (!targets || targets.length === 0) {
+    // 兜底（理论不会到这）：回行动菜单。
+    await openActionMenu(unit);
+    return;
+  }
+  if (targets.length === 1) {
+    await startDuel(unit, targets[0]);
+    return;
+  }
+  // 多个相邻敌将：点选目标。
+  enterDuelMode(unit, targets);
+}
+
+function enterDuelMode(unit, targets) {
+  selectedUnit = unit;
+  pendingDuelUnit = unit;
+  pendingMode = 'duel';
+  attackCells = targets.map((u) => ({ c: u.pos.c, r: u.pos.r }));
+  sceneManager.clearHighlight();
+  sceneManager.highlight(attackCells, 'attack');
+  interactionLocked = false;
+  hud.turnBanner('选择单挑对手', 800);
+}
+
+function handleDuelPick(hitInfo) {
+  const unit = pendingDuelUnit;
+  if (!unit) return;
+  let target = null;
+  if (hitInfo.kind === 'unit') {
+    target = controller.units.find((x) => x.id === hitInfo.id && x.alive);
+  } else if (hitInfo.kind === 'tile') {
+    target = controller.units.find(
+      (x) => x.alive && x.pos.c === hitInfo.c && x.pos.r === hitInfo.r,
+    );
+  }
+  // 仅接受合法（仍相邻可挑战的）敌将。
+  const valid = controller.canDuelTargets(unit);
+  if (!target || !valid.some((t) => t.id === target.id)) return;
+
+  pendingMode = null;
+  pendingDuelUnit = null;
+  startDuel(unit, target);
+}
+
+// 发起一场单挑：电影化对决 → 回写战场 → 刷新场面 → 结束发起者行动。
+async function startDuel(unit, target) {
+  pendingMode = null;
+  pendingDuelUnit = null;
+  interactionLocked = true;
+  sceneManager.clearHighlight();
+  clearSelection();
+
+  bus.emit('duel:start', { aId: unit.id, bId: target.id, forced: false });
+
+  const duel = new Duel(unit, target, { rng: makeRng(`${BATTLE_SEED}:duel:${unit.id}:${target.id}:${controller.turn}`) });
+  let outcome;
+  try {
+    outcome = await duelView.run(duel, duelViewCtx());
+  } catch (err) {
+    console.error('[main] duel view failed:', err);
+    outcome = { winnerId: null, loserId: null, loserHpAfter: 0, fled: true, expGain: 0 };
+  }
+
+  // 回写主战场：败者掉血/阵亡/退走 + 胜者经验 + 发起者 hasActed + 'duel:end' + 胜负判定。
+  // applyDuelOutcome 内部会 emit 'unit:died'（bus 移除 3D group）/ 'unit:moved'（退走）。
+  controller.applyDuelOutcome(outcome);
+
+  // 升级飘字（单挑胜方可能升级）。
+  if (outcome && outcome.winnerId) {
+    const w = controller.units.find((u) => u.id === outcome.winnerId);
+    maybeShowLevelUp(w);
+  }
+
+  // 相机回等距沙盘（duelView 已 reset，这里再保险一次）。
+  cameraRig && cameraRig.setIso();
+
+  // 刷新 HUD：若发起者仍存活则展示其最新状态。
+  if (unit.alive) hud.showUnit(unit);
+  else hud.hideUnit();
+
+  // 若单挑已分出整场胜负（applyDuelOutcome→_checkEnd 触发 battle:win/lose），onBattleEnd 已接管。
+  // finishUnitAction 会读取 controller.phase；'resolved' 时不再恢复交互。
+  finishUnitAction(unit.alive ? unit : null);
 }
 
 // --- 计略 -------------------------------------------------------------------
@@ -694,7 +824,7 @@ function wireBus() {
       // 回合开始剧情触发：暂锁交互播放小演出。
       const wasLocked = interactionLocked;
       interactionLocked = true;
-      await runScenario(payload.scenarioId, { camera: cameraRig, sceneManager });
+      await runScenario(payload.scenarioId, scenarioCtx());
       cameraRig.setIso();
       interactionLocked = wasLocked;
     } else if (payload && payload.focus && cameraRig) {
@@ -745,7 +875,7 @@ async function onBattleEnd(win) {
 
   // 战后剧情（仅胜利播 outro）。
   if (win) {
-    await runScenario(STORY.outro, { camera: cameraRig, sceneManager });
+    await runScenario(STORY.outro, scenarioCtx());
     cameraRig.setIso();
     // 推进进度并自动存档。
     game.state.battleIndex = (game.state.battleIndex || 0) + 1;

@@ -39,9 +39,14 @@ import { gainExp } from './leveling.js';
 import { evaluate as evaluateVictory } from './victory.js';
 import { planTurn } from './ai.js';
 import { triangleMul } from './classTriangle.js';
+import { canDuel, duelChallengeable } from './duel.js';
+import { neighbors, tileAt } from './grid.js';
+import { TERRAIN } from '../data/terrain.js';
 
 const KILL_EXP = 50;
 const HIT_EXP = 10;
+// 单挑胜者经验（plan §1 / D2，约 40）。
+const DUEL_EXP = 40;
 
 const key = (c, r) => `${c},${r}`;
 const manhattan = (a, b) => Math.abs(a.c - b.c) + Math.abs(a.r - b.r);
@@ -265,6 +270,90 @@ export class BattleController {
 
     this._checkEnd();
     return result;
+  }
+
+  // ---- 单挑（duel）钩子 ---------------------------------------------------
+
+  /**
+   * 该单位本回合可发起单挑的目标列表：存活、敌方、与 unit 曼哈顿距离 1，
+   * 且 duelChallengeable(unit,target) 通过（近战发起方 + 异阵营 + 双方存活）。
+   * 发起方须可单挑（canDuel）且尚未行动（!hasActed）；否则返回空数组。
+   * @param {object} unit 发起方
+   * @returns {object[]} 可挑战的敌方 units
+   */
+  canDuelTargets(unit) {
+    if (!unit || !unit.alive) return [];
+    if (!canDuel(unit)) return [];
+    if (unit.hasActed) return [];
+    return this.units.filter(
+      (t) =>
+        t !== unit &&
+        t.alive &&
+        manhattan(unit.pos, t.pos) === 1 &&
+        duelChallengeable(unit, t),
+    );
+  }
+
+  /**
+   * 把单挑结果回写主战场（plan §1 / D2）。
+   *   - 败者 curHp = loserHpAfter；若 <=0 → alive=false 并 emit 'unit:died'。
+   *   - fled：把败者退走到相邻可通行空格（若有）。
+   *   - 胜者经验 leveling.gainExp(~40)。
+   *   - 发起者（胜者若是己方，否则参战的 wei 一方）hasActed=true。
+   *   - emit 'duel:end' {winnerId,loserId,fled}，随后 _checkEnd()。
+   * @param {{winnerId:string|null, loserId:string|null, loserHpAfter:number, fled:boolean, expGain?:number}} outcome
+   */
+  applyDuelOutcome({ winnerId, loserId, loserHpAfter, fled } = {}) {
+    const winner = winnerId != null ? this.units.find((u) => u.id === winnerId) : null;
+    const loser = loserId != null ? this.units.find((u) => u.id === loserId) : null;
+
+    if (loser) {
+      loser.curHp = loserHpAfter;
+      if (loser.curHp <= 0) {
+        loser.curHp = Math.min(loser.curHp, 0);
+        if (loser.alive) {
+          loser.alive = false;
+          this.bus.emit('unit:died', { unit: loser });
+        }
+      } else if (fled) {
+        // 退走：移到相邻可通行的空格（若有）。
+        const spot = this._retreatTile(loser);
+        if (spot) {
+          const from = { c: loser.pos.c, r: loser.pos.r };
+          loser.pos = { c: spot.c, r: spot.r };
+          this.bus.emit('unit:moved', { unit: loser, from, to: { c: spot.c, r: spot.r }, path: [spot] });
+        }
+      }
+    }
+
+    // 胜者发经验（~40）。
+    if (winner && winner.alive) {
+      gainExp(winner, DUEL_EXP);
+    }
+
+    // 发起者标记已行动：胜者若属玩家方(wei)则取胜者，否则取参战的 wei 一方。
+    const initiator =
+      winner && winner.faction === 'wei'
+        ? winner
+        : [winner, loser].find((u) => u && u.faction === 'wei');
+    if (initiator) initiator.hasActed = true;
+
+    this.bus.emit('duel:end', { winnerId: winnerId || null, loserId: loserId || null, fled: !!fled });
+
+    this._checkEnd();
+  }
+
+  /** 在败者四邻找一个界内、可通行、未被其它存活单位占据的空格用于退走。 */
+  _retreatTile(loser) {
+    const occupied = this._occupiedSet(loser);
+    for (const nb of neighbors(this.map, loser.pos.c, loser.pos.r)) {
+      const tid = tileAt(this.map, nb.c, nb.r);
+      const def = TERRAIN[tid];
+      if (!def || def.passable === false) continue;
+      if (occupied.has(key(nb.c, nb.r))) continue;
+      return nb;
+    }
+    return null;
   }
 
   // ---- 相位流转 -----------------------------------------------------------
