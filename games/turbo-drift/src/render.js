@@ -56,8 +56,9 @@ export function render(ctx, world) {
     const road = dark ? theme.road[0] : theme.road[1];
     const rumble = dark ? theme.rumble[0] : theme.rumble[1];
     ctx.fillStyle = grass; ctx.fillRect(0, p.y, W, prev.y - p.y + 1);
-    trap(ctx, prev.x, prev.y, prev.w, p.x, p.y, p.w, road);
+    // 先画较宽的路肩，再把路面盖在上面 → 只在两侧露出红白路肩
     trap(ctx, prev.x, prev.y, prev.w * 1.12, p.x, p.y, p.w * 1.12, rumble);
+    trap(ctx, prev.x, prev.y, prev.w, p.x, p.y, p.w, road);
     if (dark) trap(ctx, prev.x, prev.y, prev.w * 0.04, p.x, p.y, p.w * 0.04, '#f5f5f5');
   }
 
@@ -65,13 +66,14 @@ export function render(ctx, world) {
   ctx.textAlign = 'center';
   for (const b of world.boxes || []) {
     const pr = proj[b.n]; if (!pr || pr.p.scale <= 0) continue;
-    ctx.font = `${Math.max(10, pr.p.w * 0.5)}px system-ui`;
+    ctx.font = `${Math.max(10, Math.min(pr.p.w * 0.5, 64))}px system-ui`;
     ctx.fillText('❓', pr.p.x + b.x * pr.p.w, pr.p.y);
   }
-  // AI 车
+  // AI 车（车宽 ≈ 半个车道并设上限，避免贴近时被投影放大到爆屏）
   for (const a of world.ai || []) {
     const pr = proj[a.n]; if (!pr || pr.p.scale <= 0 || pr.p.y < H * 0.45) continue;
-    drawCar(ctx, pr.p.x + a.x * pr.p.w, pr.p.y, pr.p.w * 0.9, a.color, 0, theme.night);
+    const cw = Math.max(6, Math.min(pr.p.w * 0.42, 150));
+    drawCar(ctx, pr.p.x + a.x * pr.p.w, pr.p.y, cw, a.color, 0, theme.night);
   }
   ctx.textAlign = 'left';
 
