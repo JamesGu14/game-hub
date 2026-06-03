@@ -122,8 +122,8 @@ export class Renderer {
       const activeTeam = allTeams[game.active.team];
       if (activeTeam) {
         const activeWorm = activeTeam.worms[game.active.wormIdx];
-        if (activeWorm && activeWorm.alive) {
-          this._aimIndicator(ctx, activeWorm, game.aim, game.level, camX);
+        if (activeWorm && activeWorm.alive && !activeTeam.isAI) {
+          this._aimIndicator(ctx, activeWorm, game.aim, game, camX);
           if (game.aim.charging) {
             this._powerBar(ctx, game.aim);
           }
@@ -305,73 +305,123 @@ export class Renderer {
   _worm(ctx, worm, team, isActive, camX) {
     const wx = worm.x - camX;
     const wy = worm.y;
-    const hw = WORM.w / 2;
     const hh = WORM.h / 2;
+    const f = worm.facing >= 0 ? 1 : -1;
+    const groundY = wy + hh;                 // feet line
 
     const teamColor = TEAM_COLORS[team.id] || '#aaa';
-    const hatColor = TEAM_HAT_COLORS[team.id] || '#444';
-
+    const accent = TEAM_HAT_COLORS[team.id] || '#444';
     const flash = worm.hitFlashMs > 0;
+    const body = flash ? '#ffffff' : teamColor;
+    const seam = flash ? '#ffcc00' : 'rgba(0,0,0,0.22)';
 
     ctx.save();
 
-    // Hit flash
-    const bodyColor = flash ? '#ffffff' : teamColor;
-
-    // Shadow
+    // Soft shadow
     ctx.fillStyle = 'rgba(0,0,0,0.2)';
     ctx.beginPath();
-    ctx.ellipse(wx, wy + hh + 2, hw * 0.8, 4, 0, 0, Math.PI * 2);
+    ctx.ellipse(wx, groundY + 1, 15, 4, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Body (rounded rect)
-    ctx.fillStyle = bodyColor;
+    // --- Caterpillar body: tail -> mid -> shoulder segments resting on ground ---
+    const segs = [
+      { dx: -11, r: 6 },   // tail (small)
+      { dx: -3,  r: 8 },   // mid
+      { dx: 6,   r: 9 },   // shoulder
+    ];
+    for (const s of segs) {
+      const cx = wx + f * s.dx;
+      const cy = groundY - s.r;
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.arc(cx, cy, s.r, 0, Math.PI * 2);
+      ctx.fill();
+      // belly highlight
+      ctx.fillStyle = flash ? '#ffffff' : 'rgba(255,255,255,0.20)';
+      ctx.beginPath();
+      ctx.arc(cx - f * 2, cy - 2, s.r * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      // segment seam (little ridge on top)
+      ctx.strokeStyle = seam;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(cx, cy, s.r, -Math.PI * 0.7, -Math.PI * 0.3);
+      ctx.stroke();
+    }
+
+    // --- Head (largest, at the front) ---
+    const hx = wx + f * 12;
+    const headR = 11;
+    const hy = groundY - headR - 2;
+    ctx.fillStyle = body;
     ctx.beginPath();
-    ctx.roundRect(wx - hw, wy - hh, WORM.w, WORM.h, 8);
+    ctx.arc(hx, hy, headR, 0, Math.PI * 2);
     ctx.fill();
 
-    // Hat
-    ctx.fillStyle = flash ? '#ffffff' : hatColor;
-    ctx.fillRect(wx - hw + 2, wy - hh - 8, WORM.w - 4, 8);
-    ctx.fillRect(wx - hw + 6, wy - hh - 13, WORM.w - 12, 6);
+    // Antennae (two springy feelers with team-color tips)
+    ctx.strokeStyle = flash ? '#ffcc00' : '#3a2a18';
+    ctx.lineWidth = 1.6;
+    for (const ax of [-4, 4]) {
+      const bx = hx + ax;
+      const tipX = bx + ax * 0.4, tipY = hy - headR - 6;
+      ctx.beginPath();
+      ctx.moveTo(bx, hy - headR + 2);
+      ctx.lineTo(tipX, tipY);
+      ctx.stroke();
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY - 1, 2.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
-    // Eyes (2 dots)
-    const eyeOffX = worm.facing >= 0 ? 3 : -3;
+    // Rosy cheeks
+    ctx.fillStyle = flash ? '#ffe082' : 'rgba(255,120,150,0.55)';
+    ctx.beginPath();
+    ctx.arc(hx + f * 6, hy + 3, 2.6, 0, Math.PI * 2);
+    ctx.arc(hx - f * 6, hy + 3, 2.6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Big eyes (pupils toward facing)
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(hx - f * 3, hy - 2, 3.5, 0, Math.PI * 2);
+    ctx.arc(hx + f * 4, hy - 2, 3.5, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = flash ? '#ffcc00' : '#1a1a1a';
     ctx.beginPath();
-    ctx.arc(wx + eyeOffX - 3, wy - hh / 2, 3, 0, Math.PI * 2);
-    ctx.arc(wx + eyeOffX + 4, wy - hh / 2, 3, 0, Math.PI * 2);
+    ctx.arc(hx - f * 3 + f, hy - 1.5, 1.8, 0, Math.PI * 2);
+    ctx.arc(hx + f * 4 + f, hy - 1.5, 1.8, 0, Math.PI * 2);
     ctx.fill();
 
     // Smile
     ctx.strokeStyle = flash ? '#ffcc00' : '#1a1a1a';
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.4;
     ctx.beginPath();
-    ctx.arc(wx + eyeOffX / 2, wy, 5, 0.2, Math.PI - 0.2);
+    ctx.arc(hx + f, hy + 3, 3.2, 0.15 * Math.PI, 0.85 * Math.PI);
     ctx.stroke();
 
-    // HP bar above worm
-    this._hpBar(ctx, wx, wy - hh - 18, WORM.w + 10, worm.hp, 100, teamColor);
+    // HP bar above
+    this._hpBar(ctx, wx, groundY - WORM.h - 16, WORM.w + 12, worm.hp, 100, teamColor);
 
-    // Active-worm: arrow indicator
+    // Active-worm: bouncing arrow + name
     if (isActive) {
+      const ay = groundY - WORM.h - 24;
       ctx.fillStyle = '#ffe082';
       ctx.shadowColor = '#ffcc00';
       ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.moveTo(wx, wy - hh - 28);
-      ctx.lineTo(wx - 6, wy - hh - 22);
-      ctx.lineTo(wx + 6, wy - hh - 22);
+      ctx.moveTo(wx, ay + 8);
+      ctx.lineTo(wx - 6, ay);
+      ctx.lineTo(wx + 6, ay);
       ctx.closePath();
       ctx.fill();
       ctx.shadowBlur = 0;
 
-      // Active worm name
       ctx.fillStyle = '#ffe082';
       ctx.font = 'bold 10px sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'bottom';
-      ctx.fillText(team.name, wx, wy - hh - 30);
+      ctx.fillText(team.name, wx, ay - 2);
     }
 
     ctx.restore();
@@ -569,55 +619,125 @@ export class Renderer {
   // -------------------------------------------------------------------------
   // Aim indicator: dotted predicted arc
   // -------------------------------------------------------------------------
-  _aimIndicator(ctx, worm, aim, level, camX) {
+  _aimIndicator(ctx, worm, aim, game, camX) {
+    const level = game.level;
+    const terrain = game.terrain;
+    const def = WEAPONS[game.weaponKey] || {};
     const wx = worm.x - camX;
     const wy = worm.y;
-
-    // Direction line from worm center
-    const lineLen = 40;
-    const endX = wx + Math.cos(aim.angle) * lineLen;
-    const endY = wy + Math.sin(aim.angle) * lineLen;
+    const f = worm.facing >= 0 ? 1 : -1;
+    const waterY = level ? level.waterY : 512;
+    const color = def.color || '#ffe27a';
+    const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 140);
 
     ctx.save();
-    ctx.strokeStyle = 'rgba(255,255,255,0.7)';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
+
+    // Short aim direction line (always shown)
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 4]);
     ctx.beginPath();
     ctx.moveTo(wx, wy);
-    ctx.lineTo(endX, endY);
+    ctx.lineTo(wx + Math.cos(aim.angle) * 34, wy + Math.sin(aim.angle) * 34);
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Predicted arc (dotted)
-    const gravity = 480; // PHYSICS.projGravity
-    const wind = (level && level.wind) || 0;
-    const speed = aim.power || AIM.minSpeed;
-    const vel = vecFromAngle(aim.angle, speed);
-
-    try {
-      const result = simulate(
-        { x: worm.x, y: worm.y },
-        vel,
-        { gravity, wind, dt: 1 / 30, maxSteps: 60 },
-        (x, y) => y > (level ? level.waterY : 512) + 20,
-      );
-
-      ctx.strokeStyle = 'rgba(255,255,150,0.5)';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 6]);
-      ctx.beginPath();
-      let first = true;
-      for (let i = 0; i < result.points.length; i += 2) {
-        const pt = result.points[i];
-        const px = pt.x - camX;
-        const py = pt.y;
-        if (first) { ctx.moveTo(px, py); first = false; }
-        else ctx.lineTo(px, py);
+    // Hit tests for the preview
+    const solid = (x, y) => (x < 0 || x > FIELD.W || y > waterY + 30)
+      || (terrain ? !!terrain.solid(x | 0, y | 0) : false);
+    const enemyHit = (x, y) => {
+      for (const t of game.teams || []) {
+        for (const w of t.worms) {
+          if (w.alive && w !== worm && Math.hypot(w.x - x, w.y - y) < 12) return true;
+        }
       }
+      return false;
+    };
+
+    // Pulsing reticle at the predicted impact point
+    const drawReticle = (x, y) => {
+      const px = x - camX;
+      const r = 7 + pulse * 3;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = 0.6 + pulse * 0.4;
+      ctx.beginPath(); ctx.arc(px, y, r, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(px - r - 3, y); ctx.lineTo(px - r + 3, y);
+      ctx.moveTo(px + r - 3, y); ctx.lineTo(px + r + 3, y);
+      ctx.moveTo(px, y - r - 3); ctx.lineTo(px, y - r + 3);
+      ctx.moveTo(px, y + r - 3); ctx.lineTo(px, y + r + 3);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+
+    if (def.kind === 'projectile' || def.kind === 'grenade' || def.kind === 'holy') {
+      // Ballistic preview from the muzzle; stops at terrain / worm / water.
+      // Uses aim.power, so the arc + landing reticle update live while charging.
+      const mx = worm.x + f * 18, my = worm.y;
+      const speed = aim.power || AIM.minSpeed;
+      const vel = vecFromAngle(aim.angle, speed);
+      const wind = def.windAffected ? ((level && level.wind) || 0) : 0;
+      try {
+        const res = simulate(
+          { x: mx, y: my }, vel,
+          { gravity: 480, wind, dt: 1 / 60, maxSteps: 300 },
+          (x, y) => solid(x, y) || enemyHit(x, y),
+        );
+        ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([2, 7]);
+        ctx.beginPath();
+        for (let i = 0; i < res.points.length; i += 2) {
+          const p = res.points[i];
+          if (i === 0) ctx.moveTo(p.x - camX, p.y); else ctx.lineTo(p.x - camX, p.y);
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+        drawReticle(res.last.x, res.last.y);
+      } catch (_) { /* skip arc on edge cases */ }
+    } else if (def.kind === 'hitscan') {
+      const mx = worm.x + f * 18, my = worm.y;
+      const range = def.range || 260;
+      const dx = Math.cos(aim.angle), dy = Math.sin(aim.angle);
+      let hx = mx + dx * range, hy = my + dy * range;
+      for (let i = 4; i <= range; i += 4) {
+        const rx = mx + dx * i, ry = my + dy * i;
+        if (solid(rx, ry) || enemyHit(rx, ry)) { hx = rx; hy = ry; break; }
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.65)';
+      ctx.lineWidth = 2; ctx.setLineDash([2, 6]);
+      ctx.beginPath();
+      ctx.moveTo(mx - camX, my); ctx.lineTo(hx - camX, hy);
       ctx.stroke();
       ctx.setLineDash([]);
-    } catch (_) {
-      // simulate may throw in edge cases; just skip the arc
+      drawReticle(hx, hy);
+    } else if (def.kind === 'dynamite') {
+      drawReticle(worm.x + f * 6, worm.y + 14);
+    } else if (def.kind === 'airstrike') {
+      let tx = (aim.mode === 'mouse' && game._lastAimPoint)
+        ? game._lastAimPoint.x
+        : worm.x + Math.cos(aim.angle) * ((aim.power || AIM.minSpeed) * 0.9);
+      tx = Math.max(20, Math.min(FIELD.W - 20, tx));
+      const px = tx - camX;
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.5 + pulse * 0.4;
+      ctx.lineWidth = 2; ctx.setLineDash([4, 5]);
+      ctx.beginPath(); ctx.moveTo(px, 0); ctx.lineTo(px, FIELD.H); ctx.stroke();
+      ctx.setLineDash([]); ctx.globalAlpha = 1;
+      ctx.fillStyle = color;
+      for (let yy = 18; yy < 80; yy += 22) {
+        ctx.beginPath();
+        ctx.moveTo(px, yy + 8); ctx.lineTo(px - 5, yy); ctx.lineTo(px + 5, yy);
+        ctx.closePath(); ctx.fill();
+      }
+    } else if (def.kind === 'melee') {
+      const range = def.range || 40;
+      ctx.strokeStyle = color; ctx.globalAlpha = 0.5 + pulse * 0.4;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(wx, wy, range, f > 0 ? -0.8 : Math.PI - 0.8, f > 0 ? 0.8 : Math.PI + 0.8);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
     }
 
     ctx.restore();

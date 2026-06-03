@@ -67,6 +67,7 @@ export class Game {
     this.teams = [];
     this.active = null;           // { team, wormIdx }
     this.weaponKey = 'bazooka';
+    this.aim = Aim;               // expose Aim singleton so the renderer can draw the guide
 
     this.projectiles = [];
     this.crates = [];
