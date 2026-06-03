@@ -79,4 +79,15 @@ export const GAMES = [
     tags: ['策略', '战棋', '三国', '键鼠'],
     path: 'games/caocao-zhuan/index.html',
   },
+  {
+    id: 'boom-worms',
+    title: '炮炮虫 BOOM WORMS',
+    subtitle: '回合制炮战 · 打飞小虫',
+    desc: '回合制策略 · 抛物线瞄准 · 可破坏地形 · 单人闯关/双人同机 · 键鼠/手柄',
+    icon: '🪱',
+    accent: '#ff9f43',
+    accent2: '#b3590a',
+    tags: ['策略', '回合制', '键鼠/手柄'],
+    path: 'games/boom-worms/index.html',
+  },
 ];
