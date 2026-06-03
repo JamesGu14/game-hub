@@ -84,8 +84,8 @@ function syncOverlays() {
   const powerBar = document.getElementById('power-bar');
   if (powerBar) {
     const { Aim } = _getAimRef();
-    if (game.state === 'firing' && Aim.charging) {
-      const { AIM } = _getConfigRef();
+    const { AIM } = _getConfigRef();
+    if (game.state === 'firing' && Aim && AIM && Aim.charging) {
       const pct = ((Aim.power - AIM.minSpeed) / (AIM.maxSpeed - AIM.minSpeed)) * 100;
       powerBar.style.width = Math.min(100, Math.max(0, pct)) + '%';
     } else {

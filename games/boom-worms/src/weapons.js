@@ -61,7 +61,7 @@ export function fire(weaponKey, worm, aim, ctx) {
       return [];
 
     case 'airstrike':
-      return _fireAirstrike(weaponKey, def, aim, worm.team);
+      return _fireAirstrike(weaponKey, def, aim, worm.team, worm);
 
     default:
       return [];
@@ -228,9 +228,12 @@ function _fireMelee(weaponKey, def, worm, allWorms, onExplode) {
 // Airstrike: bombs falling vertically from top at the target X column
 // ---------------------------------------------------------------------------
 
-function _fireAirstrike(weaponKey, def, aim, ownerTeam) {
+function _fireAirstrike(weaponKey, def, aim, ownerTeam, worm) {
   const bombs = def.bombs ?? 5;
-  const targetX = aim.x ?? 480; // aim.x set by game when player clicks target
+  // aim.x is set by game._fireActiveWorm; fall back to in-front-of-worm, then center.
+  const facing = worm ? (worm.facing ?? 1) : 1;
+  const fallback = worm ? worm.x + facing * 200 : 480;
+  const targetX = aim.x ?? fallback;
   const spread = 40; // px spread between bomb columns
   const projectiles = [];
 

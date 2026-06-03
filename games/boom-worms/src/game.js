@@ -203,6 +203,7 @@ export class Game {
 
       case 'mouseAim':
         Aim.setFromMouse(worm, action.x, action.y);
+        this._lastAimPoint = { x: action.x, y: action.y };
         break;
 
       case 'chargeStart':
@@ -422,6 +423,9 @@ export class Game {
       }
     }
 
+    // checkOutcome returns the winning team's id (or -1 draw, null continue).
+    // Invariant (set in startGame): teams[0].id === 0 is ALWAYS the human player,
+    // teams[1].id === 1 is the opponent (AI in solo). Ids match array indices.
     const outcome = checkOutcome(this.teams);
 
     if (outcome === 0) {
@@ -496,6 +500,16 @@ export class Game {
     const worm = this._activeWorm();
     const activeTeam = this.teams[this.active.team];
     if (!worm || !activeTeam) return;
+
+    // Airstrike needs a target column. Mouse users: where they pointed last.
+    // Key/pad users: project along the aim direction scaled by charge power.
+    if (WEAPONS[this.weaponKey] && WEAPONS[this.weaponKey].kind === 'airstrike') {
+      let targetX = (Aim.mode === 'mouse' && this._lastAimPoint)
+        ? this._lastAimPoint.x
+        : worm.x + Math.cos(launchParams.angle) * (launchParams.speed * 0.9);
+      targetX = Math.max(20, Math.min(FIELD.W - 20, targetX));
+      launchParams = { ...launchParams, x: targetX };
+    }
 
     const allWorms = this._allWorms();
     const newProjectiles = fire(this.weaponKey, worm, launchParams, {
