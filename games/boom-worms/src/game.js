@@ -12,7 +12,7 @@ import { applyExplosion } from './combat.js';
 import { updateProjectile } from './projectile.js';
 import { fire } from './weapons.js';
 import { Aim } from './aim.js';
-import { solveAim, jitterAim } from './ai.js';
+import { AIController } from './ai.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -650,50 +650,19 @@ export class Game {
   }
 
   // -------------------------------------------------------------------------
-  // AI turn (simple: use solveAim + jitterAim)
+  // AI turn — delegated to AIController in ai.js
   // -------------------------------------------------------------------------
   _runAITurn() {
-    if (!this.active) return;
-    const worm = this._activeWorm();
-    if (!worm || !worm.alive) { this._advanceTurn(); return; }
-
-    // Find a target: alive team-0 worm (lowest hp)
-    const targets = this.teams[0].worms.filter(w => w.alive);
-    if (!targets.length) { this._advanceTurn(); return; }
-    const target = targets.reduce((a, b) => a.hp <= b.hp ? a : b);
-
-    // Try to solve aim
-    let launchParams;
-    try {
-      const sol = solveAim(
-        worm.x, worm.y, target.x, target.y,
-        PHYSICS.projGravity, 180, 720, this.wind
-      );
-      if (sol) {
-        launchParams = jitterAim(sol, this.level.aiError, Math.random);
-      }
-    } catch {
-      // Fallback: shoot roughly at target
-    }
-
-    if (!launchParams) {
-      // Fallback: angle toward target with mid power
-      const dx = target.x - worm.x;
-      const angle = dx >= 0 ? -Math.PI / 4 : -Math.PI * 3 / 4;
-      launchParams = { angle, speed: 400 };
-    }
-
-    // Snap Aim state for render
-    Aim.angle = launchParams.angle;
-    Aim.power = launchParams.speed;
-
-    this._fireActiveWorm(launchParams);
-    this._aiPending = false;
+    AIController.takeTurn(this);
   }
 
-  /** Lazy import of AI solver (avoids circular if needed). */
+  /** Returns the Aim singleton so AIController can sync the render state. */
+  _getAim() {
+    return { Aim };
+  }
+
+  /** Returns the Input singleton (wired by main.js). */
   _getInput() {
-    // Input is passed in main.js by reference; we store it here
     return { Input: this._input || null };
   }
 
