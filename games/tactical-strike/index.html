@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TACTICAL STRIKE</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@300;400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  { "imports": { "three": "./lib/three.module.js", "three/addons/": "./lib/" } }
+  </script>
+</head>
+<body>
+
+  <!-- Game Canvas -->
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Back to Hub (top-left; fullscreen button is top-right) -->
+  <a id="back-to-hub" href="../../index.html" title="返回游戏中心 / Back to Hub"
+     style="position:fixed;top:14px;left:14px;z-index:9999;display:flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(10,12,18,0.72);border:2px solid rgba(255,255,255,0.35);color:#fff;font:600 14px/1 'Roboto Mono',monospace;text-decoration:none;backdrop-filter:blur(4px);">← HUB</a>
+
+  <!-- Fullscreen toggle (always visible) -->
+  <button id="btn-fullscreen" type="button" title="全屏 / Fullscreen (F)">
+    <span class="fs-icon fs-icon-enter">⛶</span>
+    <span class="fs-label">全屏</span>
+  </button>
+
+  <!-- Main Menu -->
+  <div id="main-menu">
+    <div class="menu-overlay">
+      <h1 class="menu-title">TACTICAL STRIKE</h1>
+      <p class="menu-subtitle">选择阵营 / SELECT FACTION</p>
+
+      <div class="faction-row">
+        <div id="faction-ct" class="faction-card" data-faction="CT">
+          <div class="faction-icon ct-icon">👮</div>
+          <div class="faction-name">警察 CT</div>
+          <div class="faction-desc">Counter-Terrorist</div>
+        </div>
+        <div id="faction-t" class="faction-card" data-faction="T">
+          <div class="faction-icon t-icon">💣</div>
+          <div class="faction-name">悍匪 T</div>
+          <div class="faction-desc">Terrorist</div>
+        </div>
+      </div>
+
+      <div class="difficulty-row">
+        <span class="diff-label">难度 / DIFFICULTY</span>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="tutorial" /> 教学 Tutorial
+        </label>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="easy" /> 简单 Easy
+        </label>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="normal" checked /> 普通 Normal
+        </label>
+        <label class="diff-option">
+          <input type="radio" name="difficulty" value="hard" /> 困难 Hard
+        </label>
+      </div>
+
+      <button id="btn-start" class="btn-start">开始游戏 / START</button>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+
+    <!-- Bottom-left: Health & Armor -->
+    <div id="hud-health-block">
+      <div id="hud-health-bar-wrapper">
+        <div id="hud-health-bar">
+          <div id="hud-health-fill"></div>
+        </div>
+      </div>
+      <div id="hud-health-num">100</div>
+      <div id="hud-armor-row">
+        <span class="hud-label">ARMOR</span>
+        <span id="hud-armor">100</span>
+      </div>
+    </div>
+
+    <!-- Bottom-right: Weapon & Ammo -->
+    <div id="hud-ammo-block">
+      <div id="hud-weapon-icon">&#128299;</div>
+      <div id="hud-ammo-display">
+        <span id="hud-ammo-current">30</span>
+        <span class="ammo-sep">/</span>
+        <span id="hud-ammo-reserve">90</span>
+      </div>
+    </div>
+
+    <!-- Top-center: Timer & Round -->
+    <div id="hud-top-center">
+      <div id="hud-round">Round 1</div>
+      <div id="hud-timer">02:00</div>
+    </div>
+
+    <!-- Top-right: Kill Feed -->
+    <div id="hud-killfeed"></div>
+
+    <!-- Crosshair (center) -->
+    <div id="crosshair">
+      <div class="ch-dot"></div>
+      <div class="ch-line ch-up"></div>
+      <div class="ch-line ch-down"></div>
+      <div class="ch-line ch-left"></div>
+      <div class="ch-line ch-right"></div>
+    </div>
+
+    <!-- Hit marker (flashes X when a hit is confirmed) -->
+    <div id="hit-marker">
+      <span class="hm-line hm-tl"></span>
+      <span class="hm-line hm-tr"></span>
+      <span class="hm-line hm-bl"></span>
+      <span class="hm-line hm-br"></span>
+    </div>
+
+    <!-- Floating damage numbers -->
+    <div id="damage-overlay"></div>
+
+    <!-- Minimap (top-left) -->
+    <canvas id="minimap" width="180" height="180"></canvas>
+
+    <!-- Hit indicator (flashes red when player takes damage) -->
+    <div id="hit-vignette"></div>
+
+    <!-- Sniper scope overlay -->
+    <div id="scope-overlay" class="hidden">
+      <div class="scope-lens"></div>
+      <div class="scope-cross-v"></div>
+      <div class="scope-cross-h"></div>
+      <div class="scope-dot"></div>
+    </div>
+
+  </div>
+
+  <!-- Death Screen -->
+  <div id="death-screen" class="hidden">
+    <div class="screen-content">
+      <h2 class="screen-title danger">YOU DIED</h2>
+      <p class="screen-hint">Press <kbd>R</kbd> to restart</p>
+    </div>
+  </div>
+
+  <!-- Tutorial hint panel (only shown in tutorial mode) -->
+  <div id="tutorial-hint" class="hidden">
+    <div class="tut-block">
+      <div class="tut-title">教学模式 / TUTORIAL</div>
+      <div class="tut-row"><kbd>W A S D</kbd> 移动</div>
+      <div class="tut-row"><kbd>Shift</kbd> 冲刺</div>
+      <div class="tut-row"><kbd>Mouse</kbd> 瞄准</div>
+      <div class="tut-row"><kbd>左键</kbd> 射击</div>
+      <div class="tut-row"><kbd>R</kbd> 换弹</div>
+      <div class="tut-row"><kbd>1 / 2</kbd> 切换武器</div>
+      <div class="tut-row tut-warn">⚠ 敌人不会射击，安心练习</div>
+    </div>
+  </div>
+
+  <!-- Win Screen -->
+  <div id="win-screen" class="hidden">
+    <div class="screen-content">
+      <h2 class="screen-title win">ROUND CLEARED</h2>
+      <p class="screen-hint">Press <kbd>Space</kbd> for next round</p>
+    </div>
+  </div>
+
+  <!-- Buy Menu Overlay -->
+  <div id="buy-menu" class="hidden">
+    <div class="bm-panel">
+      <div class="bm-header">
+        <span class="bm-title">BUY MENU</span>
+        <span class="bm-money">$<span id="buy-money">800</span></span>
+        <button id="buy-close" class="bm-close" type="button">×</button>
+      </div>
+      <div class="bm-body">
+        <div class="bm-sidebar">
+          <div class="bm-tab active" data-tab="pistol">PISTOLS</div>
+          <div class="bm-tab" data-tab="smg">SMGs</div>
+          <div class="bm-tab" data-tab="rifle">RIFLES</div>
+          <div class="bm-tab" data-tab="sniper">SNIPERS</div>
+          <div class="bm-tab" data-tab="ammo">AMMO</div>
+          <div class="bm-hint">[B] Toggle &nbsp; [ESC] Close</div>
+        </div>
+        <div class="bm-cards" id="buy-cards"></div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+/* Switch-style game hub — dark home screen with a horizontal card rail. */
+:root {
+  --bg-accent: #3cd070;
+  --bar-h: 64px;
+  --dock-h: 92px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif;
+  color: #f2f5f8;
+  background: #0d1117;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* Animated background glow that picks up the selected game's accent color. */
+.bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(60% 60% at 20% 10%, color-mix(in srgb, var(--bg-accent) 22%, transparent), transparent 70%),
+    radial-gradient(70% 70% at 90% 90%, color-mix(in srgb, var(--bg-accent) 16%, transparent), transparent 70%),
+    linear-gradient(160deg, #11161f 0%, #0a0d13 60%, #070a0f 100%);
+  transition: background 0.6s ease;
+  animation: drift 18s ease-in-out infinite alternate;
+}
+@keyframes drift {
+  from {
+    background-position: 0% 0%, 100% 100%, 0 0;
+  }
+  to {
+    background-position: 12% 8%, 88% 92%, 0 0;
+  }
+}
+
+.app {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---- Top status bar ---- */
+.topbar {
+  height: var(--bar-h);
+  flex: 0 0 var(--bar-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 28px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.brand .avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  background: linear-gradient(135deg, #e60012, #ff5a3c);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.12);
+}
+.brand .title {
+  font-size: 18px;
+}
+.brand .title small {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  color: #8b97a7;
+  letter-spacing: 2px;
+}
+.status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  color: #c3ccd8;
+  font-size: 15px;
+}
+.status .icons {
+  letter-spacing: 4px;
+  opacity: 0.85;
+}
+#clock {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* ---- Card rail ---- */
+.stage {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 0;
+}
+.rail {
+  display: flex;
+  gap: 32px;
+  align-items: center;
+  padding: 30px 50vw; /* big side padding so first/last card can center */
+  overflow-x: auto;
+  scrollbar-width: none;
+  scroll-snap-type: x mandatory;
+}
+.rail::-webkit-scrollbar {
+  display: none;
+}
+
+.card {
+  scroll-snap-align: center;
+  flex: 0 0 auto;
+  width: 230px;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  opacity: 0.5;
+  transform: scale(0.82);
+  transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.28s ease;
+  outline: none;
+}
+.card.selected {
+  opacity: 1;
+  transform: scale(1.06);
+}
+.card-cover {
+  width: 230px;
+  height: 230px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(120% 120% at 30% 20%, color-mix(in srgb, var(--accent) 85%, white 0%), transparent 60%),
+    linear-gradient(150deg, var(--accent) 0%, var(--accent2) 100%);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.45);
+  position: relative;
+  border: 3px solid transparent;
+  transition: border-color 0.28s ease, box-shadow 0.28s ease;
+}
+.card.selected .card-cover {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--accent) 55%, transparent),
+    0 18px 44px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.card-icon {
+  font-size: 104px;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.4));
+}
+.card-label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-align: center;
+  max-width: 230px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- Detail panel under the rail ---- */
+.detail {
+  text-align: center;
+  padding: 4px 24px 10px;
+  min-height: 118px;
+}
+#detail-title {
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+#detail-sub {
+  font-size: 15px;
+  color: var(--bg-accent);
+  margin-top: 4px;
+  transition: color 0.4s ease;
+}
+#detail-desc {
+  font-size: 14px;
+  color: #aab4c2;
+  margin-top: 8px;
+}
+.tags {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 12px;
+}
+.tag {
+  font-size: 12px;
+  color: #cdd6e2;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---- Bottom dock (decorative + hints) ---- */
+.dock {
+  height: var(--dock-h);
+  flex: 0 0 var(--dock-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 32px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(0, 0, 0, 0.22);
+}
+.dock-icons {
+  display: flex;
+  gap: 14px;
+}
+.dock-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c3ccd8;
+}
+.hints {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+  color: #9aa6b4;
+}
+.hints kbd {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  margin-right: 4px;
+}
+
+/* ---- Launch transition ---- */
+body.launching .app {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  opacity: 0;
+  transform: scale(1.04);
+}
+
+@media (max-width: 620px) {
+  .card,
+  .card-cover {
+    width: 168px;
+  }
+  .card-cover {
+    height: 168px;
+  }
+  .card-icon {
+    font-size: 76px;
+  }
+  .hints {
+    display: none;
+  }
+}

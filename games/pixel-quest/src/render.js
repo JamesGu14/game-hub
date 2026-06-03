@@ -1,0 +1,313 @@
+// Canvas 2D renderer for 像素冒险 PIXEL QUEST.
+// Draws the scene in FIELD space (camera-offset world), then scales + letterboxes
+// onto the canvas. Menus/story/pause/etc. are HTML overlays (index.html).
+
+import { FIELD, TILE, THEMES } from './config.js';
+import { Sprites } from './sprites.js';
+import { Goomba, Koopa } from './entities.js';
+
+const SC = TILE / 16; // sprite logical px -> world px (tiles are drawn at 16px)
+
+export class Renderer {
+  constructor(canvas) {
+    this.canvas = canvas;
+    this.ctx = canvas.getContext('2d');
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.scale = 1;
+    this.offsetX = 0;
+    this.offsetY = 0;
+    Sprites.setThemes(THEMES);
+    this.resize();
+    window.addEventListener('resize', () => this.resize());
+  }
+
+  resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    this.canvas.width = Math.floor(w * this.dpr);
+    this.canvas.height = Math.floor(h * this.dpr);
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.scale = Math.min(w / FIELD.W, h / FIELD.H);
+    this.offsetX = (w - FIELD.W * this.scale) / 2;
+    this.offsetY = (h - FIELD.H * this.scale) / 2;
+  }
+
+  render(game) {
+    const ctx = this.ctx;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+    // Enter field-space.
+    ctx.setTransform(
+      this.scale * this.dpr, 0, 0, this.scale * this.dpr,
+      this.offsetX * this.dpr, this.offsetY * this.dpr,
+    );
+    ctx.imageSmoothingEnabled = false;
+
+    const theme = THEMES[game.level ? game.level.theme : 'overworld'];
+
+    if (!game.level) {
+      this._sky(ctx, theme, 0);
+      return;
+    }
+
+    const cam = game.camera;
+    this._sky(ctx, theme, cam.x);
+    this._parallax(ctx, theme, cam.x);
+
+    ctx.save();
+    ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
+    this._tiles(ctx, game, theme, cam);
+    this._flagAndCastle(ctx, game);
+    this._coins(ctx, game);
+    this._powerups(ctx, game);
+    this._enemies(ctx, game);
+    this._fireballs(ctx, game);
+    this._player(ctx, game);
+    this._particles(ctx, game);
+    this._floatTexts(ctx, game);
+    ctx.restore();
+
+    this._hud(ctx, game);
+    if (game.state === 'ready') this._readyBanner(ctx, game);
+  }
+
+  _sky(ctx, theme, camX) {
+    const g = ctx.createLinearGradient(0, 0, 0, FIELD.H);
+    g.addColorStop(0, theme.skyTop);
+    g.addColorStop(1, theme.skyBot);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, FIELD.W, FIELD.H);
+  }
+
+  _parallax(ctx, theme, camX) {
+    // clouds (slow)
+    const cx = -camX * 0.3;
+    ctx.fillStyle = 'rgba(255,255,255,0.85)';
+    for (let i = 0; i < 8; i++) {
+      const base = i * 220;
+      let x = ((base + cx) % (FIELD.W + 220));
+      if (x < -220) x += FIELD.W + 220;
+      const y = 30 + (i % 3) * 36;
+      this._cloud(ctx, x, y);
+    }
+    // hills (medium)
+    const hx = -camX * 0.5;
+    ctx.fillStyle = theme.hills;
+    for (let i = 0; i < 8; i++) {
+      const base = i * 260;
+      let x = ((base + hx) % (FIELD.W + 260));
+      if (x < -260) x += FIELD.W + 260;
+      ctx.beginPath();
+      ctx.arc(x, FIELD.H - 40, 70, Math.PI, 0);
+      ctx.fill();
+    }
+  }
+
+  _cloud(ctx, x, y) {
+    [[0, 8, 28, 12], [12, 0, 26, 14], [28, 6, 26, 12]].forEach((b) =>
+      ctx.fillRect(x + b[0], y + b[1], b[2], b[3]));
+  }
+
+  _tiles(ctx, game, theme, cam) {
+    const grid = game.level.grid;
+    const themeKey = game.level.theme;
+    const c0 = Math.max(0, Math.floor(cam.x / TILE) - 1);
+    const c1 = Math.min(game.level.cols - 1, Math.floor((cam.x + FIELD.W) / TILE) + 1);
+    const r0 = Math.max(0, Math.floor(cam.y / TILE) - 1);
+    const r1 = Math.min(game.level.rows - 1, Math.floor((cam.y + FIELD.H) / TILE) + 1);
+
+    for (let r = r0; r <= r1; r++) {
+      const row = grid[r];
+      if (!row) continue;
+      for (let c = c0; c <= c1; c++) {
+        const t = row[c];
+        if (!t || t === 'flag' || t === 'castle') continue;
+        const cv = Sprites.tile(t, themeKey);
+        Sprites.blit(ctx, cv, c * TILE, r * TILE, TILE / cv.width);
+      }
+    }
+    // moving platforms
+    for (const m of game.movers) {
+      const cv = Sprites.tile('platform', themeKey);
+      const tiles = Math.round(m.w / TILE);
+      for (let i = 0; i < tiles; i++) {
+        Sprites.blit(ctx, cv, m.x + i * TILE, m.y, TILE / cv.width);
+      }
+    }
+  }
+
+  _flagAndCastle(ctx, game) {
+    const lv = game.level;
+    if (lv.flagX != null) {
+      const groundY = lv.height - 2 * TILE;
+      const poleH = groundY - 1 * TILE;
+      const cv = Sprites.flag(poleH / SC);
+      Sprites.blit(ctx, cv, lv.flagX + 8, TILE, SC);
+    }
+    if (lv.castleX != null) {
+      const cv = Sprites.castle();
+      const bottom = lv.height - 2 * TILE;
+      Sprites.blitBottom(ctx, cv, lv.castleX + TILE, bottom, SC);
+      // princess waiting near the castle door
+      const pri = Sprites.princess();
+      Sprites.blitBottom(ctx, pri, lv.castleX + TILE, bottom, SC * 0.7);
+    }
+  }
+
+  _coins(ctx, game) {
+    for (const c of game.coinsArr) {
+      if (c.dead) continue;
+      Sprites.coin(ctx, c.x + c.w / 2, c.y + c.h / 2, 22);
+    }
+  }
+
+  _powerups(ctx, game) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    for (const pu of game.powerups) {
+      if (pu.dead) continue;
+      const ch = pu.kind === 'mushroom' ? '🍄' : pu.kind === 'flower' ? '🌻' : '⭐';
+      ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji",serif';
+      ctx.fillText(ch, pu.x + pu.w / 2, pu.y + pu.h / 2);
+    }
+  }
+
+  _enemies(ctx, game) {
+    for (const e of game.enemies) {
+      if (e.dead) continue;
+      let cv;
+      if (e instanceof Goomba) {
+        if (e.squish > 0) {
+          // squished: draw flat
+          cv = Sprites.goomba(0);
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(cv, Math.round(e.x), Math.round(e.y + e.h * 0.6),
+            e.w, e.h * 0.4);
+          ctx.restore();
+          continue;
+        }
+        cv = Sprites.goomba(e.frame());
+      } else if (e instanceof Koopa) {
+        if (e.state === 'walk') cv = Sprites.koopa('walk', e.frame());
+        else cv = Sprites.koopa('shell', 0);
+      }
+      if (cv) {
+        const sc = e.w / cv.width;
+        Sprites.blit(ctx, cv, e.x, e.y + e.h - cv.height * sc, sc);
+      }
+    }
+  }
+
+  _fireballs(ctx, game) {
+    for (const f of game.fireballs) {
+      if (f.dead) continue;
+      ctx.save();
+      ctx.fillStyle = '#ff7a1a';
+      ctx.beginPath();
+      ctx.arc(f.x + f.w / 2, f.y + f.h / 2, f.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.arc(f.x + f.w / 2, f.y + f.h / 2, f.w / 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  _player(ctx, game) {
+    const p = game.player;
+    if (!p) return;
+    // flicker during i-frames / rainbow-ish during star
+    let alpha = 1;
+    if (p.invuln > 0 && Math.floor(p.invuln * 16) % 2 === 0) alpha = 0.35;
+    if (p.star > 0 && Math.floor(p.star * 12) % 2 === 0) alpha = 0.55;
+    const cv = Sprites.hero(p.form, p.frame(), p.faceRight);
+    const sc = p.w / cv.width;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    Sprites.blit(ctx, cv, p.x, p.y + p.h - cv.height * sc, sc);
+    ctx.restore();
+  }
+
+  _particles(ctx, game) {
+    for (const pt of game.particles) {
+      ctx.globalAlpha = Math.max(0, pt.life);
+      ctx.fillStyle = pt.color;
+      ctx.fillRect(pt.x, pt.y, pt.size, pt.size);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _floatTexts(ctx, game) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 16px system-ui, sans-serif';
+    for (const t of game.floatTexts) {
+      ctx.globalAlpha = Math.max(0, t.life);
+      ctx.fillStyle = '#fff';
+      ctx.strokeStyle = t.color || '#000';
+      ctx.lineWidth = 3;
+      ctx.strokeText(t.text, t.x, t.y);
+      ctx.fillText(t.text, t.x, t.y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  _hud(ctx, game) {
+    const bandH = 36;
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.fillRect(0, 0, FIELD.W, bandH);
+    const cy = bandH / 2;
+    ctx.textBaseline = 'middle';
+
+    // score (left, inset for ← HUB button)
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillStyle = '#ffe066';
+    ctx.fillText(`⭐ ${game.score}`, 92, cy);
+
+    // coins (center-left)
+    ctx.fillStyle = '#fff';
+    ctx.font = '15px system-ui, sans-serif';
+    ctx.fillText(`🪙 ${game.coins}`, 200, cy);
+
+    // world id (center)
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillText(`关卡 ${game.currentLevelId()}`, FIELD.W / 2, cy);
+
+    // time (center-right)
+    ctx.textAlign = 'center';
+    ctx.fillStyle = game.timeLeft < 60 ? '#ff6b6b' : '#fff';
+    ctx.fillText(`⏱ ${Math.ceil(game.timeLeft)}`, FIELD.W - 150, cy);
+
+    // lives (right, inset for mute button)
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#fff';
+    ctx.font = '14px system-ui, sans-serif';
+    let hearts = '';
+    const n = Math.min(game.lives, 6);
+    for (let i = 0; i < n; i++) hearts += '❤️';
+    ctx.fillText(hearts || '💔', FIELD.W - 58, cy);
+  }
+
+  _readyBanner(ctx, game) {
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.45)';
+    ctx.fillRect(0, FIELD.H / 2 - 40, FIELD.W, 80);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 30px system-ui, sans-serif';
+    ctx.fillText(`关卡 ${game.currentLevelId()} · ${game.currentLevelName()}`, FIELD.W / 2, FIELD.H / 2 - 6);
+    ctx.font = '16px system-ui, sans-serif';
+    ctx.fillStyle = '#ffe066';
+    ctx.fillText('准备出发！按 跳 / 手柄✕ 开始', FIELD.W / 2, FIELD.H / 2 + 24);
+  }
+}

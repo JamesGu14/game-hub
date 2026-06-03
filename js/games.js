@@ -46,4 +46,15 @@ export const GAMES = [
     tags: ['闯关', '动作', '键盘/手柄'],
     path: 'games/jungle-blitz/index.html',
   },
+  {
+    id: 'pixel-quest',
+    title: '像素冒险 PIXEL QUEST',
+    subtitle: '横版闯关 · 拯救公主',
+    desc: '跑跳踩怪 · 蘑菇变大 · 火球星星 · 4 关救公主 · 键鼠/手柄',
+    icon: '🍄',
+    accent: '#e8362b',
+    accent2: '#9c1f17',
+    tags: ['冒险', '跳跃', '键鼠/手柄'],
+    path: 'games/pixel-quest/index.html',
+  },
 ];

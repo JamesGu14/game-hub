@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#0a1a2e" />
+    <title>蛇蛇王国</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: #0a1a2e;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+        overscroll-behavior: none;
+        color: #fff;
+      }
+      #game {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      #fps {
+        position: fixed;
+        top: 8px;
+        right: 8px;
+        color: #4ade80;
+        font: 14px ui-monospace, monospace;
+        text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
+        pointer-events: none;
+        z-index: 100;
+        display: none; /* hidden by default; toggle via console */
+      }
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 26, 46, 0.92);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 200;
+        padding: 20px;
+      }
+      .overlay.hidden {
+        display: none;
+      }
+      .panel {
+        background: linear-gradient(180deg, #1e3a5f 0%, #0f1f3a 100%);
+        border: 3px solid #fbbf24;
+        border-radius: 24px;
+        padding: 32px 40px;
+        max-width: 520px;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 0 60px rgba(251, 191, 36, 0.4);
+      }
+      .panel h1 {
+        font-size: 36px;
+        color: #fbbf24;
+        margin-bottom: 8px;
+      }
+      .panel h2 {
+        font-size: 28px;
+        color: #fbbf24;
+        margin-bottom: 16px;
+      }
+      .panel p {
+        font-size: 20px;
+        color: #cbd5e1;
+        margin: 16px 0;
+        line-height: 1.6;
+      }
+      .panel ruby {
+        font-size: inherit;
+      }
+      .panel rt {
+        font-size: 0.5em;
+        color: #94a3b8;
+      }
+      .panel input {
+        font-size: 28px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 2px solid #475569;
+        background: #0f1f3a;
+        color: #fff;
+        width: 200px;
+        text-align: center;
+        margin: 16px 0;
+        font-family: inherit;
+        outline: none;
+      }
+      .panel input:focus {
+        border-color: #fbbf24;
+      }
+      .panel button {
+        font-size: 28px;
+        padding: 16px 40px;
+        border-radius: 16px;
+        border: none;
+        background: #fbbf24;
+        color: #0a1a2e;
+        font-weight: bold;
+        font-family: inherit;
+        cursor: pointer;
+        margin: 8px;
+        min-width: 140px;
+        transition: transform 0.1s;
+      }
+      .panel button:active {
+        transform: scale(0.96);
+      }
+      .panel button.secondary {
+        background: #475569;
+        color: #fff;
+      }
+      .tutorial-page {
+        font-size: 24px;
+        line-height: 1.8;
+        min-height: 200px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+      }
+      .tutorial-page .big-emoji {
+        font-size: 80px;
+        margin-bottom: 16px;
+      }
+      .page-dots {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 16px;
+      }
+      .page-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #475569;
+      }
+      .page-dot.active {
+        background: #fbbf24;
+      }
+      #orientation {
+        position: fixed;
+        inset: 0;
+        background: #0a1a2e;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        z-index: 300;
+        font-size: 28px;
+        color: #fbbf24;
+      }
+      #pauseBtn {
+        position: fixed;
+        top: 16px;
+        right: 156px;
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background: rgba(15, 23, 42, 0.7);
+        border: 2px solid rgba(255, 255, 255, 0.4);
+        color: #fff;
+        font-size: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 150;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="game"></canvas>
+    <a
+      id="backToHub"
+      href="../../../index.html"
+      title="返回游戏中心 / Back to Hub"
+      style="position: fixed; top: 16px; left: 16px; z-index: 250; display: flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 999px; background: rgba(15, 23, 42, 0.7); border: 2px solid rgba(255, 255, 255, 0.4); color: #fff; font: 600 15px/1 -apple-system, 'PingFang SC', sans-serif; text-decoration: none; backdrop-filter: blur(4px);"
+      >← HUB</a
+    >
+    <button id="pauseBtn" aria-label="暂停">⏸</button>
+    <div id="fps">FPS: --</div>
+
+    <!-- Start screen: name input -->
+    <div id="startScreen" class="overlay hidden">
+      <div class="panel">
+        <h1>🐍 蛇蛇王国</h1>
+        <p>给<ruby>勇士<rt>yǒng shì</rt></ruby>起个名字吧！</p>
+        <input id="nameInput" maxlength="6" placeholder="小名" />
+        <div>
+          <button id="startBtn">开<ruby>始<rt>shǐ</rt></ruby></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tutorial -->
+    <div id="tutorial" class="overlay hidden">
+      <div class="panel">
+        <h2><ruby>怎么玩<rt>zěn me wán</rt></ruby></h2>
+        <div class="tutorial-page" data-page="0">
+          <div class="big-emoji">🕹️</div>
+          <p>左下<ruby>摇杆<rt>yáo gǎn</rt></ruby><br><ruby>控制<rt>kòng zhì</rt></ruby><ruby>方向<rt>fāng xiàng</rt></ruby></p>
+        </div>
+        <div class="tutorial-page hidden" data-page="1">
+          <div class="big-emoji">🚀</div>
+          <p>右下<ruby>加速<rt>jiā sù</rt></ruby>键<br>按住<ruby>飞快<rt>fēi kuài</rt></ruby>跑</p>
+        </div>
+        <div class="tutorial-page hidden" data-page="2">
+          <div class="big-emoji">🔫</div>
+          <p>右下<ruby>子弹<rt>zǐ dàn</rt></ruby>键<br>击中蛇头<ruby>击败<rt>jī bài</rt></ruby><ruby>对手<rt>duì shǒu</rt></ruby></p>
+        </div>
+        <div class="page-dots">
+          <div class="page-dot active"></div>
+          <div class="page-dot"></div>
+          <div class="page-dot"></div>
+        </div>
+        <div>
+          <button id="tutNext">下<ruby>一<rt>yī</rt></ruby><ruby>页<rt>yè</rt></ruby></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pause menu -->
+    <div id="pauseMenu" class="overlay hidden">
+      <div class="panel">
+        <h2>⏸ <ruby>暂停<rt>zàn tíng</rt></ruby></h2>
+        <p id="pauseStats"></p>
+        <div>
+          <button id="resumeBtn"><ruby>继续<rt>jì xù</rt></ruby></button>
+          <button id="restartBtn" class="secondary"><ruby>重玩<rt>chóng wán</rt></ruby></button>
+          <button id="renameBtn" class="secondary"><ruby>改名<rt>gǎi míng</rt></ruby></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Orientation warning -->
+    <div id="orientation">
+      <div>
+        <div style="font-size: 64px; margin-bottom: 20px">📱↻</div>
+        <ruby>请<rt>qǐng</rt></ruby><ruby>把<rt>bǎ</rt></ruby><ruby>平板<rt>píng bǎn</rt></ruby><ruby>横<rt>héng</rt></ruby><ruby>过来<rt>guò lái</rt></ruby>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

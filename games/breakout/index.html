@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#241133" />
+  <title>打砖块 BREAKOUT · 糖果消砖</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- Play field -->
+  <canvas id="game"></canvas>
+
+  <!-- Back to Hub (top-left) -->
+  <a id="back-to-hub" href="../../index.html" title="返回游戏中心 / Back to Hub">← HUB</a>
+
+  <!-- Mute toggle (top-right) -->
+  <button id="btn-mute" type="button" title="静音 / 声音 (M)">🔊</button>
+
+  <!-- ===== Start menu ===== -->
+  <div id="overlay-menu" class="overlay show">
+    <div class="panel">
+      <h1 class="game-title">🧱 打砖块</h1>
+      <p class="game-sub">糖果消砖 · 选择难度开始</p>
+
+      <div class="mode-row">
+        <button id="mode-easy" class="mode-card selected" type="button">
+          <span class="mode-emoji">🍭</span>
+          <span class="mode-name">简单</span>
+          <span class="mode-desc">友好儿童版<br />5 条命 · 慢球 · 宽板 · 道具多</span>
+        </button>
+        <button id="mode-normal" class="mode-card" type="button">
+          <span class="mode-emoji">🎯</span>
+          <span class="mode-name">普通</span>
+          <span class="mode-desc">经典街机版<br />3 条命 · 快球 · 标准板</span>
+        </button>
+      </div>
+
+      <p id="menu-best" class="best-line">🏆 最高分 0 · 最远第 1 关</p>
+
+      <div class="hints">
+        <span><b>移动</b> 鼠标 / ← → / 手柄摇杆</span>
+        <span><b>发球</b> 空格 / 点击 / 手柄 A</span>
+        <span><b>暂停</b> Esc / P / Start</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Pause ===== -->
+  <div id="overlay-pause" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">⏸ 暂停</h1>
+      <div class="btn-col">
+        <button id="btn-resume" class="big-btn" type="button">▶ 继续</button>
+        <button id="btn-restart" class="big-btn ghost" type="button">↻ 重玩本局</button>
+        <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Level clear ===== -->
+  <div id="overlay-levelclear" class="overlay">
+    <div class="panel">
+      <h1 id="lc-title" class="game-title">🎉 通关！</h1>
+      <p id="lc-score" class="best-line">当前得分 0</p>
+      <button id="btn-next" class="big-btn" type="button">下一关 →</button>
+      <p class="tiny">按 空格 / 手柄 A 继续</p>
+    </div>
+  </div>
+
+  <!-- ===== Game over ===== -->
+  <div id="overlay-gameover" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">😺 再接再厉！</h1>
+      <p id="go-score" class="best-line">本次得分 0</p>
+      <p id="go-best" class="tiny">最高分 0</p>
+      <div class="btn-col">
+        <button id="btn-retry" class="big-btn" type="button">↻ 再玩一次</button>
+        <button id="btn-go-menu" class="big-btn ghost" type="button">选择难度</button>
+        <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Win ===== -->
+  <div id="overlay-win" class="overlay">
+    <div class="panel">
+      <h1 class="game-title">🏆 全部通关！</h1>
+      <p id="win-score" class="best-line">总得分 0</p>
+      <p id="win-best" class="tiny">最高分 0</p>
+      <div class="btn-col">
+        <button id="btn-win-retry" class="big-btn" type="button">↻ 再玩一次</button>
+        <button id="btn-win-menu" class="big-btn ghost" type="button">选择难度</button>
+        <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

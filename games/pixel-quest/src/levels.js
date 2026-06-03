@@ -1,0 +1,199 @@
+// Level data for 像素冒险 PIXEL QUEST.
+// Rows are TOP-DOWN strings using the TILES legend (config.js) plus entity markers:
+//   '@' player start, 'c' checkpoint, 'g' goomba, 'k' koopa, 'o' floating coin.
+// Tile legend chars: # ground, X block, B brick, b brickCoin, ? qcoin, M qpower,
+//   * qstar, [ ] pipe halves, = platform, F flag, A castle.
+// Gaps (missing ground columns) are pits. All gaps are <= 3 tiles and crossable
+// WITHOUT the run key. parseLevel() turns a level into a grid + entity lists.
+
+import { TILE, TILES } from './config.js';
+
+const ENTITY_CHARS = new Set(['@', 'c', 'g', 'k', 'o']);
+
+// ---------------------------------------------------------------------------
+// 1-1 草地 (overworld) — gentle tutorial: run/jump, stomp, ?-blocks, a pipe,
+// small pits (<=3 tiles), a midpoint checkpoint, finishing at the flag.
+const lvl1 = {
+  id: '1-1', name: '草地', theme: 'overworld', time: 300,
+  rows: [
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '            ?                  o o o                                                        ?M?                             ',
+    '                                                                                                                            ',
+    '                      o o               ?M?                   o o o                                 o o                     ',
+    '                                                       []                                                     F             ',
+    '    @     g                       g                    []     g       c             k             g                         ',
+    '#################  ##########################   ##############################   ###########################################',
+    '#################  ##########################   ##############################   ###########################################',
+    '#################  ##########################   ##############################   ###########################################',
+    '#################  ##########################   ##############################   ###########################################',
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// 1-2 地下 (underground) — more platforms, coin strings, koopas, modest pits.
+const lvl2 = {
+  id: '1-2', name: '地下洞窟', theme: 'underground', time: 320,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X                                                                                                                            X',
+    'X                                                                                                                            X',
+    'X                                                                                                                            X',
+    'X                                                                                                                            X',
+    'X         o o o          BbB                  o o o                 ?  ?  ?                         o o o                    X',
+    'X      ====                          ====                  ====                       ====                  ====            X',
+    'X   ?              M                                                          ?                                             X',
+    'X                                                                                                                  F         X',
+    'X    @         k              g           k           g       c          k            g            k                        X',
+    'X###########    ############    ############    ############    ###########    ############    ############    ###########XX',
+    'X###########    ############    ############    ############    ###########    ############    ############    ###########XX',
+    'X###########    ############    ############    ############    ###########    ############    ############    ###########XX',
+    'X###########    ############    ############    ############    ###########    ############    ############    ###########XX',
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// 1-3 空中 (sky) — moving platforms over bigger (still crossable) gaps, a star.
+// Solid floating tile clusters guarantee a walkable path; movers add flavour.
+const lvl3 = {
+  id: '1-3', name: '云端天空', theme: 'sky', time: 340,
+  rows: [
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                                                                                                            ',
+    '                                       *                                                                                    ',
+    '                                                                                                                            ',
+    '                   o o o             o o o             o o o             o o o             o o o                            ',
+    '    @     g                 k                 g         c       g                 k                 g               F       ',
+    '         ======   ======   ======   ======   ======   ======   ======   ======   ======   ======   ======   ======          ',
+    '#########                                                                                                        ###########',
+    '#########                                                                                                        ###########',
+    '#########                                                                                                        ###########',
+    '#########                                                                                                        ###########',
+  ],
+  platforms: [
+    { x: 40, y: 8, axis: 'v', range: 1.5, speed: 45 },
+    { x: 90, y: 8, axis: 'h', range: 2, speed: 50 },
+  ],
+};
+
+// ---------------------------------------------------------------------------
+// 1-4 城堡 (castle) — narrow walkways, jump traps, enemy combos; ends at the
+// castle where the princess waits. Reaching the castle wins the game.
+const lvl4 = {
+  id: '1-4', name: '魔王城堡', theme: 'castle', time: 360,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X          ?     ?                     BBB                     ?  ?                                                    X',
+    'X                                                                                                                      X',
+    'X                      o o                                  o o                          o o                          X',
+    'X                  ===                       === c                          ===                     ==                 X',
+    'X    @   g                  k          g                  g       k          g           k          g          F   A   X',
+    'X############    ##############    ###########    ##########    ##########    ###########    ###########    ##########XX',
+    'X############    ##############    ###########    ##########    ##########    ###########    ###########    ##########XX',
+    'X############    ##############    ###########    ##########    ##########    ###########    ###########    ##########XX',
+    'X############    ##############    ###########    ##########    ##########    ###########    ###########    ##########XX',
+  ],
+};
+
+export const LEVELS = [lvl1, lvl2, lvl3, lvl4];
+
+// ---------------------------------------------------------------------------
+// Parse a level definition into a usable world description.
+export function parseLevel(lvl) {
+  const rows = lvl.rows;
+  const numRows = rows.length;
+  let cols = 0;
+  for (const row of rows) cols = Math.max(cols, row.length);
+
+  const grid = [];
+  const enemies = [];
+  const coins = [];
+  let spawn = { x: 2 * TILE, y: 2 * TILE };
+  let checkpoint = null;
+  let flagX = null;
+  let castleX = null;
+  let castleY = null;
+
+  for (let rIdx = 0; rIdx < numRows; rIdx++) {
+    const row = rows[rIdx];
+    const gridRow = new Array(cols).fill(null);
+    for (let cIdx = 0; cIdx < cols; cIdx++) {
+      const ch = row[cIdx] || ' ';
+      if (ch === ' ') continue;
+
+      if (ENTITY_CHARS.has(ch)) {
+        const px = cIdx * TILE;
+        const py = rIdx * TILE;
+        if (ch === '@') {
+          spawn = { x: px, y: py };
+        } else if (ch === 'g') {
+          enemies.push({ type: 'goomba', x: px, y: py });
+        } else if (ch === 'k') {
+          enemies.push({ type: 'koopa', x: px, y: py });
+        } else if (ch === 'o') {
+          coins.push({ x: px + TILE / 2, y: py + TILE / 2 });
+        } else if (ch === 'c') {
+          checkpoint = { x: px, y: py };
+        }
+        continue;
+      }
+
+      const type = TILES[ch];
+      if (!type) continue;
+      gridRow[cIdx] = type;
+      if (type === 'flag' && flagX == null) flagX = cIdx * TILE;
+      if (type === 'castle') { castleX = cIdx * TILE; castleY = rIdx * TILE; }
+    }
+    grid.push(gridRow);
+  }
+
+  // Optional checkpoint authored by a column index near a ground row.
+  if (!checkpoint && lvl.checkpointCol != null) {
+    // place the checkpoint flag at the first solid surface in that column
+    const col = lvl.checkpointCol;
+    let surfRow = numRows - 1;
+    for (let rIdx = 0; rIdx < numRows; rIdx++) {
+      if (grid[rIdx] && grid[rIdx][col]) { surfRow = rIdx; break; }
+    }
+    checkpoint = { x: col * TILE, y: (surfRow - 2) * TILE };
+  }
+
+  // Build moving platforms (positions are in tile units in the level def).
+  const movers = (lvl.platforms || []).map((p) => ({
+    x: p.x * TILE,
+    y: p.y * TILE,
+    axis: p.axis,
+    range: p.range * TILE,
+    speed: p.speed,
+  }));
+
+  return {
+    grid,
+    cols,
+    rows: numRows,
+    theme: lvl.theme,
+    spawn,
+    checkpoint,
+    flagX,
+    castleX,
+    castleY,
+    enemies,
+    coins,
+    movers,
+    width: cols * TILE,
+    height: numRows * TILE,
+    time: lvl.time,
+    name: lvl.name,
+    id: lvl.id,
+  };
+}
