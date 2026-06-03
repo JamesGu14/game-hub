@@ -64,6 +64,7 @@ let selectedUnit = null; // 当前选中的我方单位
 let moveCells = []; // 当前移动高亮格 [{c,r}]
 let attackCells = []; // 当前攻击高亮格 [{c,r}]
 let interactionLocked = true; // 演出/动画/敌方相位期间锁定点选
+let cinematicPending = false; // 回合开始触发剧情进行中：由其 handler 独占并在播完后进入玩家相位
 let pendingMode = null; // 'attack' | 'skill' | 'duel' 目标选择待定模式
 let pendingSkillId = null; // skill 模式下待施放的计略 id
 let pendingDuelUnit = null; // duel 模式下发起单挑的我方单位（多目标时点选敌将）
@@ -880,7 +881,9 @@ async function endPlayerTurn() {
   await delay(120);
   controller.endPlayerTurn();
   // runEnemyTurn 内已 emit 'turn:changed' 回到 player；若未结束则恢复玩家相位。
-  if (controller.phase === 'player') {
+  // 若本次切换触发了开场剧情（camera:cinematic / cinematicPending），解锁与进入玩家相位
+  // 交给该剧情的 handler 在播完后统一处理，这里不抢先，避免竞态导致永久卡死。
+  if (controller.phase === 'player' && !cinematicPending) {
     beginPlayerPhase();
   }
 }
@@ -947,12 +950,18 @@ function wireBus() {
   // 触发器 / 运镜：battleController._fireTurnStartTriggers emit 'camera:cinematic' {scenarioId}。
   bus.on('camera:cinematic', async (payload) => {
     if (payload && payload.scenarioId) {
-      // 回合开始剧情触发：暂锁交互播放小演出。
-      const wasLocked = interactionLocked;
+      // 回合开始剧情触发：本剧情独占交互锁。播完后按"当前相位"进入玩家相位，
+      // 不能恢复进入前捕获的旧锁值——那会与 endPlayerTurn 的解锁竞态、导致永久卡死。
+      cinematicPending = true;
       interactionLocked = true;
-      await runScenario(payload.scenarioId, scenarioCtx());
-      cameraRig.setIso();
-      interactionLocked = wasLocked;
+      try {
+        await runScenario(payload.scenarioId, scenarioCtx());
+        cameraRig.setIso();
+      } finally {
+        cinematicPending = false;
+        // 回到玩家相位（含解锁 / 横幅 / 结束回合按钮）；若已分胜负则不解锁。
+        if (controller && controller.phase === 'player') beginPlayerPhase();
+      }
     } else if (payload && payload.focus && cameraRig) {
       // 纯运镜请求（focus 为 {c,r} 或世界点）。
       const f = payload.focus;
