@@ -35,6 +35,7 @@ export class Renderer3D {
   setTrack(track) {
     this.cl = buildCenterline(track);
     this._lastZ = null; this.camPos.set(0, 0, 0);
+    this._clearCars();
     this._buildSky(track.theme);
     this._buildGround(track.theme);
     this._buildRoad(track);
@@ -96,6 +97,44 @@ export class Renderer3D {
   }
 
   _buildDeco(track) { /* Task 6 填充：InstancedMesh 路边景物 */ }
+
+  _clearCars() {
+    for (const g of this.cars.values()) this.scene.remove(g);
+    this.cars.clear();
+  }
+
+  _makeCar(color) {
+    const g = new THREE.Group();
+    const body = new THREE.Mesh(new THREE.BoxGeometry(900, 350, 1600),
+      new THREE.MeshLambertMaterial({ color: new THREE.Color(color) }));
+    body.position.y = 350; g.add(body);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(700, 320, 800),
+      new THREE.MeshLambertMaterial({ color: 0xeaf4ff }));
+    cabin.position.set(0, 620, -100); g.add(cabin);
+    const wheelGeo = new THREE.CylinderGeometry(220, 220, 200, 12); wheelGeo.rotateZ(Math.PI / 2);
+    const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
+    for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
+      const w = new THREE.Mesh(wheelGeo, wheelMat); w.position.set(sx * 480, 220, sz * 560); g.add(w);
+    }
+    // 车底 blob 阴影：贴地半透明深色圆，提升地面落点可读性（spec §5）
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(1000, 20),
+      new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.25, depthWrite: false }));
+    shadow.rotation.x = -Math.PI / 2; shadow.position.y = 8; g.add(shadow);
+    return g;
+  }
+
+  // racers: [{id, z, x, color, steerAngle, spinTimer}]，第一个是玩家
+  updateCars(racers) {
+    for (const r of racers) {
+      let g = this.cars.get(r.id);
+      if (!g) { g = this._makeCar(r.color); this.scene.add(g); this.cars.set(r.id, g); }
+      const w = worldAt(this.cl, r.z, r.x);
+      g.position.set(w.pos.x, w.pos.y, w.pos.z);
+      // 车头对齐赛道切向(+heading) + 可见转向(+steer) + 被击打转
+      const spin = r.spinTimer > 0 ? (performance.now() * 0.012) : 0;
+      g.rotation.y = w.heading + (r.steerAngle || 0) * 0.5 + spin;
+    }
+  }
 
   render() { this.renderer.render(this.scene, this.camera); }
 }
