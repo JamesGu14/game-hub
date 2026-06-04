@@ -30,6 +30,8 @@ export function headingAt(pts, zDist) {
   const i = ((Math.floor(s) % total) + total) % total;
   const j = (i + 1) % total;
   const f = s - Math.floor(s);
+  // 接缝：末段(j回绕到0)不向起点插值（开放路径，否则朝向横跨全图突变）；过线由相机直切处理。
+  if (j === 0) return pts[i].heading;
   return lerp(pts[i].heading, pts[j].heading, f);
 }
 
@@ -40,7 +42,8 @@ export function worldAt(pts, zDist, lateral) {
   const i = ((Math.floor(s) % total) + total) % total;
   const j = (i + 1) % total;
   const f = s - Math.floor(s);
-  const a = pts[i], b = pts[j];
+  // 接缝：末段(j回绕到0)不向起点插值，否则会横跨整张图 smear；过线由相机直切处理。
+  const a = pts[i], b = (j === 0) ? a : pts[j];
   const cx = lerp(a.x, b.x, f), cy = lerp(a.y, b.y, f), cz = lerp(a.z, b.z, f);
   const h = lerp(a.heading, b.heading, f);
   // 朝向 (sin h, cos h) 的右法向

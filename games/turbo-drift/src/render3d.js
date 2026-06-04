@@ -10,7 +10,8 @@ export class Renderer3D {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2));
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(62, 1, 1, 300000);
+    // near/far 贴合赛道(最长~66000)+雾(白天 far 95000)：避免 300000:1 的深度精度损失与雾外过绘。
+    this.camera = new THREE.PerspectiveCamera(62, 1, 10, 120000);
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.9));
     const sun = new THREE.DirectionalLight(0xffffff, 0.8);
     sun.position.set(0.5, 1, 0.3).multiplyScalar(10000);
@@ -36,7 +37,7 @@ export class Renderer3D {
     this.cl = buildCenterline(track);
     this._lastZ = null; this.camPos.set(0, 0, 0);
     this._clearCars();
-    if (this._boxGroup) { this.scene.remove(this._boxGroup); this._boxGroup = null; this._boxMeshes = null; }
+    if (this._boxGroup) { this.scene.remove(this._boxGroup); dispose3D(this._boxGroup); this._boxGroup = null; this._boxMeshes = null; }
     this._buildSky(track.theme);
     this._buildGround(track.theme);
     this._buildRoad(track);
@@ -54,7 +55,7 @@ export class Renderer3D {
   }
 
   _buildGround(theme) {
-    if (this.ground) this.scene.remove(this.ground);
+    if (this.ground) { this.scene.remove(this.ground); dispose3D(this.ground); }
     const geo = new THREE.PlaneGeometry(600000, 600000);
     geo.rotateX(-Math.PI / 2); // XY 平面 → 水平 XZ 平面，法向朝上 +y
     this.ground = new THREE.Mesh(geo, new THREE.MeshLambertMaterial({ color: new THREE.Color(theme.grass[1]) }));
@@ -63,7 +64,7 @@ export class Renderer3D {
   }
 
   _buildRoad(track) {
-    if (this.trackMesh) { this.scene.remove(this.trackMesh); this.trackMesh.geometry.dispose(); }
+    if (this.trackMesh) { this.scene.remove(this.trackMesh); dispose3D(this.trackMesh); }
     const pts = this.cl, n = pts.length;
     const positions = [], colors = [];
     const roadCol = new THREE.Color(track.theme.road[0]);
@@ -104,10 +105,7 @@ export class Renderer3D {
 
   // 路边景物：按 theme.deco 在中线两侧用 InstancedMesh 摆低多边树/灯/仙人掌/雪松。
   _buildDeco(track) {
-    if (this.deco) {
-      this.scene.remove(this.deco);
-      this.deco.traverse(o => { if (o.geometry) o.geometry.dispose(); });
-    }
+    if (this.deco) { this.scene.remove(this.deco); dispose3D(this.deco); }
     const group = new THREE.Group();
     const pts = this.cl, n = pts.length;
     const STEP = 7, lateral = 1.45; // 每 7 段一组、放在路沿外侧
@@ -156,7 +154,7 @@ export class Renderer3D {
   }
 
   _clearCars() {
-    for (const g of this.cars.values()) this.scene.remove(g);
+    for (const g of this.cars.values()) { this.scene.remove(g); dispose3D(g); }
     this.cars.clear();
   }
 
@@ -246,6 +244,16 @@ export class Renderer3D {
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
+}
+
+// 释放一棵对象树的 GPU 资源（geometry + material[]），切赛道/清车时调用，避免显存泄漏。
+function dispose3D(obj) {
+  if (!obj) return;
+  obj.traverse(o => {
+    if (o.geometry) o.geometry.dispose();
+    const m = o.material;
+    if (m) Array.isArray(m) ? m.forEach(x => x.dispose()) : m.dispose();
+  });
 }
 
 // 按主题返回 1~2 个低多边景物部件 {geometry, material, oy(中心离地高)}。
