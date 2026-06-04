@@ -208,6 +208,37 @@ export class Renderer3D {
     this.camera.lookAt(look.pos.x, look.pos.y + 300, look.pos.z);
   }
 
+  // 玩家车特效：氮气尾焰（亮蓝锥）、漂移烟（车尾灰球）。挂在车组下随车移动/旋转。
+  updateEffects(state, dt) {
+    const car = this.cars.get('player');
+    if (!car) return;
+    if (!car.userData.fx) car.userData.fx = this._makeCarFx(car);
+    const fx = car.userData.fx;
+    const t = performance.now() * 0.02;
+    const nitro = state.nitroTimer > 0;
+    fx.flame.visible = nitro;
+    if (nitro) fx.flame.scale.set(1, 1 + 0.25 * Math.sin(t * 2), 1);
+    const drifting = state.drift.active;
+    for (const s of fx.smoke) {
+      s.visible = drifting;
+      if (drifting) s.scale.setScalar(0.7 + 0.4 * Math.abs(Math.sin(t + s.userData.ph)));
+    }
+  }
+
+  _makeCarFx(car) {
+    const flameGeo = new THREE.ConeGeometry(190, 1000, 8); flameGeo.rotateX(-Math.PI / 2);
+    const flame = new THREE.Mesh(flameGeo, new THREE.MeshBasicMaterial({ color: 0x33e1ff, transparent: true, opacity: 0.82 }));
+    flame.position.set(0, 330, -1350); flame.visible = false; car.add(flame); // 车尾后方(local -z)
+    const smoke = [];
+    for (const sx of [-380, 380]) {
+      const s = new THREE.Mesh(new THREE.SphereGeometry(260, 8, 6),
+        new THREE.MeshBasicMaterial({ color: 0xdddddd, transparent: true, opacity: 0.5 }));
+      s.position.set(sx, 200, -820); s.visible = false; s.userData.ph = sx > 0 ? 1.7 : 0;
+      car.add(s); smoke.push(s);
+    }
+    return { flame, smoke };
+  }
+
   render() { this.renderer.render(this.scene, this.camera); }
 }
 
