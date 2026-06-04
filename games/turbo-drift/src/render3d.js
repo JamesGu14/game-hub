@@ -36,6 +36,7 @@ export class Renderer3D {
     this.cl = buildCenterline(track);
     this._lastZ = null; this.camPos.set(0, 0, 0);
     this._clearCars();
+    if (this._boxGroup) { this.scene.remove(this._boxGroup); this._boxGroup = null; this._boxMeshes = null; }
     this._buildSky(track.theme);
     this._buildGround(track.theme);
     this._buildRoad(track);
@@ -96,7 +97,58 @@ export class Renderer3D {
     this.scene.add(this.trackMesh);
   }
 
-  _buildDeco(track) { /* Task 6 填充：InstancedMesh 路边景物 */ }
+  // 路边景物：按 theme.deco 在中线两侧用 InstancedMesh 摆低多边树/灯/仙人掌/雪松。
+  _buildDeco(track) {
+    if (this.deco) {
+      this.scene.remove(this.deco);
+      this.deco.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    }
+    const group = new THREE.Group();
+    const pts = this.cl, n = pts.length;
+    const STEP = 7, lateral = 1.45; // 每 7 段一组、放在路沿外侧
+    const placements = [];
+    for (let i = 0; i < n - 1; i += STEP) {
+      const z = i * RENDER.segLen;
+      placements.push(worldAt(pts, z, -lateral).pos, worldAt(pts, z, lateral).pos);
+    }
+    const parts = decoParts(track.theme);
+    const m = new THREE.Matrix4(), sv = new THREE.Vector3();
+    for (const part of parts) {
+      const inst = new THREE.InstancedMesh(part.geometry, part.material, placements.length);
+      let k = 0;
+      for (const p of placements) {
+        // 用索引派生的伪随机缩放/转角（可复现、避免 Math.random）
+        const s = 0.8 + ((k * 37) % 50) / 100;
+        m.makeRotationY((k * 1.3) % (Math.PI * 2));
+        m.scale(sv.set(s, s, s));
+        m.setPosition(p.x, p.y + part.oy * s, p.z);
+        inst.setMatrixAt(k++, m);
+      }
+      inst.instanceMatrix.needsUpdate = true;
+      group.add(inst);
+    }
+    this.deco = group;
+    this.scene.add(group);
+  }
+
+  // 道具箱：旋转发光方块，放在 track.itemBoxes 段位置；被拾取(taken)后隐藏。
+  updateBoxes(track, taken) {
+    if (!this._boxGroup) {
+      this._boxGroup = new THREE.Group(); this.scene.add(this._boxGroup); this._boxMeshes = new Map();
+    }
+    for (const segIdx of track.itemBoxes) {
+      let mesh = this._boxMeshes.get(segIdx);
+      if (!mesh) {
+        mesh = new THREE.Mesh(new THREE.BoxGeometry(700, 700, 700),
+          new THREE.MeshLambertMaterial({ color: 0xffd54f, emissive: 0x6b5500 }));
+        const w = worldAt(this.cl, segIdx * RENDER.segLen, 0);
+        mesh.position.set(w.pos.x, w.pos.y + 520, w.pos.z);
+        this._boxGroup.add(mesh); this._boxMeshes.set(segIdx, mesh);
+      }
+      mesh.visible = !taken.has(segIdx);
+      mesh.rotation.y += 0.05; mesh.rotation.x += 0.02;
+    }
+  }
 
   _clearCars() {
     for (const g of this.cars.values()) this.scene.remove(g);
@@ -157,4 +209,32 @@ export class Renderer3D {
   }
 
   render() { this.renderer.render(this.scene, this.camera); }
+}
+
+// 按主题返回 1~2 个低多边景物部件 {geometry, material, oy(中心离地高)}。
+function decoParts(theme) {
+  const lam = (c, emissive) => new THREE.MeshLambertMaterial({ color: c, emissive: emissive || 0x000000 });
+  switch (theme.deco) {
+    case 'neon': // 夜城：暗杆 + 发光球
+      return [
+        { geometry: new THREE.CylinderGeometry(40, 40, 1400, 6), material: lam(0x1b2233), oy: 700 },
+        { geometry: new THREE.SphereGeometry(260, 10, 8), material: new THREE.MeshBasicMaterial({ color: new THREE.Color(theme.rumble[0]) }), oy: 1500 },
+      ];
+    case 'cactus': // 沙漠：绿柱 + 花苞
+      return [
+        { geometry: new THREE.CylinderGeometry(160, 200, 1300, 7), material: lam(0x3f7d3a), oy: 650 },
+        { geometry: new THREE.SphereGeometry(150, 8, 6), material: lam(0xff6b81), oy: 1350 },
+      ];
+    case 'pine': // 雪地：棕干 + 雪松冠
+      return [
+        { geometry: new THREE.CylinderGeometry(70, 90, 360, 6), material: lam(0x6b4a2b), oy: 180 },
+        { geometry: new THREE.ConeGeometry(560, 1500, 7), material: lam(0xdfeaf7), oy: 1000 },
+      ];
+    case 'tree':
+    default: // 草原：棕干 + 绿冠
+      return [
+        { geometry: new THREE.CylinderGeometry(70, 90, 420, 6), material: lam(0x6b4a2b), oy: 210 },
+        { geometry: new THREE.ConeGeometry(560, 1200, 7), material: lam(0x2e8b3d), oy: 1000 },
+      ];
+  }
 }
