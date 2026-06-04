@@ -45,7 +45,8 @@ export const MAP = {
     { generalId: 'lx_archer', c: 4, r: 0, ai: 'cautious' }, // 西凉弓手据关门居高(gate)
     { generalId: 'lx_inf',    c: 2, r: 2, ai: 'reckless'  }, // 西凉步卒守西阵(road)
     { generalId: 'lx_inf',    c: 7, r: 2, ai: 'reckless'  }, // 西凉步卒守东阵(road)
-    { generalId: 'lx_cav',    c: 5, r: 2, ai: 'reckless'  }  // 西凉骑兵居中策应(grass)
+    { generalId: 'lx_cav',    c: 5, r: 2, ai: 'reckless'  }, // 西凉骑兵居中策应(grass)
+    { generalId: 'lx_strat',  c: 6, r: 2, ai: 'strategist' } // 西凉谋士据关前阵后施计略策应(grass)
   ],
   // 目标：曹军侧翼破关——任一存活我军登上关门(gate)即夺关告捷。
   victory: { type: 'capture' },

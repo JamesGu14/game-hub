@@ -37,6 +37,86 @@ function skillLabel(skillId) {
   return (def && def.name) || skillId;
 }
 
+// 状态类型 -> { 标签, 图标, 增益(good)/减益(bad)/中毒(dot) }（用于信息卡徽章 + 单位上方标记）。
+const STATUS_META = {
+  poison: { label: '中毒', icon: '☠', cls: 'dot' },
+  confuse: { label: '混乱', icon: '✦', cls: 'bad' },
+  immobilize: { label: '定身', icon: '⛓', cls: 'bad' },
+  atk_up: { label: '攻↑', icon: '⚔', cls: 'good' },
+  atk_down: { label: '攻↓', icon: '⚔', cls: 'bad' },
+  def_up: { label: '防↑', icon: '🛡', cls: 'good' },
+  def_down: { label: '防↓', icon: '🛡', cls: 'bad' },
+  spd_up: { label: '速↑', icon: '➤', cls: 'good' },
+};
+
+/** 状态类型中文标签（供 main 飘字 / 日志用）。 */
+export function statusLabel(type) {
+  const m = STATUS_META[type];
+  return m ? m.label : type;
+}
+
+// 一条计略的简短说明（按 kind/element/area/status 程序化生成，无需另写文案表）。
+function skillBrief(def) {
+  if (!def) return '';
+  const parts = [];
+  const elName = { fire: '火', thunder: '雷', water: '水', dark: '暗' }[def.element];
+  const area = (def.area || 0) > 0 ? `范围${def.area}` : '单体';
+  if (def.kind === 'damage') {
+    parts.push(`${elName ? elName + '系' : ''}伤害 ${area}`);
+    if (def.power) parts.push(`威${def.power}`);
+  } else if (def.kind === 'heal') {
+    parts.push(`治疗 ${area}`);
+    if (def.power) parts.push(`量${def.power}`);
+  } else if (def.kind === 'buff') {
+    parts.push(`增益 ${area}`);
+  } else if (def.kind === 'debuff') {
+    parts.push(`弱化 ${area}`);
+  } else if (def.kind === 'control') {
+    parts.push(`控场 ${area}`);
+  }
+  if (def.status && STATUS_META[def.status.type]) {
+    parts.push(`附「${STATUS_META[def.status.type].label}」${def.status.turns || ''}回合`);
+  }
+  const [mn, mx] = def.range || [1, 1];
+  parts.push(`射程${mn === mx ? mx : `${mn}-${mx}`}`);
+  return parts.join(' · ');
+}
+
+/**
+ * 构造计略子菜单项（供 main 调 actionMenu）。
+ * @param {string[]} skillIds 单位持有的计略 id
+ * @param {(skillId:string)=>number} usesLeft  返回该计略剩余次数
+ * @param {(skillId:string)=>boolean} hasTarget 该计略当前是否有合法目标
+ * @returns {Array<{id,label,desc,disabled}>}
+ */
+export function skillMenuItems(skillIds, usesLeft, hasTarget) {
+  return (skillIds || []).map((sid) => {
+    const def = SKILLS[sid];
+    const left = usesLeft ? usesLeft(sid) : 0;
+    const targetable = hasTarget ? hasTarget(sid) : true;
+    const disabled = left <= 0 || !targetable;
+    const reason = left <= 0 ? '（次数耗尽）' : (!targetable ? '（无目标）' : `（${left}）`);
+    return {
+      id: sid,
+      label: `${def ? def.name : sid}${reason}`,
+      desc: skillBrief(def),
+      disabled,
+    };
+  });
+}
+
+// 状态徽章 HTML（信息卡内）：图标 + 标签 + 剩余回合。
+function statusBadgesHtml(statuses) {
+  const list = Array.isArray(statuses) ? statuses : [];
+  if (!list.length) return '';
+  const chips = list.map((s) => {
+    const m = STATUS_META[s.type] || { label: s.type, icon: '•', cls: 'bad' };
+    const t = s.turns > 0 ? `<i>${s.turns}</i>` : '';
+    return `<span class="ccz-status-badge ${m.cls}" title="${m.label}">${m.icon} ${m.label}${t}</span>`;
+  }).join('');
+  return `<div class="ccz-status-row">${chips}</div>`;
+}
+
 // --- DOM 句柄（惰性获取，便于 Node --check / 无 DOM 环境下被 import 也不抛错）-------
 let hudRoot = null;
 let bannerRoot = null;
@@ -105,6 +185,22 @@ function ensureStyles() {
   border-radius:999px; background:rgba(212,175,55,.16);
   border:1px solid rgba(212,175,55,.45); color:var(--gold-soft); font-size:11px; }
 
+.ccz-status-row{ margin-top:9px; display:flex; flex-wrap:wrap; gap:4px; }
+.ccz-status-badge{ display:inline-flex; align-items:center; gap:3px;
+  padding:1px 8px; border-radius:999px; font-size:11px; font-weight:700;
+  border:1px solid rgba(255,255,255,.18); }
+.ccz-status-badge i{ font-style:normal; opacity:.85; font-size:10px;
+  margin-left:2px; padding:0 4px; border-radius:8px; background:rgba(0,0,0,.35); }
+.ccz-status-badge.good{ color:#bff0c8; background:rgba(63,174,90,.22);
+  border-color:rgba(120,220,150,.55); }
+.ccz-status-badge.bad{ color:#ffc7c7; background:rgba(176,90,90,.24);
+  border-color:rgba(230,130,130,.55); }
+.ccz-status-badge.dot{ color:#d6f29a; background:rgba(120,160,50,.26);
+  border-color:rgba(160,200,80,.55); }
+
+.ccz-action-desc{ margin-top:-2px; padding:0 4px 4px; font-size:10.5px;
+  line-height:1.35; color:#aeb7cc; }
+
 .ccz-action-menu{
   position:absolute; min-width:148px; padding:8px; border-radius:12px;
   background:linear-gradient(180deg,rgba(35,44,69,.98),rgba(15,19,32,.98));
@@ -140,10 +236,11 @@ function hpClass(cur, max) {
 }
 
 /**
- * 渲染单位信息卡。读取运行态 Unit（battleController 生成）的顶层有效属性。
- * @param {object} unit Unit：{name,title,faction,classId,level,maxHp,curHp,atk,def,int,spd,mov,skills:[id]}
+ * 渲染单位信息卡。读取运行态 Unit（battleController 生成）的顶层有效属性 + 状态。
+ * @param {object} unit Unit：{name,title,faction,classId,level,maxHp,curHp,atk,def,int,spd,mov,skills:[id],statuses:[{type,turns,magnitude}]}
+ * @param {{usesLeft?:(skillId:string)=>number}} [opts] 可选：提供 usesLeft 时计略 chip 附剩余次数
  */
-export function showUnit(unit) {
+export function showUnit(unit, opts = {}) {
   const hud = getHud();
   if (!hud || !unit) return;
   ensureStyles();
@@ -153,10 +250,18 @@ export function showUnit(unit) {
   const pct = max > 0 ? Math.round((cur / max) * 100) : 0;
   const isFoe = unit.faction === 'foe';
 
+  const usesLeft = opts && typeof opts.usesLeft === 'function' ? opts.usesLeft : null;
   const skills = Array.isArray(unit.skills) ? unit.skills : [];
   const skillChips = skills.length
-    ? skills.map((s) => `<span class="ccz-skill-chip">${skillLabel(s)}</span>`).join('')
+    ? skills.map((s) => {
+        const left = usesLeft ? usesLeft(s) : null;
+        const tag = left != null ? `<i style="font-style:normal;opacity:.8">×${left}</i>` : '';
+        const dim = left === 0 ? ' style="opacity:.4"' : '';
+        return `<span class="ccz-skill-chip"${dim}>${skillLabel(s)} ${tag}</span>`;
+      }).join('')
     : '<span style="color:#7e879c">无</span>';
+
+  const statusHtml = statusBadgesHtml(unit.statuses);
 
   if (!cardEl) {
     cardEl = el('div', 'ccz-unit-card');
@@ -182,6 +287,7 @@ export function showUnit(unit) {
       <div class="ccz-stat"><span>阵营</span><b>${isFoe ? '敌' : '我'}</b></div>
     </div>
     <div class="ccz-skills"><span class="lbl">计略</span>${skillChips}</div>
+    ${statusHtml}
   `;
   cardEl.style.display = 'block';
 }
@@ -244,6 +350,13 @@ export function actionMenu(actions, anchor = {}) {
         });
       }
       menuEl.appendChild(btn);
+      // 可选简短说明（计略子菜单用）。
+      if (a.desc) {
+        const d = el('div', 'ccz-action-desc');
+        d.textContent = a.desc;
+        if (a.disabled) d.style.opacity = '.45';
+        menuEl.appendChild(d);
+      }
     }
 
     // 显式取消项
@@ -343,6 +456,8 @@ export const hud = {
   turnBanner,
   hideBanner,
   classLabel,
+  statusLabel,
+  skillMenuItems,
 };
 
 export default hud;

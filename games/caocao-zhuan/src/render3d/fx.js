@@ -1,12 +1,15 @@
-// render3d/fx.js — 战场特效（行走 / 受击闪 / 飘字）
+// render3d/fx.js — 战场特效（行走 / 受击闪 / 飘字 / 计略特效）
 //
-// 契约（plan §1.8）：
+// 契约（plan §1.8 / P2 UI）：
 //   moveAlong(group, worldPath, onDone)   // 沿 [{x,y,z}...] 逐段行走，带踏步上下颠
 //   hitFlash(group)                       // 短暂受击高光
 //   floatText(ctx, worldPos, text, color) // 上浮的伤害/治疗数字（DOM 投影）
+//   setFxScene(scene)                     // 注册放置三维特效的 scene（castFx 用）
+//   castFx(kind, element, worldPos, aoeWorldCells) // 计略特效（火/雷/水/疗/增益/毒/乱/暗）
 //
-// moveAlong / hitFlash 纯三维动画（requestAnimationFrame 驱动，自结束）。
+// moveAlong / hitFlash / castFx 纯三维动画（requestAnimationFrame 驱动，自结束）。
 // floatText 走 DOM 覆盖层：把世界坐标用相机投影到屏幕，飘起一个数字后移除。
+// castFx 需要先 setFxScene(scene)：把临时粒子/光环挂到该 scene，动画结束自动移除并释放。
 
 import * as THREE from 'three';
 
@@ -200,4 +203,265 @@ export function floatText(ctx, worldPos, text, color = '#ffd95e') {
   }, 1000);
 }
 
-export default { moveAlong, hitFlash, floatText };
+// ---------------------------------------------------------------------------
+// 计略特效（castFx）：程序化粒子 / 光环，无外部贴图，自结束并释放。
+// ---------------------------------------------------------------------------
+
+// 放置三维特效的 scene（由 main.js 在建场后 setFxScene 注册）。
+let fxScene = null;
+
+/** 注册放置三维计略特效的 scene。 */
+export function setFxScene(scene) {
+  fxScene = scene;
+}
+
+// 把一个临时三维对象加进 scene，duration 毫秒后移除并释放几何/材质。
+// onTick(k) 每帧回调（k=0→1 进度），返回 false 可提前结束（罕用）。
+function ephemeral(obj, duration, onTick) {
+  if (!fxScene || !obj) {
+    disposeObj(obj);
+    return;
+  }
+  fxScene.add(obj);
+  const start = performance.now();
+  function tick(now) {
+    const k = Math.min(1, (now - start) / duration);
+    let keep = true;
+    if (onTick) keep = onTick(k) !== false;
+    if (k < 1 && keep) {
+      requestAnimationFrame(tick);
+    } else {
+      fxScene.remove(obj);
+      disposeObj(obj);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+
+// 递归释放几何/材质。
+function disposeObj(obj) {
+  if (!obj) return;
+  obj.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    if (o.material) {
+      const mats = Array.isArray(o.material) ? o.material : [o.material];
+      for (const m of mats) m.dispose && m.dispose();
+    }
+  });
+}
+
+// 把 {x,y,z} / Vector3 归一为 Vector3。
+function vec3(p) {
+  if (!p) return new THREE.Vector3();
+  return p instanceof THREE.Vector3 ? p.clone() : new THREE.Vector3(p.x, p.y, p.z);
+}
+
+// 一群粒子（小方块）从中心爆开/上升。color hex；count 数量；spread 半径；rise 上升幅度。
+function burst(center, { color, count = 14, spread = 0.5, rise = 0.9, size = 0.1, duration = 520, gravity = 0 } = {}) {
+  const c = vec3(center);
+  const group = new THREE.Group();
+  const seeds = [];
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(size, size, size),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }),
+    );
+    const ang = Math.random() * Math.PI * 2;
+    const rad = Math.random() * spread;
+    seeds.push({
+      mesh: m,
+      vx: Math.cos(ang) * rad,
+      vz: Math.sin(ang) * rad,
+      vy: rise * (0.5 + Math.random() * 0.8),
+      spin: (Math.random() - 0.5) * 6,
+    });
+    m.position.copy(c);
+    group.add(m);
+  }
+  ephemeral(group, duration, (k) => {
+    for (const s of seeds) {
+      s.mesh.position.set(
+        c.x + s.vx * k,
+        c.y + s.vy * k - gravity * k * k,
+        c.z + s.vz * k,
+      );
+      s.mesh.rotation.x += s.spin * 0.05;
+      s.mesh.rotation.y += s.spin * 0.05;
+      s.mesh.material.opacity = 1 - k;
+    }
+  });
+}
+
+// 地面光环（扩散的圆环），标示 AOE 范围。color hex；radius 最终半径。
+function ring(center, { color, radius = 1.0, duration = 480, opacity = 0.7 } = {}) {
+  const c = vec3(center);
+  const geo = new THREE.RingGeometry(radius * 0.2, radius * 0.32, 28);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity, side: THREE.DoubleSide, depthWrite: false });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.set(c.x, c.y + 0.05, c.z);
+  ephemeral(mesh, duration, (k) => {
+    const s = 0.4 + k * 2.4;
+    mesh.scale.set(s, s, s);
+    mat.opacity = opacity * (1 - k);
+  });
+}
+
+// 在每个 AOE 格上落一个半透明面片标记（短暂），强化范围感。
+function aoeTint(cells, color, duration = 460) {
+  for (const cell of cells || []) {
+    const c = vec3(cell);
+    const geo = new THREE.PlaneGeometry(0.85, 0.85);
+    const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.4, depthWrite: false });
+    const m = new THREE.Mesh(geo, mat);
+    m.rotation.x = -Math.PI / 2;
+    m.position.set(c.x, c.y + 0.04, c.z);
+    ephemeral(m, duration, (k) => {
+      mat.opacity = 0.42 * (1 - k);
+    });
+  }
+}
+
+// 竖直光柱（落雷 / 妖术）。color hex；从高空打到中心。
+function bolt(center, { color, duration = 360, height = 4.2, width = 0.16 } = {}) {
+  const c = vec3(center);
+  const geo = new THREE.CylinderGeometry(width, width * 1.6, height, 6, 1, true);
+  const mat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.95, depthWrite: false, side: THREE.DoubleSide });
+  const mesh = new THREE.Mesh(geo, mat);
+  mesh.position.set(c.x, c.y + height / 2, c.z);
+  ephemeral(mesh, duration, (k) => {
+    mat.opacity = 0.95 * (1 - k);
+    mesh.scale.x = mesh.scale.z = 1 + k * 0.4;
+  });
+}
+
+// 上升的旋涡（混乱）：几个绕中心螺旋上升的粒子。
+function swirl(center, { color, duration = 620, count = 10, radius = 0.45 } = {}) {
+  const c = vec3(center);
+  const group = new THREE.Group();
+  const seeds = [];
+  for (let i = 0; i < count; i++) {
+    const m = new THREE.Mesh(
+      new THREE.BoxGeometry(0.09, 0.09, 0.09),
+      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false }),
+    );
+    seeds.push({ mesh: m, phase: (i / count) * Math.PI * 2, rise: 0.7 + Math.random() * 0.5 });
+    group.add(m);
+  }
+  ephemeral(group, duration, (k) => {
+    for (const s of seeds) {
+      const ang = s.phase + k * Math.PI * 4;
+      const rad = radius * (1 - k * 0.4);
+      s.mesh.position.set(c.x + Math.cos(ang) * rad, c.y + s.rise * k + 0.2, c.z + Math.sin(ang) * rad);
+      s.mesh.material.opacity = 1 - k;
+    }
+  });
+}
+
+// 按元素/类别取主色。
+const ELEMENT_COLOR = {
+  fire: 0xff7a2a,
+  thunder: 0xfff04a,
+  water: 0x49b6ff,
+  dark: 0x9a4fd0,
+};
+const KIND_COLOR = {
+  heal: 0x6fe39a,
+  buff: 0xf2d35a,
+  debuff: 0xb07ad0,
+  control: 0xc56bff,
+  poison: 0x8fd14f,
+};
+
+/**
+ * 计略特效：按 kind/element 在中心 worldPos + AOE 世界格上播放程序化特效。
+ *   fire    火爆（橙红粒子上扬）+ 地面火环 + AOE 染色
+ *   thunder 竖直雷柱 + 中心电火花
+ *   water   蓝色水花 AOE（每格水柱）+ 扩散水环
+ *   dark    紫色暗能爆 + 下沉粒子
+ *   heal    绿色治疗光环上浮
+ *   buff    金色增益火花
+ *   debuff  紫晕（弱体/降攻）
+ *   control immobilize=蓝定身环 / confuse=紫色旋涡
+ *   poison  绿色毒云（缓慢上浮粒子）
+ * 需先 setFxScene(scene)。无 scene 时静默跳过（不报错）。
+ *
+ * @param {string} kind     'damage'|'heal'|'buff'|'debuff'|'control'（或细分 'poison'）
+ * @param {string|null} element 'fire'|'thunder'|'water'|'dark'|null
+ * @param {{x,y,z}|THREE.Vector3} worldPos 施法中心（AOE 心，单位顶面附近）
+ * @param {Array<{x,y,z}>} aoeWorldCells AOE 覆盖格的世界坐标（地面高度）
+ */
+export function castFx(kind, element, worldPos, aoeWorldCells = []) {
+  if (!fxScene) return;
+  const center = vec3(worldPos);
+  const cells = (aoeWorldCells || []).map(vec3);
+  const isAoe = cells.length > 1;
+
+  // 元素优先决定伤害系特效；非伤害系按 kind 走。
+  if (kind === 'damage') {
+    if (element === 'fire') {
+      aoeTint(cells, 0xff7a2a);
+      ring(center, { color: 0xffae3a, radius: isAoe ? 1.6 : 1.0 });
+      for (const cell of cells) burst(cell, { color: 0xff7a2a, count: 12, spread: 0.4, rise: 1.0, gravity: 0.2, size: 0.12 });
+      return;
+    }
+    if (element === 'thunder') {
+      bolt(center, { color: 0xfff04a });
+      burst(center, { color: 0xfff9b0, count: 16, spread: 0.5, rise: 0.4, gravity: 0.6, size: 0.08, duration: 380 });
+      return;
+    }
+    if (element === 'water') {
+      aoeTint(cells, 0x49b6ff);
+      ring(center, { color: 0x9fe0ff, radius: isAoe ? 2.0 : 1.0 });
+      for (const cell of cells) bolt(cell, { color: 0x49b6ff, height: 1.4, width: 0.18, duration: 420 });
+      return;
+    }
+    if (element === 'dark') {
+      aoeTint(cells, 0x9a4fd0);
+      for (const cell of cells) burst(cell, { color: 0x9a4fd0, count: 12, spread: 0.45, rise: 0.5, gravity: -0.6, size: 0.11, duration: 560 });
+      ring(center, { color: 0xb87aff, radius: isAoe ? 1.6 : 1.0 });
+      return;
+    }
+    // 无元素的伤害（毒雾直伤）：当作毒云处理。
+    aoeTint(cells, KIND_COLOR.poison);
+    for (const cell of cells) burst(cell, { color: KIND_COLOR.poison, count: 10, spread: 0.4, rise: 0.7, gravity: -0.3, size: 0.1, duration: 640 });
+    return;
+  }
+
+  if (kind === 'heal') {
+    for (const cell of cells) {
+      ring(cell, { color: KIND_COLOR.heal, radius: 0.9, opacity: 0.8 });
+      burst(cell, { color: 0xbfffd6, count: 10, spread: 0.3, rise: 1.0, size: 0.09, duration: 560 });
+    }
+    return;
+  }
+
+  if (kind === 'buff') {
+    for (const cell of cells) {
+      ring(cell, { color: KIND_COLOR.buff, radius: 0.9, opacity: 0.85 });
+      burst(cell, { color: 0xffe98a, count: 12, spread: 0.28, rise: 1.1, size: 0.085, duration: 600 });
+    }
+    return;
+  }
+
+  if (kind === 'debuff') {
+    aoeTint(cells, KIND_COLOR.debuff);
+    for (const cell of cells) burst(cell, { color: KIND_COLOR.debuff, count: 9, spread: 0.4, rise: 0.3, gravity: 0.5, size: 0.1, duration: 560 });
+    return;
+  }
+
+  if (kind === 'control') {
+    // poison-like or immobilize/confuse — 按 element/center 区分由调用方传 kind 已足够；
+    // 这里再细分：confuse=旋涡（紫），immobilize=蓝定身环。用 element 字段无意义时统一旋涡。
+    for (const cell of cells) {
+      swirl(cell, { color: KIND_COLOR.control });
+      ring(cell, { color: 0x7a9cff, radius: 0.9, opacity: 0.7 });
+    }
+    return;
+  }
+
+  // 兜底：中心一束金色火花。
+  burst(center, { color: 0xf2d35a, count: 10, spread: 0.4, rise: 0.9 });
+}
+
+export default { moveAlong, hitFlash, floatText, setFxScene, castFx };

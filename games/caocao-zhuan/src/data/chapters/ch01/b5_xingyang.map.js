@@ -52,7 +52,9 @@ export const MAP = {
     { generalId: 'lx_inf',    c: 7, r: 1, ai: 'reckless'  }, // 步卒伏右翼密林(forest)
     { generalId: 'lx_inf',    c: 3, r: 3, ai: 'reckless'  }, // 步卒断渡口杀来(road)
     { generalId: 'lx_cav',    c: 1, r: 3, ai: 'reckless'  }, // 骑兵左翼包抄(grass)
-    { generalId: 'lx_cav',    c: 7, r: 3, ai: 'reckless'  }  // 骑兵右翼包抄(grass)
+    { generalId: 'lx_cav',    c: 7, r: 3, ai: 'reckless'  }, // 骑兵右翼包抄(grass)
+    { generalId: 'lijru',     c: 5, r: 1, ai: 'strategist' }, // 董卓谋士李儒,伏兵纵深中军施计略(grass)
+    { generalId: 'lx_strat',  c: 3, r: 1, ai: 'strategist' }  // 西凉谋士,伏于焦道西口阵后策应(grass)
   ],
   // 章末败战基调：坚持且战且退 6 回合即算「全师而退·虽败犹荣」（survive）。
   // 主将曹操若阵亡则败北（leaderDead）。撤离隘口 gate(c9r7) 为旁白所指归路。

@@ -33,6 +33,7 @@
 
 import { GENERALS } from '../data/generals.js';
 import { CLASSES } from '../data/classes.js';
+import { SKILLS } from '../data/skills.js';
 import { reachable as pfReachable, path as pfPath } from './pathfind.js';
 import { resolveAttack } from './combat.js';
 import { gainExp } from './leveling.js';
@@ -42,11 +43,15 @@ import { triangleMul } from './classTriangle.js';
 import { canDuel, duelChallengeable } from './duel.js';
 import { neighbors, tileAt } from './grid.js';
 import { TERRAIN } from '../data/terrain.js';
+import { skillTargets, aoeCells, resolveSkill } from './skillEngine.js';
+import { applyStatus, tickStatuses, canAct as statusCanAct, canMove as statusCanMove } from './statuses.js';
 
 const KILL_EXP = 50;
 const HIT_EXP = 10;
 // 单挑胜者经验（plan §1 / D2，约 40）。
 const DUEL_EXP = 40;
+// 计略命中目标的经验（命中=HIT_EXP，击杀额外+KILL_EXP，AOE 内逐目标累计）。
+const SKILL_HIT_EXP = HIT_EXP;
 
 const key = (c, r) => `${c},${r}`;
 const manhattan = (a, b) => Math.abs(a.c - b.c) + Math.abs(a.r - b.r);
@@ -122,6 +127,10 @@ function makeUnit(def, placement, faction) {
     // 玩家方 ai 恒为 null；敌方取布置项 ai（再退化到 def.ai）。
     ai: faction === 'foe' ? (placement.ai || def.ai || 'reckless') : null,
     skills: Array.isArray(def.skills) ? [...def.skills] : [],
+    // 运行态状态效果（中毒/混乱/定身/增减益）；初始空数组（tickStatuses/statMods 对空安全）。
+    statuses: [],
+    // 每技能剩余次数：{ [skillId]: remaining }，按 SKILLS[skillId].uses 初始化（懒初始化见 _remainingUses）。
+    _skillUses: {},
     appearance: def.appearance ? { ...def.appearance } : {},
   };
 }
@@ -272,6 +281,148 @@ export class BattleController {
     return result;
   }
 
+  // ---- 计略（skill）钩子 --------------------------------------------------
+
+  /** 取某单位某技能的剩余次数（懒初始化为 SKILLS[skillId].uses）。 */
+  _remainingUses(unit, skillId) {
+    if (!unit._skillUses) unit._skillUses = {};
+    if (unit._skillUses[skillId] == null) {
+      const def = SKILLS[skillId];
+      unit._skillUses[skillId] = def && typeof def.uses === 'number' ? def.uses : 0;
+    }
+    return unit._skillUses[skillId];
+  }
+
+  /**
+   * 给 UI 高亮：可施法的「目标格」集合 + 每个目标格被施放时的 AOE 覆盖预览。
+   * 委托 skillEngine.skillTargets；当该技能/单位不可用（无此技能或次数耗尽）返回空。
+   * @returns {{ targets:{c,r}[], aoe:number, aoeOf:(cell)=>{c,r}[] }}
+   */
+  skillTargetCells(caster, skillId) {
+    const def = SKILLS[skillId];
+    const empty = { targets: [], aoe: 0, aoeOf: () => [] };
+    if (!caster || !caster.alive || !def) return empty;
+    if (!Array.isArray(caster.skills) || !caster.skills.includes(skillId)) return empty;
+    if (this._remainingUses(caster, skillId) <= 0) return empty;
+    const targets = skillTargets(caster, def, this.map, this.units);
+    return {
+      targets,
+      aoe: def.area || 0,
+      aoeOf: (cell) => aoeCells(cell, def.area || 0, this.map),
+    };
+  }
+
+  /**
+   * 施放计略：校验（持有技能 & 次数>0 & 目标格合法）→ skillEngine.resolveSkill →
+   * 应用效果（dmg/heal/status）→ 该技能次数-- → caster.hasActed=true →
+   * 伤害/击杀发经验 → emit 'unit:skill' → 对死亡 emit 'unit:died' → _checkEnd()。
+   * 非法调用抛错，不改状态。
+   * @param {object} caster
+   * @param {string} skillId
+   * @param {{c:number,r:number}} targetCell
+   * @returns {{hits:object[], log:string[], element:(string|null)}} resolveSkill 结果
+   */
+  useSkill(caster, skillId, targetCell) {
+    if (!caster || !caster.alive) throw new Error('useSkill: caster not alive');
+    const def = SKILLS[skillId];
+    if (!def) throw new Error(`useSkill: unknown skill ${skillId}`);
+    if (!Array.isArray(caster.skills) || !caster.skills.includes(skillId)) {
+      throw new Error(`useSkill: caster lacks skill ${skillId}`);
+    }
+    if (this._remainingUses(caster, skillId) <= 0) {
+      throw new Error(`useSkill: skill ${skillId} has no uses left`);
+    }
+    if (!targetCell || typeof targetCell.c !== 'number' || typeof targetCell.r !== 'number') {
+      throw new Error('useSkill: invalid targetCell');
+    }
+    // 目标格须在 skillEngine 计算的合法施法格内。
+    const legal = skillTargets(caster, def, this.map, this.units);
+    const ok = legal.some((t) => t.c === targetCell.c && t.r === targetCell.r);
+    if (!ok) throw new Error(`useSkill: targetCell ${targetCell.c},${targetCell.r} not a legal target`);
+
+    const result = resolveSkill(caster, def, targetCell, this.units, this.map, this.rng);
+
+    // 应用效果（按 unitId 定位单位）。
+    for (const hit of result.hits) {
+      if (hit.missed) continue;
+      const target = this.units.find((u) => u.id === hit.unitId && u.alive);
+      if (!target) continue;
+
+      let killed = false;
+      if (typeof hit.dmg === 'number' && hit.dmg > 0) {
+        target.curHp -= hit.dmg;
+        if (target.curHp <= 0) {
+          target.curHp = Math.min(target.curHp, 0);
+          killed = true;
+        }
+        // 施法者发经验：每个命中目标 HIT_EXP，击杀额外 KILL_EXP。
+        gainExp(caster, killed ? SKILL_HIT_EXP + KILL_EXP : SKILL_HIT_EXP);
+      }
+      if (typeof hit.heal === 'number' && hit.heal > 0) {
+        target.curHp = Math.min(target.maxHp, target.curHp + hit.heal);
+      }
+      // 命中附带状态（伤害附带 / buff / debuff / control）；对已被本次击杀者不再施加状态。
+      if (hit.status && !killed) {
+        applyStatus(target, hit.status);
+      }
+
+      if (killed && target.alive) {
+        target.alive = false;
+        this.bus.emit('unit:died', { unit: target });
+      }
+    }
+
+    // 扣减该技能次数；标记已行动。
+    caster._skillUses[skillId] = this._remainingUses(caster, skillId) - 1;
+    caster.hasActed = true;
+
+    this.bus.emit('unit:skill', {
+      casterId: caster.id,
+      skillId,
+      targetCell: { c: targetCell.c, r: targetCell.r },
+      result,
+    });
+
+    this._checkEnd();
+    return result;
+  }
+
+  // ---- 状态结算 / 行动门控 ------------------------------------------------
+
+  /**
+   * 对所有存活单位结算回合开始状态（poison 扣血可致死、状态过期），逐个 emit 'status:tick'。
+   * 在新玩家回合开始（runEnemyTurn 末尾）与每个敌方单位行动前（_runOneEnemy）调用。
+   */
+  _tickAllStatuses() {
+    for (const u of this.units) {
+      if (!u.alive) continue;
+      if (!Array.isArray(u.statuses) || u.statuses.length === 0) continue;
+      const tick = tickStatuses(u);
+      // poison 致死处理。
+      if (typeof u.curHp === 'number' && u.curHp <= 0 && u.alive) {
+        u.curHp = Math.min(u.curHp, 0);
+        u.alive = false;
+        this.bus.emit('status:tick', { unitId: u.id, dmg: tick.dmg, expired: tick.expired, log: tick.log });
+        this.bus.emit('unit:died', { unit: u });
+        continue;
+      }
+      if (tick.dmg > 0 || tick.expired.length > 0) {
+        this.bus.emit('status:tick', { unitId: u.id, dmg: tick.dmg, expired: tick.expired, log: tick.log });
+      }
+    }
+    this._checkEnd();
+  }
+
+  /** 该单位本回合能否行动（confuse 概率影响；注入本控制器 rng 以确定性可测）。 */
+  canUnitAct(unit) {
+    return statusCanAct(unit, this.rng);
+  }
+
+  /** 该单位本回合能否移动（immobilize -> false）。 */
+  canUnitMove(unit) {
+    return statusCanMove(unit);
+  }
+
   // ---- 单挑（duel）钩子 ---------------------------------------------------
 
   /**
@@ -389,6 +540,9 @@ export class BattleController {
     }
     this.turn += 1;
     this.phase = 'event';
+    // 新玩家回合开始：对全体存活单位结算状态（poison 扣血/状态过期），可致死。
+    this._tickAllStatuses();
+    if (this.phase === 'resolved') return; // 状态结算中已分胜负
     // 回合开始触发器（map.triggers 中 on:'turnStart'）：发事件，由 story 层接管。
     this._fireTurnStartTriggers();
     this.bus.emit('turn:changed', { phase: 'player', turn: this.turn });
@@ -396,8 +550,31 @@ export class BattleController {
     this._checkEnd();
   }
 
-  /** 执行单个敌方单位的 AI 计划（move 然后 attack）。 */
+  /** 执行单个敌方单位的 AI 计划（可含 move / attack / skill）。行动前结算其状态并按 confuse/immobilize 门控。 */
   _runOneEnemy(foe) {
+    // 行动前结算该单位状态（poison 扣血可致死、状态过期）。
+    if (Array.isArray(foe.statuses) && foe.statuses.length > 0) {
+      const tick = tickStatuses(foe);
+      if (typeof foe.curHp === 'number' && foe.curHp <= 0 && foe.alive) {
+        foe.curHp = Math.min(foe.curHp, 0);
+        foe.alive = false;
+        this.bus.emit('status:tick', { unitId: foe.id, dmg: tick.dmg, expired: tick.expired, log: tick.log });
+        this.bus.emit('unit:died', { unit: foe });
+        this._checkEnd();
+        return;
+      }
+      if (tick.dmg > 0 || tick.expired.length > 0) {
+        this.bus.emit('status:tick', { unitId: foe.id, dmg: tick.dmg, expired: tick.expired, log: tick.log });
+      }
+    }
+    if (!foe.alive || this.phase === 'resolved') return;
+
+    // confuse：本回合可能行动紊乱（直接跳过该敌的行动）。
+    if (!this.canUnitAct(foe)) {
+      this.bus.emit('status:tick', { unitId: foe.id, dmg: 0, expired: [], log: [`${foe.name || foe.id} 行动紊乱，无法行动`] });
+      return;
+    }
+
     const state = this._aiState();
     let plan;
     try {
@@ -410,6 +587,8 @@ export class BattleController {
     for (const action of plan) {
       if (!foe.alive || this.phase === 'resolved') break;
       if (action.kind === 'move' && action.to) {
+        // immobilize（定身）下不能移动；可原地攻/计。
+        if (!this.canUnitMove(foe)) continue;
         // AI 落点应已在可达集内；保险起见再校验，不可达则跳过移动。
         const reach = this.selectableTiles(foe);
         if (reach.has(key(action.to.c, action.to.r))) {
@@ -419,6 +598,13 @@ export class BattleController {
         const target = this._resolveAttackTarget(action, foe);
         if (target && target.alive && this._inAttackRange(foe, target)) {
           this.attack(foe, target);
+        }
+      } else if (action.kind === 'skill' && action.skillId && action.targetCell) {
+        // AI 施放计略：仅当持有该技能且目标格合法时执行（useSkill 自身再校验，失败则吞掉）。
+        try {
+          this.useSkill(foe, action.skillId, action.targetCell);
+        } catch {
+          // 计略不可施放（次数耗尽/目标失效）则跳过，不中断本敌其余动作。
         }
       }
     }

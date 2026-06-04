@@ -49,7 +49,8 @@ export const MAP = {
     { generalId: 'lx_inf',    c: 7, r: 2, ai: 'reckless'  }, // 步卒伏于东林(forest)
     { generalId: 'lx_inf',    c: 1, r: 2, ai: 'reckless'  }, // 步卒伏于西林(forest)
     { generalId: 'lx_cav',    c: 8, r: 3, ai: 'reckless'  }, // 骑兵自东路主路扑出(road)
-    { generalId: 'lx_archer', c: 10, r: 3, ai: 'cautious' }  // 弓手据东侧 hill 高地(hill)
+    { generalId: 'lx_archer', c: 10, r: 3, ai: 'cautious' }, // 弓手据东侧 hill 高地(hill)
+    { generalId: 'lijru',     c: 9, r: 1, ai: 'strategist' } // 董卓谋士李儒,据北岸阵后参赞军机(grass)
   ],
   victory: { type: 'defeatLeader', generalId: 'dz_van' },
   defeat:  { type: 'leaderDead', generalId: 'caocao' },

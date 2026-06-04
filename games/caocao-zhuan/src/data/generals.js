@@ -27,7 +27,7 @@ export const GENERALS = {
     classId: 'leader',
     base: { hp: 62, atk: 22, def: 15, int: 25, spd: 17, mov: 5 },
     growth: { hp: 7, atk: 3, def: 2, int: 4, spd: 2 },
-    skills: ['heal'],
+    skills: ['inspire', 'heal'],
     items: [],
     ai: null,
     appearance: {
@@ -150,7 +150,7 @@ export const GENERALS = {
     classId: 'strategist',
     base: { hp: 42, atk: 12, def: 8, int: 27, spd: 15, mov: 5 },
     growth: { hp: 4, atk: 1, def: 1, int: 5, spd: 2 },
-    skills: ['fire', 'heal'],
+    skills: ['heal', 'fire', 'weaken', 'inspire'],
     items: [],
     ai: null,
     appearance: {
@@ -174,7 +174,7 @@ export const GENERALS = {
     classId: 'strategist',
     base: { hp: 40, atk: 12, def: 7, int: 25, spd: 16, mov: 5 },
     growth: { hp: 4, atk: 1, def: 1, int: 4, spd: 2 },
-    skills: ['fire', 'heal'],
+    skills: ['thunder', 'confuse', 'poison'],
     items: [],
     ai: null,
     appearance: {
@@ -470,7 +470,7 @@ export const GENERALS = {
     classId: 'cavalry',
     base: { hp: 84, atk: 26, def: 24, int: 16, spd: 18, mov: 7 },
     growth: { hp: 8, atk: 3, def: 4, int: 2, spd: 3 },
-    skills: ['guard'],
+    skills: ['guard', 'ironwall'],
     items: [],
     ai: 'cautious',
     appearance: {
@@ -629,6 +629,57 @@ export const GENERALS = {
       scale: 1.0,
       banner: { char: '董', color: 0x6b1f1f },
       portraitSeed: 'dz_van',
+    },
+  },
+
+  // ----- 敌方智将 · 谋士（faction:'foe', ai:'strategist'）-----
+  // 展示智将 AI：集火 AOE / 治疗友军 / 增益 / 对最强威胁下控场。
+
+  lijru: {
+    id: 'lijru',
+    name: '李儒',
+    title: '文优',
+    faction: 'foe',
+    classId: 'strategist',
+    base: { hp: 44, atk: 11, def: 9, int: 24, spd: 14, mov: 5 },
+    growth: { hp: 4, atk: 1, def: 1, int: 4, spd: 2 },
+    skills: ['fire', 'darkmagic', 'weaken', 'confuse'],
+    items: [],
+    ai: 'strategist',
+    appearance: {
+      armor: 0x2f4a3a, // 文士青袍
+      accent: 0xb8a24a,
+      skin: 0xd9a877,
+      helmet: 'cap',
+      weapon: 'sword',
+      mount: false,
+      scale: 0.95,
+      banner: { char: '董', color: 0x6b1f1f },
+      portraitSeed: 'lijru',
+    },
+  },
+
+  lx_strat: {
+    id: 'lx_strat',
+    name: '西凉谋士',
+    title: '',
+    faction: 'foe',
+    classId: 'strategist',
+    base: { hp: 40, atk: 10, def: 7, int: 19, spd: 13, mov: 5 },
+    growth: { hp: 4, atk: 1, def: 1, int: 3, spd: 2 },
+    skills: ['thunder', 'weaken'],
+    items: [],
+    ai: 'strategist',
+    appearance: {
+      armor: 0x3c5246, // 青袍
+      accent: 0x9c7e34,
+      skin: 0xd9a877,
+      helmet: 'cap',
+      weapon: 'sword',
+      mount: false,
+      scale: 0.92,
+      banner: { char: '凉', color: 0x7a6428 },
+      portraitSeed: 'lx_strat',
     },
   },
 };
