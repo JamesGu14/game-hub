@@ -1,5 +1,5 @@
 // games/turbo-drift/src/main.js
-import { VIEW, RENDER, RACE, AI, DRIFT, NITRO, ITEMS } from './config.js';
+import { RENDER, RACE, AI, DRIFT, NITRO, ITEMS } from './config.js';
 import { TRACKS, trackById } from './track.js';
 import { CARS, carById, isUnlocked } from './cars.js';
 import { loadSave, writeSave, applyResult } from './save.js';
@@ -8,19 +8,24 @@ import { stepAI } from './ai.js';
 import { progress, updateLap, place, RaceClock } from './race.js';
 import { rollItem, applyHit, missileTarget } from './items.js';
 import { readInput } from './input.js';
-import { render } from './render.js';
+import { Renderer3D } from './render3d.js';
 import { Audio } from './audio.js';
 import { wrap, clamp } from './util/math.js';
 
 const cv = document.getElementById('game');
-const ctx = cv.getContext('2d');
-let scale = 1, offX = 0, offY = 0;
-function fit() {
-  cv.width = cv.clientWidth; cv.height = cv.clientHeight;
-  scale = Math.min(cv.width / VIEW.W, cv.height / VIEW.H);
-  offX = (cv.width - VIEW.W * scale) / 2; offY = (cv.height - VIEW.H * scale) / 2;
+const r3d = new Renderer3D(cv);
+// HUD：叠在 3D 画布上的 2D 覆盖层（名次/圈/时间/漂移/氮气/道具/倒计时）
+const hud = document.getElementById('hud');
+const hctx = hud.getContext('2d');
+let hudW = 0, hudH = 0;
+function fitHud() {
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  hudW = hud.clientWidth; hudH = hud.clientHeight;
+  hud.width = Math.floor(hudW * dpr); hud.height = Math.floor(hudH * dpr);
+  hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
-new ResizeObserver(fit).observe(cv); fit();
+new ResizeObserver(() => { r3d.resize(); fitHud(); }).observe(cv);
+fitHud();
 
 const storage = window.localStorage;
 let save = loadSave(storage);
@@ -85,6 +90,7 @@ function startRace() {
   state.clock = new RaceClock(RACE.countdownSec);
   state.screen = 'racing';
   save.lastCar = state.carId; writeSave(storage, save);
+  r3d.setTrack(trackById(state.trackId));
   Audio.unlock(); Audio.startEngine();
   lastT = performance.now(); acc = 0;
 }
@@ -94,7 +100,7 @@ const STEP = 1 / 60;
 function loop(now) {
   const frameDt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
   if (state.screen === 'racing') { acc += frameDt; while (acc >= STEP) { update(STEP); acc -= STEP; } }
-  draw();
+  draw(frameDt);
   requestAnimationFrame(loop);
 }
 
@@ -233,44 +239,75 @@ function finishRace() {
 function pause() { show('pause'); }
 function resume() { hideAll(); state.screen = 'racing'; lastT = performance.now(); acc = 0; }
 
-function draw() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
-  if (!state.player) return;
-  ctx.save();
-  ctx.setTransform(scale, 0, 0, scale, offX, offY);
-  ctx.beginPath(); ctx.rect(0, 0, VIEW.W, VIEW.H); ctx.clip();
+function draw(dt) {
+  if (state.player) {
+    const track = trackById(state.trackId);
+    const len = track.length;
+    const racers = [state.player, ...state.ai].map(r => ({
+      id: r.id, z: r.z, x: r.x, color: r.color, steerAngle: r.steerAngle, spinTimer: r.spinTimer,
+    }));
+    r3d.updateCars(racers);
+    if (r3d.updateBoxes) r3d.updateBoxes(track, state.boxesTaken);
+    r3d.follow(state.player, len, dt || 1 / 60);
+    if (r3d.updateEffects) r3d.updateEffects(state, dt || 1 / 60);
+    r3d.render();
+  }
+  drawHudOverlay();
+}
 
-  const track = trackById(state.trackId); const len = track.length;
-  const baseSeg = wrap(Math.floor(state.player.z / RENDER.segLen), track.segs.length);
-  const pZ = wrap(state.player.z, len);
-  const aiSprites = state.ai.map(a => ({
-    n: Math.round((wrap(a.z, len) - pZ + len) % len / RENDER.segLen), x: a.x, color: a.color,
-  })).filter(s => s.n >= 0 && s.n < RENDER.drawDist);
-  const boxes = track.itemBoxes.filter(b => !state.boxesTaken.has(b)).map(b => ({
-    n: Math.round(((b * RENDER.segLen - pZ + len) % len) / RENDER.segLen), x: 0,
-  })).filter(s => s.n >= 0 && s.n < RENDER.drawDist);
+const ITEM_EMOJI = { boost: '🚀', shield: '🛡️', oil: '🍌', shrink: '⚡', missile: '🎯' };
 
+function drawHudOverlay() {
+  hctx.clearRect(0, 0, hudW, hudH);
+  if (!state.player || state.screen !== 'racing') return;
+  const len = trackById(state.trackId).length;
   const pPlace = place([state.player, ...state.ai], len, 'player');
-  render(ctx, {
-    track,
-    cam: { x: state.player.x * RENDER.roadW, y: RENDER.camH + track.segs[baseSeg].worldY, z: state.player.z },
-    player: { color: state.player.color, tilt: clamp((state.player.steerAngle || 0) * 0.9 + (state.drift.active ? state.player.x * 0.3 : 0), -1.2, 1.2), nitro: state.nitroTimer > 0 },
-    ai: aiSprites, boxes,
-    hud: {
-      place: pPlace, total: RACE.racers, lap: Math.min(state.player.lap + 1, RACE.laps), laps: RACE.laps,
-      time: (state.clock.elapsedMs / 1000).toFixed(1), driftPct: state.drift.charge / DRIFT.maxCharge,
-      nitroPct: clamp(state.nitroTimer / NITRO_MAX, 0, 1),
-      item: state.item ? ({ boost: '🚀', shield: '🛡️', oil: '🍌', shrink: '⚡', missile: '🎯' })[state.item] : '',
-    },
-  });
+  const driftPct = state.drift.charge / DRIFT.maxCharge;
+  const nitroPct = clamp(state.nitroTimer / NITRO_MAX, 0, 1);
+  const item = state.item ? ITEM_EMOJI[state.item] : '';
 
+  // 左上：名次 / 圈 / 时间（避开左上角 HUB 按钮，从 y=56 起）
+  hctx.textAlign = 'left'; hctx.textBaseline = 'alphabetic';
+  hctx.fillStyle = 'rgba(6,10,30,0.5)';
+  roundRect(hctx, 14, 56, 196, 78, 12); hctx.fill();
+  hctx.fillStyle = '#fff'; hctx.font = "bold 20px 'PingFang SC', system-ui";
+  hctx.fillText(`🏁 第 ${pPlace}/${RACE.racers} 名`, 26, 84);
+  hctx.font = "bold 16px 'PingFang SC', system-ui";
+  hctx.fillText(`圈 ${Math.min(state.player.lap + 1, RACE.laps)}/${RACE.laps}`, 26, 110);
+  hctx.fillText(`⏱ ${(state.clock.elapsedMs / 1000).toFixed(1)}s`, 112, 110);
+
+  // 右上：漂移槽（金）/ 氮气条（青）/ 道具（避开右上角静音按钮，从 y=62 起）
+  const bx = hudW - 186, bw = 172;
+  drawBar(bx, 62, bw, 12, driftPct, '#ffd54f', '漂移 DRIFT');
+  drawBar(bx, 88, bw, 12, nitroPct, '#00e5ff', '氮气 NITRO');
+  if (item) { hctx.font = '32px system-ui'; hctx.textAlign = 'right'; hctx.fillText(item, hudW - 16, 138); hctx.textAlign = 'left'; }
+
+  // 倒计时大字
   if (state.clock.phase === 'countdown') {
     const n = Math.ceil(state.clock.countdown);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 80px system-ui'; ctx.textAlign = 'center';
-    ctx.fillText(n > 0 ? n : 'GO!', VIEW.W / 2, VIEW.H / 2); ctx.textAlign = 'left';
+    const txt = n > 0 ? String(n) : 'GO!';
+    hctx.fillStyle = 'rgba(255,255,255,0.96)';
+    hctx.strokeStyle = 'rgba(6,10,30,0.6)'; hctx.lineWidth = 7;
+    hctx.textAlign = 'center'; hctx.textBaseline = 'middle';
+    hctx.font = "900 96px 'PingFang SC', system-ui";
+    hctx.strokeText(txt, hudW / 2, hudH / 2);
+    hctx.fillText(txt, hudW / 2, hudH / 2);
+    hctx.textAlign = 'left'; hctx.textBaseline = 'alphabetic';
   }
-  ctx.restore();
+}
+
+function drawBar(x, y, w, h, pct, color, label) {
+  hctx.fillStyle = 'rgba(255,255,255,0.9)'; hctx.font = "bold 10px 'PingFang SC', system-ui";
+  hctx.textAlign = 'left'; hctx.textBaseline = 'alphabetic'; hctx.fillText(label, x, y - 3);
+  hctx.fillStyle = 'rgba(255,255,255,0.22)'; roundRect(hctx, x, y, w, h, 5); hctx.fill();
+  hctx.fillStyle = color; roundRect(hctx, x, y, w * clamp(pct, 0, 1), h, 5); hctx.fill();
+}
+
+function roundRect(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r, y);
+  c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
 }
 
 // 浮层按钮

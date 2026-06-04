@@ -26,6 +26,16 @@ body {
   height: 100vh;
 }
 
+/* 比赛内 HUD 覆盖层：叠在 3D 画布上，低于浮层/横幅，不拦截点击 */
+#hud {
+  position: fixed;
+  inset: 0;
+  z-index: 300;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+}
+
 /* ---- Persistent chrome (HUB link + mute) -------------------------------- */
 #back-to-hub {
   position: fixed;
