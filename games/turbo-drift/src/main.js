@@ -45,6 +45,11 @@ const state = {
   pausePrev: false, itemPrev: false,
 };
 
+// 开发标定钩子（仅 ?debug）：暴露渲染器与状态给浏览器冒烟测试，生产环境零影响。
+if (typeof location !== 'undefined' && new URLSearchParams(location.search).has('debug')) {
+  window.__td = { get r3d() { return r3d; }, get state() { return state; }, trackById };
+}
+
 function buildGarage() {
   const grid = $('garage-cars'); grid.innerHTML = '';
   for (const c of CARS) {

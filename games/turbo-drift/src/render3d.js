@@ -69,7 +69,8 @@ export class Renderer3D {
     const roadCol = new THREE.Color(track.theme.road[0]);
     const rumbleA = new THREE.Color(track.theme.rumble[0]);
     const rumbleB = new THREE.Color(track.theme.rumble[1]);
-    const hw = RENDER.roadW, rumbleW = hw * 1.12;
+    const grassCol = new THREE.Color(track.theme.grass[0]);
+    const hw = RENDER.roadW, rumbleW = hw * 1.12, grassW = hw * 9;
     function ring(i, width) {
       const p = pts[i]; const h = p.heading;
       const rx = Math.cos(h), rz = -Math.sin(h); // 朝向的右法向
@@ -84,7 +85,11 @@ export class Renderer3D {
       const j = i + 1;
       const A = ring(i, rumbleW), B = ring(j, rumbleW);
       const a = ring(i, hw), b = ring(j, hw);
+      const G = ring(i, grassW), H = ring(j, grassW);
       const rc = (Math.floor(i / RENDER.rumble) % 2 === 0) ? rumbleA : rumbleB;
+      // 与路面同高的草坪裙边：避免上坡时路面悬浮在远处平地之上
+      quad(G.l, H.l, B.l, A.l, grassCol); // 左草坪（grassW→rumbleW）
+      quad(A.r, B.r, H.r, G.r, grassCol); // 右草坪
       quad(A.l, B.l, b.l, a.l, rc);   // 左路肩（红/白交替）
       quad(a.r, b.r, B.r, A.r, rc);   // 右路肩
       quad(a.l, b.l, b.r, a.r, roadCol); // 路面
@@ -160,9 +165,9 @@ export class Renderer3D {
     const body = new THREE.Mesh(new THREE.BoxGeometry(900, 350, 1600),
       new THREE.MeshLambertMaterial({ color: new THREE.Color(color) }));
     body.position.y = 350; g.add(body);
-    const cabin = new THREE.Mesh(new THREE.BoxGeometry(700, 320, 800),
-      new THREE.MeshLambertMaterial({ color: 0xeaf4ff }));
-    cabin.position.set(0, 620, -100); g.add(cabin);
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(620, 250, 680),
+      new THREE.MeshLambertMaterial({ color: 0xdfeefb }));
+    cabin.position.set(0, 545, -70); g.add(cabin);
     const wheelGeo = new THREE.CylinderGeometry(220, 220, 200, 12); wheelGeo.rotateZ(Math.PI / 2);
     const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111111 });
     for (const [sx, sz] of [[-1, 1], [1, 1], [-1, -1], [1, -1]]) {
@@ -193,9 +198,9 @@ export class Renderer3D {
     const w = worldAt(this.cl, player.z, player.x);
     const h = w.heading;
     const fwd = new THREE.Vector3(Math.sin(h), 0, Math.cos(h));
-    const back = fwd.clone().multiplyScalar(-3200);
+    const back = fwd.clone().multiplyScalar(-3000);
     const target = new THREE.Vector3(w.pos.x, w.pos.y, w.pos.z).add(back);
-    target.y += 1600;
+    target.y += 1500;
     // 接缝护栏：过终点线时 worldAt 取模回绕，目标会瞬移整张图。
     // 一帧正常位移≈speed*dt≲300；位移>6000 必是回绕，直接切镜（不 lerp），避免剧烈扫动。
     if (this.camPos.lengthSq() === 0 || this.camPos.distanceTo(target) > 6000) {
@@ -204,8 +209,9 @@ export class Renderer3D {
       this.camPos.lerp(target, Math.min(1, 6 * dt));
     }
     this.camera.position.copy(this.camPos);
-    const look = worldAt(this.cl, player.z + 3000, player.x * 0.5);
-    this.camera.lookAt(look.pos.x, look.pos.y + 300, look.pos.z);
+    // 注视前方一点，但高度锚定在“车身”而非远处路面，避免上/下坡时把自车甩出画面底部。
+    const ahead = worldAt(this.cl, player.z + 1600, player.x * 0.5);
+    this.camera.lookAt(ahead.pos.x, w.pos.y + 650, ahead.pos.z);
   }
 
   // 玩家车特效：氮气尾焰（亮蓝锥）、漂移烟（车尾灰球）。挂在车组下随车移动/旋转。
