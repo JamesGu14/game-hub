@@ -136,5 +136,25 @@ export class Renderer3D {
     }
   }
 
+  // 追尾相机：相机在车后上方、朝赛道切向看（前方弯道居中、纵深感、孩子不晕）。
+  follow(player, len, dt) {
+    const w = worldAt(this.cl, player.z, player.x);
+    const h = w.heading;
+    const fwd = new THREE.Vector3(Math.sin(h), 0, Math.cos(h));
+    const back = fwd.clone().multiplyScalar(-3200);
+    const target = new THREE.Vector3(w.pos.x, w.pos.y, w.pos.z).add(back);
+    target.y += 1600;
+    // 接缝护栏：过终点线时 worldAt 取模回绕，目标会瞬移整张图。
+    // 一帧正常位移≈speed*dt≲300；位移>6000 必是回绕，直接切镜（不 lerp），避免剧烈扫动。
+    if (this.camPos.lengthSq() === 0 || this.camPos.distanceTo(target) > 6000) {
+      this.camPos.copy(target);
+    } else {
+      this.camPos.lerp(target, Math.min(1, 6 * dt));
+    }
+    this.camera.position.copy(this.camPos);
+    const look = worldAt(this.cl, player.z + 3000, player.x * 0.5);
+    this.camera.lookAt(look.pos.x, look.pos.y + 300, look.pos.z);
+  }
+
   render() { this.renderer.render(this.scene, this.camera); }
 }
