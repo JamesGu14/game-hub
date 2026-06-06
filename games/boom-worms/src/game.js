@@ -237,6 +237,12 @@ export class Game {
         this.weaponKey = available[(idx - 1 + available.length) % available.length] || this.weaponKey;
         break;
       }
+      case 'weaponSlot': {
+        // Fixed 1-5 mapping to the starting weapons; ignore if depleted/unavailable.
+        const key = STARTING_WEAPONS[action.slot];
+        if (key && this._availableWeapons().includes(key)) this.weaponKey = key;
+        break;
+      }
     }
   }
 

@@ -50,7 +50,7 @@ export class Terrain {
   // Draw the terrain silhouette onto the offscreen canvas, then sync mask.
   generate(level) {
     const { ctx, W, H } = this;
-    const { palette, terrainParams, waterY: _waterY } = level;
+    const { palette, terrainParams } = level;
     const waterY = level.waterY ?? 512;
 
     ctx.clearRect(0, 0, W, H);
@@ -58,49 +58,64 @@ export class Terrain {
     const land = palette.land;
     const land2 = palette.land2;
 
-    // --- Base ground band (from groundTop down to waterY) ---
-    const groundTop = Math.round(H * 0.55); // ~297px, just under mid
-    ctx.fillStyle = land;
-    ctx.fillRect(0, groundTop, W, waterY - groundTop);
+    // --- Seeded RNG: terrain is deterministic per level (reproducible + testable) ---
+    const rng = mulberry32((((level.index ?? 0) + 1) * 0x9e3779b1) >>> 0);
 
-    // --- Hills: rounded bumps along the top edge of the base ground ---
-    const hillCount = terrainParams.hills ?? 2;
-    ctx.fillStyle = land;
-    const hillSpacing = W / (hillCount + 1);
-    for (let h = 0; h < hillCount; h++) {
-      const cx = Math.round(hillSpacing * (h + 1));
-      // alternate hill heights for variety
-      const hy = groundTop - (h % 2 === 0 ? 80 : 50);
-      const rx = Math.round(W / (hillCount + 1) * 0.7);
-      const ry = groundTop - hy;
-      ctx.beginPath();
-      ctx.ellipse(cx, groundTop, rx, ry, 0, Math.PI, 0, true);
-      ctx.fill();
+    // --- Mountain heightmap: layered cosine-interpolated value noise -> a rolling
+    //     ridgeline. heights[x] is the topmost solid y of column x. ---
+    const rugged = terrainParams.ruggedness ?? 0.5;        // 0 (gentle) .. 1 (jagged)
+    const peaks  = terrainParams.peaks ?? 4;               // major peaks across the field
+    const baseY  = Math.round(H * 0.60);                   // average ground line
+    const amp    = (H * 0.30) * (0.45 + 0.55 * rugged);    // peak-to-valley swing
+    const ceilY  = Math.round(H * 0.16);                   // highest a peak may reach
+    const floorY = waterY - 22;                            // lowest a valley may dip
+
+    const octaves = [
+      noise1D(rng, W / Math.max(1, peaks)),
+      noise1D(rng, W / Math.max(1, peaks * 2)),
+      noise1D(rng, W / Math.max(1, peaks * 4)),
+    ];
+    const weights = [1.0, 0.5, 0.25];
+    const wsum = weights[0] + weights[1] + weights[2];
+
+    const heights = new Int16Array(W);
+    for (let x = 0; x < W; x++) {
+      let n = 0;
+      for (let o = 0; o < octaves.length; o++) n += (octaves[o](x) - 0.5) * weights[o];
+      n /= wsum;                                           // n in ~[-0.5, 0.5]
+      let h = baseY - n * 2 * amp;
+      if (h < ceilY) h = ceilY;
+      if (h > floorY) h = floorY;
+      heights[x] = h | 0;
     }
+    this._heights = heights;                               // exposed for tests/debug
 
-    // --- Platforms: floating rectangles above the main ground ---
+    // --- Fill the mountain silhouette column-by-column down to the water line ---
+    ctx.fillStyle = land;
+    for (let x = 0; x < W; x++) ctx.fillRect(x, heights[x], 1, waterY - heights[x]);
+
+    // --- Platforms: floating ledges above the ridgeline ---
     const platCount = terrainParams.platforms ?? 0;
     ctx.fillStyle = land2;
     for (let p = 0; p < platCount; p++) {
       const px = Math.round(W * (0.15 + (p / Math.max(platCount, 1)) * 0.7));
-      const py = Math.round(groundTop - 120 - (p % 2) * 60);
-      const pw = 110;
-      const ph = 22;
-      // rounded rect platform
+      const groundHere = heights[Math.min(W - 1, Math.max(0, px))];
+      const py = Math.round(groundHere - 70 - (p % 2) * 46);
+      const pw = 104, ph = 20;
       ctx.beginPath();
       ctx.roundRect(px - pw / 2, py, pw, ph, 8);
       ctx.fill();
     }
 
-    // --- Caves: carve elliptical holes into the ground band ---
+    // --- Caves: carve elliptical holes into the mountain body ---
     const caveCount = terrainParams.caves ?? 0;
     if (caveCount > 0) {
       ctx.globalCompositeOperation = 'destination-out';
       for (let c = 0; c < caveCount; c++) {
-        const cvx = Math.round(W * (0.25 + (c / Math.max(caveCount, 1)) * 0.5));
-        const cvy = groundTop + 30 + c * 25;
+        const cvx = Math.round(W * (0.2 + (c / Math.max(caveCount, 1)) * 0.6));
+        const cvy = heights[Math.min(W - 1, Math.max(0, cvx))] + 46 + c * 18;
         ctx.beginPath();
-        ctx.ellipse(cvx, cvy, 55, 28, 0, 0, Math.PI * 2);
+        ctx.ellipse(cvx, cvy, 52, 26, 0, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.globalCompositeOperation = 'source-over';
@@ -209,6 +224,34 @@ export class Terrain {
 }
 
 // --- Helpers ---
+
+// Small fast seeded PRNG (mulberry32). Deterministic per seed.
+function mulberry32(a) {
+  return function () {
+    a |= 0; a = (a + 0x6D2B79F5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// 1-D cosine-interpolated value noise with the given lattice period (px).
+// Returns f(x) -> [0,1], smooth between random lattice points.
+function noise1D(rng, period) {
+  period = Math.max(2, period);
+  const count = Math.ceil(FIELD.W / period) + 2;
+  const lattice = new Float64Array(count);
+  for (let i = 0; i < count; i++) lattice[i] = rng();
+  return (x) => {
+    const t = x / period;
+    const i = Math.floor(t);
+    const f = t - i;
+    const a = lattice[i % count];
+    const b = lattice[(i + 1) % count];
+    const u = (1 - Math.cos(f * Math.PI)) * 0.5;
+    return a * (1 - u) + b * u;
+  };
+}
 
 function _toppingColor(palette) {
   // Pick a bright accent for the terrain top stripe based on theme

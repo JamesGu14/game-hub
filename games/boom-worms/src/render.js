@@ -2,7 +2,7 @@
 // Draws in FIELD space (960x540) via a letterbox transform.
 // Read-only over game — no logic here.
 
-import { FIELD, WORM, WEAPONS, CRATE, AIM } from './config.js';
+import { FIELD, WORM, WEAPONS, CRATE, AIM, STARTING_WEAPONS } from './config.js';
 import { simulate } from './util/trajectory.js';
 import { vecFromAngle } from './util/math.js';
 
@@ -746,12 +746,13 @@ export class Renderer {
   // -------------------------------------------------------------------------
   // Power bar (shown while charging)
   // -------------------------------------------------------------------------
+  // Vertical power gauge pinned to the LEFT edge (fills bottom-up), so it never
+  // overlaps the weapon bar along the bottom of the screen.
   _powerBar(ctx, aim) {
-    const W = FIELD.W;
-    const barW = 200;
-    const barH = 22;
-    const x = W / 2 - barW / 2;
-    const y = FIELD.H - 50;
+    const barW = 20;
+    const barH = 190;
+    const x = 18;
+    const y = FIELD.H / 2 - barH / 2;
     const fill = (aim.power - AIM.minSpeed) / (AIM.maxSpeed - AIM.minSpeed);
 
     ctx.save();
@@ -762,14 +763,15 @@ export class Renderer {
     ctx.roundRect(x - 2, y - 2, barW + 4, barH + 4, 6);
     ctx.fill();
 
-    // Gradient fill
-    const grad = ctx.createLinearGradient(x, 0, x + barW, 0);
+    // Gradient fill (green at bottom → red at top), growing upward
+    const fh = barH * Math.max(0, Math.min(1, fill));
+    const grad = ctx.createLinearGradient(0, y + barH, 0, y);
     grad.addColorStop(0, '#66bb6a');
     grad.addColorStop(0.6, '#ffa726');
     grad.addColorStop(1, '#ef5350');
     ctx.fillStyle = grad;
     ctx.beginPath();
-    ctx.roundRect(x, y, barW * fill, barH, 4);
+    ctx.roundRect(x, y + barH - fh, barW, fh, 4);
     ctx.fill();
 
     // Border
@@ -779,12 +781,12 @@ export class Renderer {
     ctx.roundRect(x, y, barW, barH, 4);
     ctx.stroke();
 
-    // Label
+    // Label below the gauge
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 11px sans-serif';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('🔥 蓄力', W / 2, y + barH / 2);
+    ctx.textBaseline = 'top';
+    ctx.fillText('🔥', x + barW / 2, y + barH + 6);
 
     ctx.restore();
   }
@@ -921,6 +923,16 @@ export class Renderer {
       ctx.fillStyle = isSelected ? '#ffe082' : '#cccccc';
       ctx.font = 'bold 10px sans-serif';
       ctx.fillText(ammoStr, sx + slotW / 2, startY + slotH - 7);
+
+      // Number badge (1-5) for the fixed starting-weapon hotkeys.
+      const slotNum = STARTING_WEAPONS.indexOf(key);
+      if (slotNum >= 0) {
+        ctx.fillStyle = isSelected ? '#ffe082' : 'rgba(255,255,255,0.55)';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(String(slotNum + 1), sx + 5, startY + 4);
+      }
     }
 
     ctx.restore();

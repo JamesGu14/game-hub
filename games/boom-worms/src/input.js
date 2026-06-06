@@ -80,6 +80,10 @@ export const Input = {
         case 'E':
           this._emit({ type: 'weaponNext' }); break;
 
+        // Direct weapon select (1-5 → starting weapon slot)
+        case '1': case '2': case '3': case '4': case '5':
+          this._emit({ type: 'weaponSlot', slot: Number(e.key) - 1 }); break;
+
         // Pause
         case 'Escape':
           this._emit({ type: 'pause' }); break;

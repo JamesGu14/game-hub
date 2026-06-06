@@ -87,6 +87,9 @@ body {
 }
 
 #power-bar-wrap {
+  /* Power gauge is drawn on-canvas as a vertical bar on the left edge
+     (render.js _powerBar). The DOM strip is retired to avoid duplication. */
+  display: none;
   width: 200px;
   height: 14px;
   border-radius: 7px;
