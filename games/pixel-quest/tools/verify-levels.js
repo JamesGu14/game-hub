@@ -1,7 +1,7 @@
 // Deterministic playability verifier for 像素冒险 PIXEL QUEST levels.
 // Run: node games/pixel-quest/tools/verify-levels.js   (exit 0 = all pass)
 import { LEVELS, parseLevel } from '../src/levels.js';
-import { TILE, GRAVITY, PLAYER, BUMPABLE } from '../src/config.js';
+import { TILE, GRAVITY, PLAYER, BUMPABLE, SOLID } from '../src/config.js';
 
 const apex = (PLAYER.jumpVel * PLAYER.jumpVel) / (2 * GRAVITY);
 const airtime = (2 * PLAYER.jumpVel) / GRAVITY;
@@ -12,21 +12,35 @@ const maxStep = Math.max(1, jumpUpTiles - 1);
 const WALK = new Set(['ground', 'block', 'platform', 'pipeL', 'pipeR']);
 
 function check(world) {
-  const { grid, cols, rows: numRows, spawn, flagX, castleX, id } = world;
+  const { grid, cols, rows: numRows, spawn, checkpoint, flagX, castleX, id } = world;
   const floorTop = numRows - 4;
   const headApexY = floorTop * TILE - PLAYER.smallH - apex;
   const apexRow = Math.max(0, Math.floor(headApexY / TILE));
   const issues = [];
+  // Two surface profiles per column:
+  //  - col[]  : topmost walkable INCLUDING row 0 — used for the step check, exactly
+  //             as originally. On a castle/underground level the row-0 'X' ceiling
+  //             makes this a no-op (every column reads row 0), which is the prior
+  //             behaviour — we don't regress or add false step warnings there.
+  //  - floorCol[] : topmost walkable EXCLUDING the row-0 ceiling — used for pit/gap
+  //             and block-over-pit checks. Without this, the ceiling made every
+  //             column look standable and hid every floor pit (the blind spot that
+  //             let 4-wide, un-walk-jumpable gaps ship in 1-2 and 1-4).
   const col = [];
+  const floorCol = [];
   for (let c = 0; c < cols; c++) {
-    let walkTop = null;
+    let top = null, floor = null;
     for (let r = 0; r < numRows; r++) {
       const t = grid[r] && grid[r][c];
-      if (t && WALK.has(t) && walkTop === null) walkTop = r;
+      if (t && WALK.has(t)) {
+        if (top === null) top = r;
+        if (floor === null && r >= 1) floor = r;
+      }
     }
-    col.push(walkTop);
+    col.push(top);
+    floorCol.push(floor);
   }
-  const deadly = (c) => col[c] === null;
+  const deadly = (c) => floorCol[c] === null;
   const sCol = Math.floor(spawn.x / TILE);
   const gCol = castleX != null ? Math.floor(castleX / TILE)
             : flagX != null ? Math.floor(flagX / TILE) : cols - 1;
@@ -58,6 +72,18 @@ function check(world) {
   }
   if (flagX == null && castleX == null) issues.push('no goal (flag/castle)');
   if (deadly(sCol)) issues.push('spawn over a pit');
+  // A checkpoint must have solid ground directly below it, or respawning there
+  // drops the player straight into a pit.
+  if (checkpoint) {
+    const ccol = Math.round(checkpoint.x / TILE);
+    const crow = Math.round(checkpoint.y / TILE);
+    let grounded = false;
+    for (let r = crow; r < numRows; r++) {
+      const t = grid[r] && grid[r][ccol];
+      if (t && SOLID.has(t)) { grounded = true; break; }
+    }
+    if (!grounded) issues.push(`checkpoint col ${ccol} over a pit (no ground below)`);
+  }
   return { id, issues };
 }
 

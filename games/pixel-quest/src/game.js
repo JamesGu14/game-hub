@@ -6,7 +6,7 @@
 //     any playing death with no lives -> gameover
 
 import {
-  FIELD, TILE, MODES, SCORE, STORAGE_KEY, BUMPABLE,
+  FIELD, TILE, MODES, SCORE, STORAGE_KEY, BUMPABLE, SOLID,
 } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
 import {
@@ -123,6 +123,9 @@ export class Game {
     if (!full && this.checkpointReached && lv.checkpoint) {
       sx = lv.checkpoint.x; sy = lv.checkpoint.y;
     }
+    // Never (re)spawn hovering over a pit — snap to the nearest grounded column.
+    const safe = this._safeSpawn(sx, sy);
+    sx = safe.x; sy = safe.y;
     this.player = new Player(sx, sy);
     this.player.h = 28; // start small
     this.player.x = sx;
@@ -143,6 +146,31 @@ export class Game {
     this.camera.y = clamp(this.player.y - FIELD.H / 2, 0, Math.max(0, lv.height - FIELD.H));
   }
 
+  // First solid tile row at/below `fromRow` in `col`, or null if the column is a pit.
+  _groundRowBelow(col, fromRow) {
+    const grid = this.level.grid;
+    for (let r = Math.max(0, fromRow); r < grid.length; r++) {
+      const t = grid[r] && grid[r][col];
+      if (t && SOLID.has(t)) return r;
+    }
+    return null;
+  }
+
+  // Keep a spawn point over solid ground; if it's over a pit, snap to the nearest
+  // grounded column (guards against checkpoints/spawns authored above a gap).
+  _safeSpawn(sx, sy) {
+    const col0 = Math.round(sx / TILE);
+    const row0 = Math.round(sy / TILE);
+    if (this._groundRowBelow(col0, row0) != null) return { x: sx, y: sy };
+    for (let d = 1; d <= 12; d++) {
+      for (const col of [col0 - d, col0 + d]) {
+        if (col < 0 || col >= this.level.cols) continue;
+        if (this._groundRowBelow(col, row0) != null) return { x: col * TILE, y: sy };
+      }
+    }
+    return { x: sx, y: sy }; // no ground anywhere on this row — leave as-is
+  }
+
   // ---- input-driven actions ----
   confirm() {
     switch (this.state) {
@@ -151,7 +179,7 @@ export class Game {
       case 'ready': this._startPlaying(); break;
       case 'paused': this.togglePause(); break;
       case 'levelclear': this.nextLevel(); break;
-      case 'gameover': this.state = 'menu'; break;
+      case 'gameover': this.continueRun(); break;
       case 'win': this.state = 'menu'; break;
     }
   }
@@ -180,6 +208,13 @@ export class Game {
   }
 
   restart() { this.startGame(this.mode.id); }
+
+  // After a game-over: refill lives and replay the CURRENT level (keep score),
+  // instead of dropping back to level 1-1.
+  continueRun() {
+    this.lives = this.mode.lives;
+    this.loadLevel(this.levelIndex);
+  }
 
   // ---- coin / life ----
   _collectCoin() {
@@ -385,17 +420,18 @@ export class Game {
         if (e.state === 'walk') {
           if (stomping) { e.toShell(this._world); p.vy = -440; this.score += SCORE.stomp; }
           else this._hurtPlayer();
-        } else if (e.state === 'shell') {
-          if (stomping) { p.vy = -440; this.score += SCORE.stomp; }
-          else {
-            // kick it away from the player
+        } else if (e.kickGrace <= 0) {
+          // shell OR slide never hurts the player: stomp stops it, side-touch kicks it away.
+          if (stomping) {
+            e.stopShell(this._world);
+            p.vy = -440;
+            this.score += SCORE.stomp;
+          } else {
+            const wasStill = e.state === 'shell';
             const dir = (p.x + p.w / 2) < (e.x + e.w / 2) ? 1 : -1;
             e.kickShell(dir, this._world);
-            this.score += SCORE.shellHit;
+            if (wasStill) this.score += SCORE.shellHit;
           }
-        } else if (e.state === 'slide') {
-          if (stomping) { e.state = 'shell'; e.vx = 0; e.shellTimer = 6; p.vy = -440; }
-          else this._hurtPlayer();
         }
       }
     }

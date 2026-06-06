@@ -30,7 +30,7 @@ export const TILES = {
   '#':'ground', X:'block', B:'brick', b:'brickCoin', '?':'qcoin', M:'qpower', '*':'qstar',
   '[':'pipeL', ']':'pipeR', '=':'platform', F:'flag', A:'castle',
 };
-export const SOLID = new Set(['ground','block','brick','brickCoin','qcoin','qpower','qstar','pipeL','pipeR','platform']);
+export const SOLID = new Set(['ground','block','brick','brickCoin','qcoin','qpower','qstar','qempty','pipeL','pipeR','platform']);
 export const BUMPABLE = new Set(['qcoin','qpower','qstar','brick','brickCoin']);
 
 export const THEMES = {

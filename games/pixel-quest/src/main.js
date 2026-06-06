@@ -52,7 +52,7 @@ el('btn-story-go').addEventListener('click', () => game.beginAfterStory());
 el('btn-resume').addEventListener('click', () => game.togglePause());
 el('btn-restart').addEventListener('click', () => game.restart());
 el('btn-next').addEventListener('click', () => game.nextLevel());
-el('btn-retry').addEventListener('click', () => game.startGame(game.mode.id));
+el('btn-retry').addEventListener('click', () => game.continueRun());
 el('btn-go-menu').addEventListener('click', () => (game.state = 'menu'));
 el('btn-win-retry').addEventListener('click', () => game.startGame(game.mode.id));
 el('btn-win-menu').addEventListener('click', () => (game.state = 'menu'));

@@ -203,10 +203,12 @@ export class Koopa {
     this.dead = false;
     this.state = 'walk'; // 'walk' | 'shell' | 'slide'
     this.shellTimer = 0;
+    this.kickGrace = 0; // brief window after a kick where player contact is ignored
     this.anim = 0;
   }
   update(dt, world) {
     const mul = world.mode.enemyMul;
+    if (this.kickGrace > 0) this.kickGrace -= dt;
     if (this.state === 'walk') {
       const spd = ENEMY.koopaSpeed * mul;
       this.vx = this.vx < 0 ? -spd : spd;
@@ -248,10 +250,19 @@ export class Koopa {
     this.shellTimer = 6;
     world.sound.stomp();
   }
+  // Stop a moving/idle shell back into a still shell (e.g. when stomped again).
+  stopShell(world) {
+    this.state = 'shell';
+    this.w = 24; this.h = 16;
+    this.vx = 0;
+    this.shellTimer = 6;
+    world.sound.stomp();
+  }
   kickShell(dir, world) {
     this.state = 'slide';
     this.vx = ENEMY.shellSpeed * dir;
     this.shellTimer = 0;
+    this.kickGrace = 0.2; // don't immediately re-hit the player who kicked it
     world.sound.kick();
   }
   frame() { return Math.floor(this.anim) % 2; }

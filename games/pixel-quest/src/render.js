@@ -50,16 +50,25 @@ export class Renderer {
 
     const theme = THEMES[game.level ? game.level.theme : 'overworld'];
 
+    // Letterbox "bleed": how far the field extends past 0..FIELD in field units, so
+    // the sky/clouds/hills can fill the whole window instead of leaving black bars.
+    const bleedX = this.offsetX / (this.scale || 1);
+    const bleedY = this.offsetY / (this.scale || 1);
+
     if (!game.level) {
-      this._sky(ctx, theme, 0);
+      this._sky(ctx, theme, bleedX, bleedY);
       return;
     }
 
     const cam = game.camera;
-    this._sky(ctx, theme, cam.x);
-    this._parallax(ctx, theme, cam.x);
+    this._sky(ctx, theme, bleedX, bleedY);
+    this._parallax(ctx, theme, cam.x, bleedX, bleedY);
 
+    // Clip gameplay to the field so tiles/entities never spill into the sky margins.
     ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, FIELD.W, FIELD.H);
+    ctx.clip();
     ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
     this._tiles(ctx, game, theme, cam);
     this._flagAndCastle(ctx, game);
@@ -76,32 +85,39 @@ export class Renderer {
     if (game.state === 'ready') this._readyBanner(ctx, game);
   }
 
-  _sky(ctx, theme, camX) {
-    const g = ctx.createLinearGradient(0, 0, 0, FIELD.H);
+  _sky(ctx, theme, bleedX, bleedY) {
+    const top = -bleedY;
+    const bot = FIELD.H + bleedY;
+    const g = ctx.createLinearGradient(0, top, 0, bot);
     g.addColorStop(0, theme.skyTop);
     g.addColorStop(1, theme.skyBot);
     ctx.fillStyle = g;
-    ctx.fillRect(0, 0, FIELD.W, FIELD.H);
+    ctx.fillRect(-bleedX, top, FIELD.W + 2 * bleedX, bot - top);
   }
 
-  _parallax(ctx, theme, camX) {
-    // clouds (slow)
-    const cx = -camX * 0.3;
+  _parallax(ctx, theme, camX, bleedX, bleedY) {
+    const left = -bleedX;
+    const spanW = FIELD.W + 2 * bleedX;
+    const top = -bleedY;
+
+    // clouds (slow) — tiled across the full visible width incl. letterbox margins
     ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    for (let i = 0; i < 8; i++) {
-      const base = i * 220;
-      let x = ((base + cx) % (FIELD.W + 220));
-      if (x < -220) x += FIELD.W + 220;
-      const y = 30 + (i % 3) * 36;
+    const cg = 220;
+    const cDrift = (((-camX * 0.3) % cg) + cg) % cg;
+    const nC = Math.ceil(spanW / cg) + 2;
+    for (let i = 0; i < nC; i++) {
+      const x = left - cg + cDrift + i * cg;
+      const y = top + 30 + (i % 3) * 36;
       this._cloud(ctx, x, y);
     }
-    // hills (medium)
-    const hx = -camX * 0.5;
+
+    // hills (medium) — tiled across the full visible width
     ctx.fillStyle = theme.hills;
-    for (let i = 0; i < 8; i++) {
-      const base = i * 260;
-      let x = ((base + hx) % (FIELD.W + 260));
-      if (x < -260) x += FIELD.W + 260;
+    const hg = 260;
+    const hDrift = (((-camX * 0.5) % hg) + hg) % hg;
+    const nH = Math.ceil(spanW / hg) + 2;
+    for (let i = 0; i < nH; i++) {
+      const x = left - hg + hDrift + i * hg;
       ctx.beginPath();
       ctx.arc(x, FIELD.H - 40, 70, Math.PI, 0);
       ctx.fill();
@@ -266,36 +282,34 @@ export class Renderer {
     const cy = bandH / 2;
     ctx.textBaseline = 'middle';
 
-    // score (left, inset for ← HUB button)
+    const LEFT = 92;            // clear of the ← HUB button
+    const RIGHT = FIELD.W - 56; // clear of the mute button
+
+    // ---- left cluster: score + coins ----
     ctx.textAlign = 'left';
     ctx.font = 'bold 15px system-ui, sans-serif';
     ctx.fillStyle = '#ffe066';
-    ctx.fillText(`⭐ ${game.score}`, 92, cy);
-
-    // coins (center-left)
-    ctx.fillStyle = '#fff';
+    ctx.fillText(`⭐ ${game.score}`, LEFT, cy);
     ctx.font = '15px system-ui, sans-serif';
-    ctx.fillText(`🪙 ${game.coins}`, 200, cy);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(`🪙 ${game.coins}`, LEFT + 88, cy);
 
-    // world id (center)
+    // ---- right cluster: lives at the far right, timer measured clear to its left ----
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 15px system-ui, sans-serif';
+    ctx.fillStyle = '#fff';
+    const hearts = `❤️ ${game.lives}`;
+    ctx.fillText(hearts, RIGHT, cy);
+    const heartsW = ctx.measureText(hearts).width;
+
+    ctx.fillStyle = game.timeLeft < 60 ? '#ff6b6b' : '#fff';
+    ctx.fillText(`⏱ ${Math.ceil(game.timeLeft)}`, RIGHT - heartsW - 18, cy);
+
+    // ---- center: level id ----
     ctx.textAlign = 'center';
     ctx.fillStyle = '#fff';
     ctx.font = 'bold 15px system-ui, sans-serif';
     ctx.fillText(`关卡 ${game.currentLevelId()}`, FIELD.W / 2, cy);
-
-    // time (center-right)
-    ctx.textAlign = 'center';
-    ctx.fillStyle = game.timeLeft < 60 ? '#ff6b6b' : '#fff';
-    ctx.fillText(`⏱ ${Math.ceil(game.timeLeft)}`, FIELD.W - 150, cy);
-
-    // lives (right, inset for mute button)
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#fff';
-    ctx.font = '14px system-ui, sans-serif';
-    let hearts = '';
-    const n = Math.min(game.lives, 6);
-    for (let i = 0; i < n; i++) hearts += '❤️';
-    ctx.fillText(hearts || '💔', FIELD.W - 58, cy);
   }
 
   _readyBanner(ctx, game) {
