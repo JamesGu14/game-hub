@@ -1,31 +1,30 @@
-// systems/combatSystem.js — 编排：塔 CD 到 → 对 target 开火（hitscan 即时结算）+ 产纯表现弹道。
-// [N5] 死于 combat 才掉金（到城逃脱不掉金，见 pathSystem）。掉金同步写 state.gold；事件仅通知。
-import { GENERALS } from '../data/generals.js';
+// systems/combatSystem.js — 编排器：每塔 tick 攻击CD + 招牌技CD → 在射程内对 target 按 attack 派发。
+// 击杀走 attacks→killEnemy（同步掉金 + emit）；伤害/效果细节见 combat/attacks.js、combat/signatureSkills.js。
+import { GENERALS, towerStats } from '../data/generals.js';
 import { BAL } from '../data/balance.js';
-import { calcDamage } from './combat/damageCalc.js';
-import { spawnTracer } from './combat/projectileManager.js';
-import { bus } from '../core/eventBus.js';
+import { runAttack } from './combat/attacks.js';
+import { fireSignature } from './combat/signatureSkills.js';
 
 export function combatSystem(state, dt) {
   if (state.phase !== 'combat') return;          // [P0-3] 相位守卫
+  const now = state.time, rng = state.rng;
   for (const tower of state.towers) {
     const g = GENERALS[tower.generalId];
     if (tower.cooldown > 0) tower.cooldown -= dt;
+    if (tower.signatureCd > 0) tower.signatureCd -= dt;
+
+    // L3 冷却技到点自动释放（关羽水淹七军 / 张飞当阳怒吼）；成功放才进 CD。
+    if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.type === 'cooldown' && tower.signatureCd <= 0) {
+      if (fireSignature(state, tower, g, now)) tower.signatureCd = g.signature.cooldown;
+    }
+
     const target = tower.target;
     if (tower.cooldown > 0 || !target || !target.alive) continue;
-    // 命中前确认仍在射程（目标可能已移出）
+    const stats = towerStats(g, tower.level);     // 升级生效：射程/间隔随等级
     const dx = target.px - tower.px, dy = target.py - tower.py;
-    if (dx * dx + dy * dy > (g.range * BAL.CELL) ** 2) continue;
+    if (dx * dx + dy * dy > (stats.range * BAL.CELL) ** 2) continue;   // 命中前确认在射程
 
-    const dmg = calcDamage(g, target);            // hitscan：开火即结算
-    target.hp -= dmg;
-    spawnTracer(state, tower, target, g.color);
-    tower.cooldown = g.interval;
-
-    if (target.hp <= 0 && target.alive) {
-      target.alive = false;
-      state.gold += target.gold;                  // [N5] 同步掉金
-      bus.emit('enemyKilled', { enemy: target }); // 纯通知（fx/飘字/audio）
-    }
+    runAttack(state, tower, g, target, now, rng);
+    tower.cooldown = stats.interval;
   }
 }

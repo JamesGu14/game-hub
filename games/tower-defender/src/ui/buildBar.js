@@ -1,8 +1,8 @@
-// ui/buildBar.js — 底部建造栏（屏幕坐标）：将按钮 + 命中检测。M1 仅黄忠。
+// ui/buildBar.js — 底部建造栏（屏幕坐标）：六将按钮 + 命中检测（热键 1-6 见 main）。
 import { GENERALS } from '../data/generals.js';
 
-const ITEMS = ['huang'];
-const BW = 76, BH = 56, GAP = 10;
+const ITEMS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge'];
+const BW = 72, BH = 56, GAP = 8;
 
 export function buildBarLayout(view) {
   const totalW = ITEMS.length * (BW + GAP) - GAP;

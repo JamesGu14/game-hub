@@ -4,11 +4,13 @@
 // phase: 'prep'（备战，可建塔，倒计时）| 'combat'（交战）| 'won' | 'lost'
 
 import { BAL } from '../data/balance.js';
+import { makeRng } from './rng.js';
 
 export function newGameState(level) {
   return {
     phase: 'prep',
     level,
+    rng: makeRng(),               // [P2] 暴击/被动随机源（时间种子；单测各自注入 stub）
     gold: level.startGold,
     castleHp: level.castleHp,
     castleMaxHp: level.castleHp,

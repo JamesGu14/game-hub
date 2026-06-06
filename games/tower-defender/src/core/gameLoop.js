@@ -6,6 +6,7 @@ import { waveSystem } from '../systems/waveSystem.js';
 import { pathSystem } from '../systems/pathSystem.js';
 import { targetingSystem } from '../systems/targetingSystem.js';
 import { combatSystem } from '../systems/combatSystem.js';
+import { statusSystem } from '../systems/statusSystem.js';
 import { economySystem } from '../systems/economySystem.js';
 import { victorySystem } from '../systems/victorySystem.js';
 import { updateProjectiles } from '../systems/combat/projectileManager.js';
@@ -17,6 +18,7 @@ export function step(state, dt) {
   pathSystem(state, dt);          // ↓ 各系统入口 if(phase!=='combat')return
   targetingSystem(state, dt);
   combatSystem(state, dt);
+  statusSystem(state, dt);        // [P2] 灼烧 DoT / 治疗 / 净值 / DoT 致死
   economySystem(state, dt);
   victorySystem(state, dt);
   cleanup(state, dt);             // housekeeping

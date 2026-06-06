@@ -10,7 +10,8 @@ const t = createTower('huang', { x: 2, y: 2 });    // px,py = 100,100
 const e = createEnemy('footman', 'p', [{ x: 0, y: 0 }, { x: 1, y: 0 }], 1);
 e.px = 100; e.py = 100;                              // 同点 → 必在射程
 t.target = e;
-const state = { phase: 'combat', gold: 0, towers: [t], enemies: [e], projectiles: [], fx: [] };
+// [P2] combatSystem 现读 state.time/state.rng；黄忠 L1 无暴击（level<3），rng 不会被调用，基线维持。
+const state = { phase: 'combat', time: 0, rng: () => 0.99, gold: 0, towers: [t], enemies: [e], projectiles: [], fx: [] };
 
 let shots = 0;
 while (e.alive && shots < 20) { combatSystem(state, 1.0); shots++; } // dt>interval → 每次一发
