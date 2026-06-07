@@ -106,7 +106,8 @@ export class Game {
   }
 
   beginAfterStory() {
-    this.loadLevel(0);
+    // 点"开始冒险"→ 开场对话 → 世界1 intro → 进第一关。
+    this.startDialogue(OPENING, () => this.startDialogue(introFor(0), () => this.loadLevel(0)));
   }
 
   loadLevel(i) {
@@ -232,9 +233,15 @@ export class Game {
   }
 
   nextLevel() {
-    const next = this.levelIndex + 1;
+    const justFinished = this.levelIndex;
+    const next = justFinished + 1;
     if (next >= LEVELS.length) { this.state = 'win'; this._saveBest(); Sound.win(); return; }
-    this.loadLevel(next);
+    const afterOutro = () => {
+      if (isWorldFirstLevel(next)) this.startDialogue(introFor(next), () => this.loadLevel(next));
+      else this.loadLevel(next);
+    };
+    if (isWorldLastLevel(justFinished)) this.startDialogue(outroFor(justFinished), afterOutro);
+    else afterOutro();
   }
 
   restart() { this.startGame(this.mode.id); }
@@ -558,7 +565,7 @@ export class Game {
     if (e.phase === 'celebrate') {        // confetti, then reveal the win panel
       e.confettiT -= dt;
       if (e.confettiT <= 0) { this._spawnConfetti(); e.confettiT = 0.04; }
-      if (e.t > 2.8) this.state = 'win';
+      if (e.t > 2.8) { this.ending = null; this.startDialogue(ENDING, () => { this.state = 'win'; }); }
       return;
     }
   }
