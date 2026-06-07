@@ -141,6 +141,24 @@ vite.config.ts.timestamp-*
 # macOS
 .DS_Store
 
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Local config files
+*.local
+
 # Claude Code / superpowers tooling scratch
 .superpowers/
 .claude/
+
+# Sub-project specific artifacts
+games/warrior/tests/_smoke.png
