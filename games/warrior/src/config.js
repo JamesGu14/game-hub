@@ -88,3 +88,5 @@ export const BOSSES = {
     score: 2000,
   },
 };
+
+export const STARS = { timeThreshold: 75, timeMul2: 1.6 }; // 3⭐ <=75s, 2⭐ <=120s, else 1⭐
