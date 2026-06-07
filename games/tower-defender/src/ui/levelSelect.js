@@ -1,17 +1,19 @@
-// ui/levelSelect.js — [P4] 选关界面(屏幕坐标 layout/hit/draw)。8 关卡片:锁/星/下一关高亮。
-// 精美标题/动画 = Phase 5;本期最小可玩。
+// ui/levelSelect.js — [P4/P5] 选关界面（屏幕坐标 layout/hit/draw）= 游戏主页。
+// [P5] 三国皮肤：楷体大标题 + 势力旗色卡（theme.panel）+ 金星 + 朱印「封」锁 + 下一关金框 glow。
+// layout/hit 为单一来源（命中测试依赖），仅 draw 换 theme。
 import { isUnlocked, nextPlayableIndex } from '../core/save.js';
 import { FACTIONS } from '../data/factions.js';
+import { backdrop, panel, title, seal, roundRect, FONT, PAL } from './theme.js';
 
 const COLS = 4;
 
 export function levelSelectLayout(view, total) {
   const cols = COLS, rows = Math.ceil(total / cols);
   const cw = Math.max(140, Math.min(230, (view.w - 80) / cols - 16));
-  const ch = Math.max(96, Math.min(120, (view.h - 200) / rows - 16));
+  const ch = Math.max(96, Math.min(124, (view.h - 200) / rows - 16));
   const gap = 18;
   const gridW = cols * cw + (cols - 1) * gap;
-  const x0 = (view.w - gridW) / 2, y0 = 128;
+  const x0 = (view.w - gridW) / 2, y0 = 132;
   const cards = [];
   for (let i = 0; i < total; i++) {
     const r = Math.floor(i / cols), c = i % cols;
@@ -20,7 +22,7 @@ export function levelSelectLayout(view, total) {
   return cards;
 }
 
-// 命中已解锁卡 → 0-based index;锁定/空白 → null。
+// 命中已解锁卡 → 0-based index；锁定/空白 → null。
 export function hitLevelSelect(view, save, total, sx, sy) {
   for (const card of levelSelectLayout(view, total)) {
     if (sx >= card.x && sx <= card.x + card.w && sy >= card.y && sy <= card.y + card.h) {
@@ -32,46 +34,65 @@ export function hitLevelSelect(view, save, total, sx, sy) {
 
 export function drawLevelSelect(ctx, view, save, levels) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#15100a'; ctx.fillRect(0, 0, view.w, view.h);
+  backdrop(ctx, view.w, view.h);
 
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillStyle = '#ffe08a'; ctx.font = '700 34px system-ui';
-  ctx.fillText('成都保卫战', view.w / 2, 56);
-  ctx.fillStyle = '#9aa6b8'; ctx.font = '15px system-ui';
-  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, 90);
+  // 标题 + 副标题
+  title(ctx, '成都保卫战', view.w / 2, 58, 52);
+  ctx.fillStyle = PAL.dim; ctx.font = FONT.body(15); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, 100);
 
   const nextIdx = nextPlayableIndex(save, levels.length);
   for (const card of levelSelectLayout(view, levels.length)) {
     const lv = levels[card.index];
     const unlocked = isUnlocked(save, card.index + 1);
     const stars = save.stars[card.index + 1] || 0;
-    const tint = (FACTIONS[lv.faction] || FACTIONS.nanman).tint;
-
-    ctx.fillStyle = unlocked ? 'rgba(30,38,52,.96)' : 'rgba(20,22,28,.9)';
-    ctx.fillRect(card.x, card.y, card.w, card.h);
-    ctx.fillStyle = tint.grassB; ctx.fillRect(card.x, card.y, card.w, 7);   // 势力色条
+    const fac = FACTIONS[lv.faction] || FACTIONS.nanman;
     const isNext = card.index === nextIdx && unlocked;
-    ctx.lineWidth = isNext ? 3 : 1.5;
-    ctx.strokeStyle = isNext ? '#ffd24d' : (unlocked ? '#41506b' : '#2a2e38');
-    ctx.strokeRect(card.x, card.y, card.w, card.h);
 
-    ctx.globalAlpha = unlocked ? 1 : 0.5;
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#cfe0ff'; ctx.font = '700 17px system-ui';
-    ctx.fillText('第 ' + (card.index + 1) + ' 关', card.x + 14, card.y + 32);
-    ctx.fillStyle = '#fff'; ctx.font = '600 16px system-ui';
-    ctx.fillText(lv.name, card.x + 14, card.y + 56);
-    ctx.fillStyle = '#8aa6b8'; ctx.font = '12px system-ui';
-    ctx.fillText((FACTIONS[lv.faction] || {}).name || '', card.x + 14, card.y + 76);
+    panel(ctx, card.x, card.y, card.w, card.h, { variant: unlocked ? 'wood' : 'ink', r: 12, glow: isNext });
+
+    // 顶部势力旗色条
+    ctx.save();
+    if (!unlocked) ctx.globalAlpha = 0.45;
+    roundRect(ctx, card.x + 12, card.y + 12, card.w - 24, 6, 3);
+    const fg = ctx.createLinearGradient(card.x, 0, card.x + card.w, 0);
+    fg.addColorStop(0, fac.tint.grassA); fg.addColorStop(1, fac.tint.grassB);
+    ctx.fillStyle = fg; ctx.fill();
+    ctx.restore();
+
+    // 文字块
+    ctx.save();
+    if (!unlocked) ctx.globalAlpha = 0.5;
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillStyle = unlocked ? PAL.gold : PAL.goldDim; ctx.font = FONT.body(13, 700);
+    ctx.fillText('第 ' + (card.index + 1) + ' 关', card.x + 16, card.y + 42);
+    ctx.fillStyle = unlocked ? PAL.cream : PAL.dim; ctx.font = FONT.head(20);
+    ctx.fillText(lv.name, card.x + 16, card.y + 71);
+    ctx.fillStyle = PAL.dim; ctx.font = FONT.body(12);
+    ctx.fillText(fac.name + '军', card.x + 16, card.y + 91);
+    ctx.restore();
 
     if (!unlocked) {
-      ctx.globalAlpha = 1; ctx.fillStyle = '#7f8794'; ctx.font = '26px system-ui'; ctx.textAlign = 'right';
-      ctx.fillText('🔒', card.x + card.w - 12, card.y + card.h / 2 + 8);
+      // 朱印「封」锁
+      seal(ctx, card.x + card.w - 28, card.y + card.h - 28, 17, '封', { shape: 'square' });
     } else {
-      ctx.font = '15px system-ui'; ctx.textAlign = 'left';
-      ctx.fillStyle = stars > 0 ? '#ffd24d' : '#7f8794';
-      ctx.fillText(stars > 0 ? '★'.repeat(stars) + '☆'.repeat(3 - stars) : '未通关', card.x + 14, card.y + card.h - 14);
+      // 三星（已得金亮 / 未得暗金）
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = FONT.body(16);
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = i < stars ? PAL.goldBright : 'rgba(212,175,55,.26)';
+        ctx.fillText('★', card.x + 16 + i * 19, card.y + card.h - 14);
+      }
+      // 下一关「续战」角标
+      if (isNext) {
+        ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
+        ctx.fillStyle = PAL.goldBright; ctx.font = FONT.head(15);
+        ctx.fillText('▶ 续战', card.x + card.w - 14, card.y + card.h - 13);
+      }
     }
-    ctx.globalAlpha = 1;
   }
+
+  // 底部提示
+  ctx.fillStyle = 'rgba(167,176,192,.6)'; ctx.font = FONT.body(13);
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('点击已解锁关卡出征 · 通关得星解锁下一关', view.w / 2, view.h - 38);
 }

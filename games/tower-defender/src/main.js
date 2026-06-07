@@ -9,13 +9,15 @@ import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex } 
 import { tryBuild, tryUpgrade, sellTower } from './systems/economySystem.js';
 import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
-import { drawHud } from './render/hud.js';
+import { drawHud, hitHud, HUD_H } from './render/hud.js';
 import { spawnFloat } from './render/fx.js';
 import { drawBuildBar, hitBuildBar } from './ui/buildBar.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
 import { GENERALS } from './data/generals.js';
+import { hitPause, drawPause } from './ui/pauseMenu.js';
+import { button, panel, backdrop, vignette } from './ui/theme.js';
 
 const GEN_IDS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge'];
 
@@ -49,13 +51,13 @@ function enterLevel(n) {
 function startLevel(n) { return isUnlocked(save, n + 1) ? enterLevel(n) : false; }
 function toSelect() { screen = 'select'; selectedTower = null; }
 
-const EARLY_BTN = () => ({ x: view.w / 2 - 72, y: 44, w: 144, h: 30 });
+const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
 
 function resize() {
   view.w = canvas.width = window.innerWidth;
   view.h = canvas.height = window.innerHeight;
   const bw = state.level.cols * C, bh = state.level.rows * C;
-  const TOP = 38, BOT = 76, availH = view.h - TOP - BOT;
+  const TOP = HUD_H + 6, BOT = 76, availH = view.h - TOP - BOT;
   view.scale = Math.min(view.w / bw, availH / bh);
   view.ox = (view.w - bw * view.scale) / 2;
   view.oy = TOP + (availH - bh * view.scale) / 2;
@@ -75,7 +77,10 @@ function render(s) {
   if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.fillStyle = '#1a120b'; ctx.fillRect(0, 0, view.w, view.h);
+  backdrop(ctx, view.w, view.h);
+  // [P5] 棋盘木框托盘（屏幕坐标，使战场与 UI 统一）
+  const bpw = s.level.cols * C * view.scale, bph = s.level.rows * C * view.scale;
+  panel(ctx, view.ox - 7, view.oy - 7, bpw + 14, bph + 14, { variant: 'wood', r: 8 });
 
   ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
   drawBoard(ctx, s);
@@ -98,15 +103,11 @@ function render(s) {
   for (const f of s.fx) drawFx(ctx, f);
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  vignette(ctx, view.w, view.h);
   drawHud(ctx, s, view);
   drawBuildBar(ctx, s, view, selected);
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
-  if (s.phase === 'prep') {
-    const b = EARLY_BTN();
-    ctx.fillStyle = 'rgba(255,159,67,.9)'; ctx.fillRect(b.x, b.y, b.w, b.h);
-    ctx.fillStyle = '#2b1d12'; ctx.font = '700 14px system-ui'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('⚔ 提前出兵 (↵)', b.x + b.w / 2, b.y + b.h / 2);
-  }
+  if (s.phase === 'prep') button(ctx, EARLY_BTN(), { label: '⚔ 提前出兵 ↵', variant: 'gold' });
 
   // [P4] 结算:胜利写档(一次)+ 结算面板
   if (s.phase === 'won' || s.phase === 'lost') {
@@ -117,6 +118,9 @@ function render(s) {
     }
     drawResult(ctx, view, s, LEVELS.length);
   }
+
+  // [P5] 暂停菜单（playing 且非结算时叠加渲染）
+  if (s.paused && s.phase !== 'won' && s.phase !== 'lost') drawPause(ctx, view, s);
 }
 
 function onPointerDown(ev) {
@@ -138,6 +142,19 @@ function onPointerDown(ev) {
   }
 
   // —— 游戏中 ——
+  // [P5] HUD 可点 ⏸/⏩（木匾按钮，任何相位可点）
+  const hud = hitHud(view, sx, sy);
+  if (hud === 'pause') { state.paused = !state.paused; return; }
+  if (hud === 'speed') { if (!state.paused) state.speed = state.speed === 1 ? 2 : 1; return; }
+  // [P5] 暂停菜单优先消费（paused 时整屏拦截，防穿透建塔）
+  if (state.paused) {
+    const act = hitPause(view, sx, sy);
+    if (act === 'resume') state.paused = false;
+    else if (act === 'restart') enterLevel(curIndex());
+    else if (act === 'select') { state.paused = false; toSelect(); }
+    else if (act === 'hub') window.location.href = '../../index.html';
+    return;
+  }
   const pick = hitBuildBar(view, sx, sy);
   if (pick) { selected = pick; selectedTower = null; return; }
   if (selectedTower && state.towers.includes(selectedTower)) {
@@ -167,7 +184,7 @@ function onKey(ev) {
   if (ev.code === 'Space') { state.paused = !state.paused; ev.preventDefault(); }
   else if (ev.key === 'f' || ev.key === 'F') { state.speed = state.speed === 1 ? 2 : 1; }
   else if (ev.key === 'Enter') { if (state.phase === 'prep') state.earlyRequested = true; }
-  else if (ev.key === 'Escape') { if (selectedTower) selectedTower = null; else toSelect(); }
+  else if (ev.key === 'Escape') { if (selectedTower) selectedTower = null; else state.paused = !state.paused; }
   else if (ev.key >= '1' && ev.key <= '6') { selected = GEN_IDS[+ev.key - 1]; selectedTower = null; }
   else if (ev.key === '[') { const i = curIndex(); if (i > 0) enterLevel(i - 1); }   // 调试切关
   else if (ev.key === ']') { const i = curIndex(); if (i < LEVELS.length - 1) enterLevel(i + 1); }
