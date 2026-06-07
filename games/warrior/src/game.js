@@ -298,7 +298,7 @@ export class Game {
     if (this.mode.lives !== Infinity) {
       this.lives -= 1;
       if (this.lives <= 0) { this.state = 'gameover'; Sound.play('die'); return; }
-      if (this.mode.loseWeaponOnDeath) this.player.weapon = DEFAULT_WEAPON;
+      if (this.mode.loseWeaponOnDeath) { this.player.weapon = DEFAULT_WEAPON; this.player.rapid = 0; }
     }
     this.deaths += 1;
     this.player.respawn(pt.x, pt.y, this.mode.invuln);
@@ -349,6 +349,9 @@ export class Game {
     const surf = this._surfaceRow(Math.floor((lv.bossX + 2 * TILE) / TILE));
     const gy = (surf != null ? surf : lv.rows - 4);
     this.boss = new Boss(lv.bossType || 'ironGate', lv.bossX + TILE, gy * TILE - cfg.h);
+    const mul = (lv.difficulty && lv.difficulty.bossHpMul) || 1;
+    this.boss.maxHp = Math.round(this.boss.maxHp * mul);
+    this.boss.hp = this.boss.maxHp;
     Sound.play('hit');
   }
 

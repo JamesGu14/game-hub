@@ -5,7 +5,7 @@
 
 import { FIELD, TILE, THEMES } from './config.js';
 import { Sprites } from './sprites.js';
-import { Runner, Jumper } from './entities.js';
+import { Runner, Jumper, Gunner, Turret, Flyer } from './entities.js';
 
 function poseKeyFromAim(aim) {
   if (aim.y < -0.3 && Math.abs(aim.x) < 0.3) return 'up';
@@ -71,6 +71,7 @@ export class Renderer {
         this._falcons(ctx, game);
         this._boss(ctx, game);
         this._bullets(ctx, game);
+        this._enemyBullets(ctx, game);
         this._player(ctx, game);
         this._particles(ctx, game);
         this._floatTexts(ctx, game);
@@ -144,7 +145,18 @@ export class Renderer {
       let cv = null;
       if (e instanceof Runner) cv = Sprites.runner(e.frame());
       else if (e instanceof Jumper) cv = Sprites.jumper(e.frame());
+      else if (e instanceof Gunner) cv = Sprites.gunner(e.frame());
+      else if (e instanceof Turret) cv = Sprites.turret(e.frame());
+      else if (e instanceof Flyer) cv = Sprites.flyer(e.frame());
       if (cv) { const sc = e.w / cv.width; Sprites.blit(ctx, cv, e.x, e.y + e.h - cv.height * sc, sc); }
+    }
+  }
+
+  _enemyBullets(ctx, game) {
+    const cv = Sprites.enemyBullet();
+    for (const b of game.enemyBullets) {
+      if (b.dead) continue;
+      Sprites.blit(ctx, cv, b.x + b.w / 2 - cv.width / 2, b.y + b.h / 2 - cv.height / 2, 1);
     }
   }
 
@@ -152,7 +164,12 @@ export class Renderer {
     const cv = Sprites.bullet();
     for (const b of game.bullets) {
       if (b.dead) continue;
-      Sprites.blit(ctx, cv, b.x, b.y, b.w / cv.width);
+      if (b.gravity) {
+        const fb = Sprites.fireball(Math.floor((b.life || 0) * 12) % 2);
+        Sprites.blit(ctx, fb, b.x + b.w / 2 - fb.width / 2, b.y + b.h / 2 - fb.height / 2, 1);
+      } else {
+        Sprites.blit(ctx, cv, b.x, b.y, b.w / cv.width);
+      }
     }
   }
 
@@ -234,8 +251,9 @@ export class Renderer {
     if (game.player) {
       const w = game.player.weapon;
       const wl = w === 'rifle' ? '步枪' : w.charAt(0).toUpperCase();
+      const r = game.player.rapid > 0 ? ` R×${game.player.rapid}` : '';
       ctx.fillStyle = '#8be0ff'; ctx.font = '13px system-ui, sans-serif';
-      ctx.fillText(`🔫${wl}`, 178, cy);
+      ctx.fillText(`🔫${wl}${r}`, 178, cy);
       ctx.font = 'bold 15px system-ui, sans-serif';
     }
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff';

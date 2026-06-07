@@ -118,14 +118,21 @@ export const Sprites = {
   },
 
   boss(typeId, frame) {
+    const skin = {
+      ironGate: { body: '#5a5f6b', dark: '#3a3f4a', core: '#ff5a3c' },
+      cyclops:  { body: '#6b4a7a', dark: '#46314f', core: '#ff3ca0' },
+      valkyrie: { body: '#4a5a6b', dark: '#31404f', core: '#3cd0ff' },
+      frost:    { body: '#7a93a8', dark: '#4f6678', core: '#aef0ff' },
+      gomera:   { body: '#7a2a3a', dark: '#4f1422', core: '#ff5a3c' },
+    }[typeId] || { body: '#5a5f6b', dark: '#3a3f4a', core: '#ff5a3c' };
     return make(`boss:${typeId}:${frame}`, 48, 56, (c) => {
-      px(c, 2, 6, 44, 50, '#5a5f6b');           // fortress body
-      px(c, 2, 6, 44, 6, '#3a3f4a');
+      px(c, 2, 6, 44, 50, skin.body);
+      px(c, 2, 6, 44, 6, skin.dark);
       for (let i = 0; i < 4; i++) { px(c, 6 + i * 11, 12, 3, 3, '#2a2e36'); px(c, 6 + i * 11, 48, 3, 3, '#2a2e36'); }
       px(c, 14, 22, 20, 14, '#1a1d24');         // brow socket
-      px(c, 18, 25, 12, 8, frame % 2 ? '#ff5a3c' : '#ffd23f'); // glowing core (weakpoint)
+      px(c, 18, 25, 12, 8, frame % 2 ? skin.core : '#ffd23f'); // glowing core (weakpoint)
       px(c, 21, 27, 6, 4, '#fff3b0');
-      px(c, 6, 52, 8, 4, '#3a3f4a'); px(c, 34, 52, 8, 4, '#3a3f4a'); // feet
+      px(c, 6, 52, 8, 4, skin.dark); px(c, 34, 52, 8, 4, skin.dark); // feet
     });
   },
 
@@ -140,13 +147,48 @@ export const Sprites = {
   },
 
   pickupLetter(letter) {
-    const colors = { M: '#ffd23f', S: '#5fd97a', L: '#4f9bff', B: '#c46bff' };
+    const colors = { M: '#ffd23f', S: '#5fd97a', L: '#4f9bff', F: '#ff7a1a', B: '#c46bff', R: '#ff5a8a' };
     return make(`pk:${letter}`, 20, 20, (c) => {
       px(c, 1, 1, 18, 18, '#10140c');
       px(c, 2, 2, 16, 16, colors[letter] || '#ffffff');
       c.fillStyle = '#10140c';
       c.font = 'bold 14px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
       c.fillText(letter, 10, 11);
+    });
+  },
+
+  gunner(frame) {
+    return make(`gunner:${frame}`, 16, 16, (c) => {
+      const body = '#6a4f8a', d = '#473563', skin = '#f1c27d', gun = '#2b2b2b';
+      px(c, 3, 12 - (frame ? 1 : 0), 3, 4, d); px(c, 9, 12, 3, 4, d);
+      px(c, 3, 5, 9, 8, body); px(c, 3, 5, 9, 2, d);
+      px(c, 5, 1, 6, 5, skin);
+      px(c, 11, 8, 6, 3, gun);
+    });
+  },
+  turret(frame) {
+    return make(`turret:${frame}`, 18, 14, (c) => {
+      px(c, 1, 8, 16, 6, '#4a4f57');
+      px(c, 5, 3, 8, 6, frame ? '#8a929c' : '#6b7280');
+      px(c, 12, 5, 6, 3, '#2b2b2b');
+      px(c, 7, 5, 3, 2, '#ff5a3c');
+    });
+  },
+  flyer(frame) {
+    return make(`flyer:${frame}`, 18, 12, (c) => {
+      const body = '#3a8a6f', wing = frame ? '#2f6e59' : '#4fae8d';
+      px(c, 6, 4, 7, 5, body);
+      px(c, 2, frame ? 2 : 6, 6, 3, wing);
+      px(c, 13, 5, 4, 2, '#ffcc33');
+      px(c, 8, 3, 3, 2, '#ff5a3c');
+    });
+  },
+  enemyBullet() {
+    return make('ebullet', 7, 7, (c) => { px(c, 1, 1, 5, 5, '#ff5a3c'); px(c, 2, 2, 3, 3, '#ffd23f'); });
+  },
+  fireball(frame) {
+    return make(`fireball:${frame}`, 10, 10, (c) => {
+      px(c, 1, 1, 8, 8, frame ? '#ff7a1a' : '#ff5a10'); px(c, 3, 3, 4, 4, '#ffe066');
     });
   },
 };

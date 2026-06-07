@@ -175,7 +175,7 @@ export class Runner extends GroundEnemy {
   update(dt, world) {
     if (this.dead) return;
     if (this.onGround) this._chase(world);
-    this._walk(dt, world, this.speed * world.mode.enemyMul);
+    this._walk(dt, world, this.speed * world.mode.enemyMul * (world.levelMul || 1));
   }
 }
 
@@ -197,7 +197,7 @@ export class Jumper extends GroundEnemy {
         this.jumpCd = ENEMY.jumper.retrigger;
       }
     }
-    this._walk(dt, world, this.speed * world.mode.enemyMul);
+    this._walk(dt, world, this.speed * world.mode.enemyMul * (world.levelMul || 1));
   }
 }
 
@@ -308,8 +308,14 @@ export class Boss {
     this.maxHp = cfg.maxHp; this.hp = cfg.maxHp;
     this.phase = 0; this.dead = false; this.dying = 0;
     this.slamTimer = cfg.phases[0].slamCd; this.telegraph = 0; this.anim = 0;
+    this.fireTimer = 1.0;
   }
-  _phaseFor(hpFrac) { return hpFrac > 0.5 ? 0 : 1; }
+  _phaseFor(hpFrac) {
+    // phases are ordered high→low by upTo; current phase = largest index still bounding hpFrac.
+    let idx = 0;
+    for (let i = 0; i < this.cfg.phases.length; i++) if (this.cfg.phases[i].upTo >= hpFrac) idx = i;
+    return idx;
+  }
   hit(dmg, world) {
     if (this.dead) return;
     this.hp -= dmg;
@@ -337,6 +343,20 @@ export class Boss {
     }
     this.slamTimer -= dt;
     if (this.slamTimer <= 0) { this.slamTimer = ph.slamCd; this.telegraph = 0.5; }
+    // Ranged bosses spit an aimed enemy bullet on their phase fire cooldown.
+    if (this.cfg.fires && ph.fireCd) {
+      this.fireTimer -= dt;
+      if (this.fireTimer <= 0) {
+        this.fireTimer = ph.fireCd;
+        const p = world.player;
+        if (p) {
+          const dx = (p.x + p.w / 2) - (this.x + this.w / 2);
+          const dy = (p.y + p.h / 2) - (this.y + this.h / 2);
+          const d = Math.hypot(dx, dy) || 1; const spd = 250;
+          world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h * 0.4, vx: dx / d * spd, vy: dy / d * spd, dmg: 1, life: 3 });
+        }
+      }
+    }
   }
 }
 
