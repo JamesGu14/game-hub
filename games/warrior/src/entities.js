@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -228,5 +228,62 @@ export class Bullet {
         if (!this.pierce) { this.dead = true; return; }
       }
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Red-falcon carrier: flies a polyline (world-px points); a player bullet drops its
+// letter Pickup and kills it. Off-screen culling is the game's job.
+export class Falcon {
+  constructor(drop, x, y, path) {
+    this.w = FALCON.w; this.h = FALCON.h;
+    this.x = x; this.y = y;
+    this.drop = drop;
+    this.path = path && path.length ? path : [{ x, y }];
+    this.seg = 0; this.dead = false; this.anim = 0;
+  }
+  update(dt, world) {
+    if (this.dead) return;
+    this.anim += dt;
+    const target = this.path[Math.min(this.seg + 1, this.path.length - 1)];
+    const cx = this.x + this.w / 2, cy = this.y + this.h / 2;
+    const dx = target.x - cx, dy = target.y - cy;
+    const d = Math.hypot(dx, dy);
+    if (d < 4) { if (this.seg < this.path.length - 2) this.seg++; }
+    else { const s = FALCON.speed * dt; this.x += (dx / d) * s; this.y += (dy / d) * s; }
+  }
+  hitByBullet(world) {
+    if (this.dead) return;
+    this.dead = true;
+    world.spawnPickup(this.drop, this.x + this.w / 2 - PICKUP.w / 2, this.y + this.h / 2);
+    world.playSound('hit');
+  }
+}
+
+// ---------------------------------------------------------------------------
+// A blinking letter that falls onto terrain, despawns after PICKUP.life, applies on touch.
+export class Pickup {
+  constructor(letter, x, y) {
+    this.letter = letter;
+    this.w = PICKUP.w; this.h = PICKUP.h;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0;
+    this.onGround = false; this.dead = false;
+    this.life = PICKUP.life; this.anim = 0;
+  }
+  update(dt, world) {
+    this.anim += dt;
+    this.life -= dt;
+    if (this.life <= 0) { this.dead = true; return; }
+    collideTiles(this, world.grid, dt);
+  }
+  visible() { return (this.anim % (PICKUP.blink * 2)) < PICKUP.blink; }
+  // Apply to the player; returns true if it was a weapon switch.
+  apply(player, world) {
+    const def = PICKUPS[this.letter];
+    this.dead = true;
+    world.playSound('pickup');
+    if (def && def.kind === 'weapon') { player.weapon = def.weapon; return true; }
+    if (def && def.item === 'barrier') { player.giveBarrier(); }
+    return false;
   }
 }
