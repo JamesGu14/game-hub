@@ -26,6 +26,26 @@ export function resolveAim(intent, onGround, faceRight) {
   return { x: hx, y: 0 };                                // horizontal
 }
 
+export const KONAMI = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'b', 'a'];
+
+// Pure sequence matcher. push(key) returns true on the key that completes the sequence.
+export function makeKonami(onUnlock) {
+  let i = 0;
+  return {
+    push(key) {
+      const k = typeof key === 'string' ? key.toLowerCase() : key;
+      if (k === KONAMI[i].toLowerCase()) {
+        i += 1;
+        if (i === KONAMI.length) { i = 0; if (onUnlock) onUnlock(); return true; }
+        return false;
+      }
+      // restart; allow this key to also begin a fresh match (handles "↑↑↑…")
+      i = (k === KONAMI[0].toLowerCase()) ? 1 : 0;
+      return false;
+    },
+  };
+}
+
 export const Input = {
   // Continuous Intent (rebuilt each poll; entities read this object).
   intent: { moveX: 0, aimUp: false, aimDown: false, jumpHeld: false, fireHeld: false },
@@ -60,6 +80,8 @@ export const Input = {
     };
     window.addEventListener('keydown', (e) => set(e, true));
     window.addEventListener('keyup', (e) => set(e, false));
+    this._konami = makeKonami(() => this._emit('konami'));
+    window.addEventListener('keydown', (e) => { if (!e.repeat) this._konami.push(e.key); });
     if (canvas) canvas.addEventListener('pointerdown', () => this._emit('confirm'));
   },
 
