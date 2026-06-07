@@ -12,7 +12,7 @@ function world(extra = {}) {
     mode: MODES.casual,
     player: { x: 5 * TILE, y: 7 * TILE, w: 22, h: 30 },
     addScore() {}, playSound() {}, spawnParticles() {}, shake() {},
-    spawnEnemy() {}, ...extra,
+    spawnEnemy() {}, spawnEnemyBullet() {}, ...extra,
   };
 }
 
@@ -46,4 +46,18 @@ test('boss telegraphs then slams on its cooldown', () => {
   const w = world({ shake: () => { slammed = true; } });
   for (let i = 0; i < 5 * 60; i++) b.update(1 / 60, w);
   assert.equal(slammed, true, 'boss slammed at least once');
+});
+
+test('each boss has a distinct fire pattern (bullet count)', () => {
+  const fire = (typeId) => {
+    const shots = [];
+    const w = world({ spawnEnemyBullet: (s) => shots.push(s) });
+    const b = new Boss(typeId, 20 * TILE, 6 * TILE);
+    b._fire(w);
+    return shots.length;
+  };
+  assert.equal(fire('cyclops'), 1);   // slow aimed eye beam
+  assert.equal(fire('valkyrie'), 3);  // strafing spread
+  assert.equal(fire('frost'), 3);     // downward ice shards
+  assert.ok(fire('gomera') >= 8);     // radial burst
 });

@@ -344,24 +344,43 @@ export class Boss {
       if (this.telegraph <= 0) {
         world.shake(6); world.playSound('hit');
         if (ph.spawnGrunts) for (let i = 0; i < ph.spawnGrunts; i++) world.spawnEnemy('runner', this.x, this.y);
+        if (this.typeId === 'ironGate' || this.typeId === 'frost') this._shockwave(world);
       }
       return;
     }
+    // Valkyrie hovers (bobs vertically); other bosses stay grounded.
+    if (this.cfg.fly) {
+      if (this.baseY == null) this.baseY = this.y;
+      this.y = this.baseY + Math.sin(this.anim * 1.6) * 26;
+    }
     this.slamTimer -= dt;
     if (this.slamTimer <= 0) { this.slamTimer = ph.slamCd; this.telegraph = 0.5; }
-    // Ranged bosses spit an aimed enemy bullet on their phase fire cooldown.
+    // Distinct attack per boss on the phase fire cooldown.
     if (this.cfg.fires && ph.fireCd) {
       this.fireTimer -= dt;
-      if (this.fireTimer <= 0) {
-        this.fireTimer = ph.fireCd;
-        const p = world.player;
-        if (p) {
-          const dx = (p.x + p.w / 2) - (this.x + this.w / 2);
-          const dy = (p.y + p.h / 2) - (this.y + this.h / 2);
-          const d = Math.hypot(dx, dy) || 1; const spd = 125;
-          world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h * 0.4, vx: dx / d * spd, vy: dy / d * spd, dmg: 1, life: 3 });
-        }
-      }
+      if (this.fireTimer <= 0) { this.fireTimer = ph.fireCd; this._fire(world); }
+    }
+  }
+
+  // A slam that also rolls two ground shockwaves outward (heavy ground bosses).
+  _shockwave(world) {
+    const y = this.y + this.h - 12, spd = 120;
+    world.spawnEnemyBullet({ x: this.x, y, vx: -spd, vy: 0, dmg: 1, life: 3 });
+    world.spawnEnemyBullet({ x: this.x + this.w - 10, y, vx: spd, vy: 0, dmg: 1, life: 3 });
+  }
+
+  // Per-boss projectile signature (F4 variety).
+  _fire(world) {
+    const p = world.player; if (!p) return;
+    const cx = this.x + this.w / 2, cy = this.y + this.h * 0.45;
+    const shoot = (vx, vy) => world.spawnEnemyBullet({ x: cx - 5, y: cy, vx, vy, dmg: 1, life: 3.2 });
+    const aim = () => { const dx = (p.x + p.w / 2) - cx, dy = (p.y + p.h / 2) - cy, d = Math.hypot(dx, dy) || 1; return [dx / d, dy / d]; };
+    switch (this.typeId) {
+      case 'cyclops': { const [ax, ay] = aim(); shoot(ax * 105, ay * 105); break; }                 // slow aimed eye beam
+      case 'valkyrie': { const dir = (p.x < this.x) ? -1 : 1; for (let i = -1; i <= 1; i++) shoot(dir * 150, i * 70 + 30); break; } // strafing spread
+      case 'frost': { for (let i = -1; i <= 1; i++) shoot(i * 70, 150); break; }                     // downward ice shards
+      case 'gomera': { const n = 8 + this.phase * 2; for (let i = 0; i < n; i++) { const a = (i / n) * Math.PI * 2; shoot(Math.cos(a) * 130, Math.sin(a) * 130); } break; } // radial burst, denser per phase
+      default: { const [ax, ay] = aim(); shoot(ax * 125, ay * 125); }                                // ironGate: aimed shot
     }
   }
 }
