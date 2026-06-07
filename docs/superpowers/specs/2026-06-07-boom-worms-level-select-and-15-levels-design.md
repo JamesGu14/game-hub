@@ -126,7 +126,7 @@
 |------|------|
 | `levels.js` | 6→15 关数据 + `objective` / `hazards` 字段；`buildLevel` 解析危险区域、目标区、目标虫 |
 | `config.js` | 新增 `HAZARD` 常量（伤害、冷却、弹床力等）、objective 默认值 |
-| `terrain.js` | 仅扩 `_toppingColor` 新主题配色（hazard 不进可破坏 mask、改由 `buildLevel` 产出区域数据，见 §11.6） |
+| `terrain.js` | 扩 `_toppingColor` 新主题；**`generate()` 计算 hazard 落点并暴露 `terrain.hazards`，对熔岩/酸水区域挖空 mask/canvas**（预留池，见 §11.6） |
 | `ai.js` | `_aiFootingSafe` 纳入致命 hazard，AI 不主动走入熔岩/酸水/尖刺（见 §11.8） |
 | `physics.js` | `stepWorm` 接入 hazards：冰面摩擦、弹床反弹、熔岩/酸水致死、尖刺扣血（纯函数，可单测） |
 | `turns.js` | `checkOutcome` 扩展为按 objective 判定（或新增 `evaluateObjective`），保留歼灭逻辑 |
@@ -250,17 +250,19 @@ Boss 关、三星评分、新武器、移动平台、天气环境、双人选关
 | 冰面 ice | 惯性滑行 | `moveSpeed` 不变；松手/离地后 vx 衰减率大降（停不住、打滑） |
 | 弹床 bounce | 恒定反弹 | 接触 → `vy = -520`（高于普通跳 -360） |
 
-### 11.6 Hazard 架构（P1-4）→ 与水共存、独立于 mask
+### 11.6 Hazard 架构（水共存 + 落入型须挖空）→ 修正第二轮 P0-2
 - `waterY` 保留；hazard 与水**共存**。
-- hazard 区域是 `buildLevel` 产出的**逻辑数据**（区域列表），**不写入 terrain 可破坏 mask**（不可被炸成洞）。
-- 渲染：`render.js` **每帧动画绘制**（熔岩流动发光、酸水冒泡），与现有水波处理一致。
-- 查询：`physics.js` 每帧检测 worm vs hazard 区域并施加 §11.5 效果。
-- ∴ `terrain.js` 仅需扩 `_toppingColor` 新主题；hazard 生成逻辑落在 `buildLevel`。
+- **致命"落入"型（熔岩/酸水）必须把地形挖成池/坑**：否则 worm 站在 solid 实地上，feet 永远进不了熔岩区（只剩下落经过的 1 帧，体验极差）。
+  - `terrain.generate()` 算完 heights/platforms/floors **之后**，对熔岩/酸水区域用 `destination-out` 挖空 canvas 并同步清除 mask cells（这是"预留空洞"，**不是**把 hazard 写进可破坏 mask）。尖刺/冰面/弹床**不**挖空（贴表面）。
+- **hazard 具体区域由 `terrain.generate()` 计算**（依赖 heights/platforms/floors，`buildLevel` 阶段还不知道这些坐标）：`buildLevel` 只传 hazard **参数**（如 `{ lava: 1, spikes: 2, bounce: 3 }`）；`terrain` 计算落点（熔岩→低谷、尖刺→地表段、弹床→平台/楼层顶…）并暴露 `terrain.hazards = [{ type, x, y, w, h }]`。→ 同时解掉第二轮 P1-5（弹床依赖 platform 坐标）。
+- 渲染：`render.js` **每帧动画绘制**（熔岩流动发光、酸水冒泡），与现有水波一致。
+- 查询：`physics.js` 每帧按 §11.10 规则检测 worm vs `terrain.hazards`，施加 §11.5 效果。
 
 ### 11.7 胜负判定签名（P1-6）
 - `checkOutcome(teams, objective, state)` → 返回 `0 | 1 | -1 | null`（玩家胜 / 敌胜 / 平 / 继续）。
 - `state` 挂 game 实例：`{ turnCount, captureTimer, targetEnemyIdx, ... }`。
 - `eliminate` 为 default 分支（= 现有逻辑）。
+- **向后兼容**：`checkOutcome(teams, objective = { type: 'eliminate' }, state = {})` —— 现有 `tests/turns.test.mjs` 的单参调用与 eliminate 分支不受影响（M1 即用此签名）。
 
 ### 11.8 AI 与 hazard（P1-7）→ 避开致命地形
 - 扩展 `_aiFootingSafe`：把熔岩/酸水/尖刺区视为不安全落脚点，AI 不主动走入。
@@ -270,3 +272,41 @@ Boss 关、三星评分、新武器、移动平台、天气环境、双人选关
 - **node:test（主力）**：hazard 物理、objective 判定、unlock 范围、15 关数据完整性。
 - **加载级 puppeteer smoke**（复用 memory `boom-worms-smoke-test-setup`）：选关打开、点击进关、console 无 error、HUD/hazard 渲染存在。**不**自动化"完整通关"。
 - **手动验证清单**：M1 / M2 / M3 各列 3-5 个实玩检查点。
+
+### 11.10 Hazard 碰撞检测规则（第二轮 P0-3）
+统一标准（写入 `config.js` / `physics.js` 注释）：
+
+```js
+const feetY = w.y + HALF_H;
+const inRegion = (h) => feetY >= h.y && feetY <= h.y + h.h && w.x >= h.x && w.x <= h.x + h.w;
+// 熔岩 lava / 酸水 acid / 冰面 ice / 弹床 bounce：inRegion(h)（feet 点在区域内触发）
+// 尖刺 spikes：AABB(worm, h) 重叠即触发（身体任何部位碰到都受伤，含贴墙侧面）
+```
+
+### 11.11 胜负判定顺序 & 计数时机（第二轮 P1-4 / P1-7）
+**计数时机**（`game.js`）：`turnCount++` 放在 `_beginResolve()` 内且仅当 `active.team === 0`（玩家方某虫出手结算时 +1；AI 回合、投掷飞行期都不计）。
+
+**判定顺序**（`_updateResolve` 标记死亡后，按 objective 走）：
+1. 标记 hp<=0 / 落水 / 落入致命 hazard 的虫死亡
+2. **decapitate**：目标虫（敌方 `isTarget`）死 → 玩家胜（最高优先，允许同归于尽，§11.4）
+3. **timed**：敌全灭 → 玩家胜（**极限反杀优先**）；否则 `turnCount > turnLimit` → 玩家负
+4. **capture**：玩家回合结束评估，区内有存活玩家虫则 `captureTimer++` 否则归 0；`captureTimer >= holdTurns` → 玩家胜
+5. **eliminate**（default）：现有 `checkOutcome` 逻辑（玩家全灭→负 / 敌全灭→胜 / 双灭→平）
+
+> 兜底：任何目标类型，玩家方全灭且未达成目标 → 负。
+
+### 11.12 aiError 完整值表（第二轮 P1-10）
+单调不增，前段陡降助上手、后段细腻：
+
+| 关 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| aiError | 0.90 | 0.80 | 0.70 | 0.62 | 0.55 | 0.48 | 0.42 | 0.37 | 0.32 | 0.28 | 0.24 | 0.20 | 0.16 | 0.12 | 0.08 |
+
+`levels.test` 校验：序列严格单调不增。（手感数值，实玩偏差再微调。）
+
+### 11.13 M1 必做的接口预留 & UI 流程（第二轮 P0-1 / P1-6 / P1-8 / P1-9）
+即使 M1 无 hazard / 无特殊目标，以下在 M1 就位以免 M2/M3 返工：
+- **stepWorm**：`opts` 解构 `hazards = []` 并预留冰面/弹床分支位置（`opts` 是对象，加可选字段**向后兼容**——非破坏性签名变更；M1 传 `[]`）。
+- **checkOutcome**：M1 即用 §11.7 三参默认签名（eliminate 分支 = 现状）。
+- **选关流程**（`main.js`）：`btn-solo` → 显示 `overlay-levelselect`；`?level=N` → 直接 `startGame(N-1, 'solo')` 跳过选关；选关内"返回主菜单" → `toMenu()`。
+- **win 文案**：`win-msg` 改由 `syncOverlays` 动态更新（现 `index.html` 写死"恭喜打败彩虹山 BOSS"，与第 15 关"终焉决战"不符），比照 `lc-msg` / `go-msg` 处理。
