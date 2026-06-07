@@ -1,6 +1,7 @@
 // Level data for 像素冒险 PIXEL QUEST.
 // Rows are TOP-DOWN strings using the TILES legend (config.js) plus entity markers:
 //   '@' player start, 'c' checkpoint, 'g' goomba, 'k' koopa, 'o' floating coin.
+//   'v' flyer, 'z' dasher, 'p' piranha, 'a' spiked, 'm' flamer (阶段 B 新怪;'W' bowser 阶段 D).
 // Tile legend chars: # ground, X block, B brick, b brickCoin, ? qcoin, M qpower,
 //   * qstar, [ ] pipe halves, = platform, F flag, A castle.
 // Gaps (missing ground columns) are pits. All gaps are <= 3 tiles and crossable
@@ -8,7 +9,7 @@
 
 import { TILE, TILES } from './config.js';
 
-const ENTITY_CHARS = new Set(['@', 'c', 'g', 'k', 'o']);
+const ENTITY_CHARS = new Set(['@', 'c', 'g', 'k', 'o', 'v', 'z', 'p', 'a', 'm']);
 
 // ---------------------------------------------------------------------------
 // 1-1 草地 (overworld) — gentle tutorial: run/jump, stomp, ?-blocks, a pipe,
@@ -485,6 +486,16 @@ export function parseLevel(lvl) {
           enemies.push({ type: 'koopa', x: px, y: py });
         } else if (ch === 'o') {
           coins.push({ x: px + TILE / 2, y: py + TILE / 2 });
+        } else if (ch === 'v') {
+          enemies.push({ type: 'flyer', x: px, y: py });
+        } else if (ch === 'z') {
+          enemies.push({ type: 'dasher', x: px, y: py });
+        } else if (ch === 'p') {
+          enemies.push({ type: 'piranha', x: px, y: py });
+        } else if (ch === 'a') {
+          enemies.push({ type: 'spiked', x: px, y: py });
+        } else if (ch === 'm') {
+          enemies.push({ type: 'flamer', x: px, y: py });
         } else if (ch === 'c') {
           checkpoint = { x: px, y: py };
         }

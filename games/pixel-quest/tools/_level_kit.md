@@ -23,6 +23,11 @@ The theme color set is added by the orchestrator; you only use the theme key nam
 - `=` platform, `F` flag (level goal), `A` castle (DO NOT USE — finale only)
 - Entity markers (become objects, not tiles): `@` player spawn, `c` checkpoint,
   `g` goomba, `k` koopa, `o` floating coin
+- New monster markers (阶段 B): `v` 飞翼怪(空中,须摆在地面/平台上方,掉翅膀后能落地),
+  `z` 冲刺兽(地面,前方留一段平直地),`p` 食人花(管口,踩不死;本段必须配火花道具 `M` +
+  留"等它缩回再跳过"的躲避路径),`a` 甲壳兽(踩反伤,小写 `a`≠大写 `A` 城堡;必须与 `k` 同摆,
+  供踢壳消灭),`m` 炎魔(定时喷火球,须给玩家躲火球的横向空间)。
+- 注意:verifier 对新怪透明,不校验"摆位合理性"(飞翼下方有地/食人花配 M/甲壳配 k),阶段 C 须人工+真机验收。
 
 ## Layout conventions (14 rows tall)
 - Rows 10–13 = the main floor (`#`). Carve pits by leaving spaces.
