@@ -30,10 +30,17 @@ export const ENEMIES = {
     heal: { range: 1.5, perSec: 8 },                           // 治疗周围友军（封顶见 BAL.HEAL_CAP_PER_SEC）
     color: '#e84393',
   },
+  heavy: {
+    id: 'heavy', name: '重甲',
+    hp: 200, speed: 0.5, gold: 14, castleDmg: 2, flying: false,
+    resist: { physical: 0.6 },                                  // 吴/魏重甲：抗物理较轻、不怕火（区别南蛮藤甲）
+    tag: 'heavy',
+    color: '#7f8c9b',
+  },
   boss: {
     id: 'boss', name: '名将',
     hp: 800, speed: 0.45, gold: 80, castleDmg: 5, flying: false,
-    resist: { physical: 0.9 },                                  // 轻抗物理；无主动技（司马懿技 → Phase 3）
+    resist: { physical: 0.9 },                                  // 轻抗物理；主动技仅司马懿（见 data/bosses.js + bossSystem）
     isBoss: true,
     color: '#2c2c54',
   },

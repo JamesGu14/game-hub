@@ -8,7 +8,7 @@ const C = BAL.CELL;
 const ENEMY_R = { footman: 0.26, wolf: 0.22, tengjia: 0.32, flyer: 0.24, shaman: 0.26, boss: 0.44 };
 const MODE_GLYPH = { first: '前', last: '后', strongest: '强', weakest: '弱' };
 
-export function drawTower(ctx, t) {
+export function drawTower(ctx, t, now = 0) {
   const g = GENERALS[t.generalId];
   const s = C * 0.32;
   ctx.fillStyle = g.color;
@@ -36,6 +36,15 @@ export function drawTower(ctx, t) {
     ctx.fillStyle = '#23304a'; ctx.fillRect(t.px - s, t.py + s + 2, s * 2, 3);
     ctx.fillStyle = ratio >= 1 ? '#ffd24d' : '#5b8de0';
     ctx.fillRect(t.px - s, t.py + s + 2, s * 2 * ratio, 3);
+  }
+
+  // [P3] 被司马懿震慑:灰罩 + ✋(停火 2s)
+  if (now < (t.stunnedUntil || 0)) {
+    ctx.fillStyle = 'rgba(18,18,26,.55)';
+    ctx.fillRect(t.px - s, t.py - s, s * 2, s * 2);
+    ctx.fillStyle = '#fff'; ctx.font = `${C * 0.4}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('✋', t.px, t.py);
   }
 }
 
@@ -100,6 +109,13 @@ export function drawEnemy(ctx, e, now = 0) {
   const w = Math.max(C * 0.5, R * 1.8), hp = Math.max(0, e.hp) / e.maxHp;
   ctx.fillStyle = '#3a1414'; ctx.fillRect(e.px - w / 2, cy - R - 7, w, 4);
   ctx.fillStyle = e.isBoss ? '#ff5577' : '#3ad06f'; ctx.fillRect(e.px - w / 2, cy - R - 7, w * hp, 4);
+
+  // [P3] BOSS 显名(名将)
+  if (e.isBoss) {
+    ctx.fillStyle = '#ffe08a'; ctx.font = `bold ${C * 0.3}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(e.name, e.px, cy + R + 9);
+  }
 }
 
 export function drawProjectile(ctx, p) {

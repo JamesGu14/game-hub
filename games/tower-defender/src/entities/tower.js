@@ -13,5 +13,6 @@ export function createTower(generalId, slot) {
     mode: 'first',                                  // [P2] first | last | strongest | weakest
     totalInvested: GENERALS[generalId].cost,        // [P2] 拆除返还基数（建造+各级升级累加）
     signatureCd: 0,                                 // [P2] L3 冷却技计时（单时钟 dt 递减）
+    stunnedUntil: 0,                                // [P3] 被司马懿震慑前的停火截止时间（绝对游戏时间）
   };
 }

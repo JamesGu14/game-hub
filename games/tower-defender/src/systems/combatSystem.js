@@ -10,6 +10,7 @@ export function combatSystem(state, dt) {
   const now = state.time, rng = state.rng;
   for (const tower of state.towers) {
     const g = GENERALS[tower.generalId];
+    if (now < (tower.stunnedUntil || 0)) continue;  // [P3] 被司马懿震慑：整塔停摆（含 CD 冻结）
     if (tower.cooldown > 0) tower.cooldown -= dt;
     if (tower.signatureCd > 0) tower.signatureCd -= dt;
 

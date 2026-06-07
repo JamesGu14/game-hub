@@ -27,4 +27,10 @@ export const BAL = {
 
   // —— Phase 2：灼烧（诸葛；§17.3）——
   BURN_MAX_STACKS: 3,         // 灼烧最多叠 3 层
+
+  // —— Phase 3：司马懿终 BOSS 主动技（§17.3）——
+  BOSS_SUMMON_CD: 15,         // 每 15s 召唤
+  BOSS_SUMMON_COUNT: 2,       // 每次召 2 名魏卒
+  BOSS_STUN_CD: 8,            // 每 8s 震慑一座将塔
+  BOSS_STUN_DUR: 2,           // 被震慑停火 2s
 };

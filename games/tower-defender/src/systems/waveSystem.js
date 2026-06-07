@@ -18,7 +18,8 @@ export function waveSystem(state, dt) {
     if (sp.leadTimer > 0) { sp.leadTimer -= dt; continue; }
     sp.timer -= dt;
     while (sp.timer <= 0 && sp.remaining > 0) {
-      state.enemies.push(createEnemy(sp.enemyType, sp.pathId, level.paths[sp.pathId], level.scale));
+      state.enemies.push(createEnemy(sp.enemyType, sp.pathId, level.paths[sp.pathId], level.scale,
+        { faction: level.faction, name: sp.name, bossSkills: sp.bossSkills, hpMult: sp.hpMult }));  // [P3] 换皮+BOSS
       sp.remaining--;
       sp.timer += sp.interval;
       if (sp.remaining === 0) state.campsFallen[sp.campId] = true;  // 该营出尽 → 攻陷
@@ -54,5 +55,6 @@ function startWave(state) {
   state.activeSpawns = wave.spawns.map((s) => ({
     campId: s.campId, pathId: s.pathId, enemyType: s.enemyType,
     remaining: s.count, interval: s.spawnInterval, timer: 0, leadTimer: s.leadDelay || 0,
+    name: s.name, bossSkills: s.bossSkills, hpMult: s.hpMult,   // [P3] 透传给 createEnemy（换皮/BOSS）
   }));
 }

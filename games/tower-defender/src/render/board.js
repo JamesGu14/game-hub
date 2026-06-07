@@ -1,16 +1,18 @@
 // render/board.js — 盘面：棋盘格 + 弯曲蜀道 + 将位 + 成都 + 敌营（色块占位）。只读 state。
 // 约定：调用方已把 ctx 变换设到「板像素坐标」（见 main.js camera）。
 import { BAL } from '../data/balance.js';
+import { tintOf } from '../data/factions.js';
 
 const C = BAL.CELL;
 
 export function drawBoard(ctx, state) {
   const { cols, rows, paths, slots, castle, camps } = state.level;
+  const tint = tintOf(state.level.faction);     // [P3] 势力盘面色调(南蛮绿/东吴青/曹魏冷灰)
 
   // 棋盘格草地
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      ctx.fillStyle = ((r + c) & 1) ? '#4f7a39' : '#588a3e';
+      ctx.fillStyle = ((r + c) & 1) ? tint.grassA : tint.grassB;
       ctx.fillRect(c * C, r * C, C, C);
     }
   }
@@ -22,8 +24,8 @@ export function drawBoard(ctx, state) {
     ctx.beginPath();
     ctx.moveTo(wp[0].x * C + C / 2, wp[0].y * C + C / 2);
     for (let i = 1; i < wp.length; i++) ctx.lineTo(wp[i].x * C + C / 2, wp[i].y * C + C / 2);
-    ctx.strokeStyle = '#7a5e34'; ctx.lineWidth = C * 0.72; ctx.stroke();
-    ctx.strokeStyle = '#b58f54'; ctx.lineWidth = C * 0.58; ctx.stroke();
+    ctx.strokeStyle = tint.road; ctx.lineWidth = C * 0.72; ctx.stroke();
+    ctx.strokeStyle = tint.road2; ctx.lineWidth = C * 0.58; ctx.stroke();
   }
 
   // 将位（未占用 = 虚线绿框）

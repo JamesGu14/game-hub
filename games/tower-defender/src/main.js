@@ -31,6 +31,16 @@ function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
 }
 
+// [P3] 原地换关(循环持同一 state 引用 → Object.assign 覆盖全字段)。正式选关/存档 = Phase 4。
+function loadLevel(n) {
+  const lv = LEVELS[n];
+  if (!lv) return false;
+  Object.assign(state, newGameState(lv));
+  selected = 'huang'; selectedTower = null;
+  resize();
+  return true;
+}
+
 const EARLY_BTN = () => ({ x: view.w / 2 - 72, y: 44, w: 144, h: 30 });
 
 function resize() {
@@ -77,7 +87,7 @@ function render(s) {
   }
 
   for (const e of s.enemies) drawEnemy(ctx, e, s.time);
-  for (const t of s.towers) drawTower(ctx, t);
+  for (const t of s.towers) drawTower(ctx, t, s.time);
   for (const p of s.projectiles) drawProjectile(ctx, p);
   for (const f of s.fx) drawFx(ctx, f);
 
@@ -135,6 +145,9 @@ function onKey(ev) {
   else if (ev.key === 'Enter') { if (state.phase === 'prep') state.earlyRequested = true; }
   else if (ev.key === 'Escape') { selectedTower = null; }
   else if (ev.key >= '1' && ev.key <= '6') { selected = GEN_IDS[+ev.key - 1]; selectedTower = null; }
+  // [P3] 开发用切关([ 上一关 / ] 下一关);正式选关界面 = Phase 4
+  else if (ev.key === '[') { const i = LEVELS.indexOf(state.level); if (i > 0) loadLevel(i - 1); }
+  else if (ev.key === ']') { const i = LEVELS.indexOf(state.level); if (i < LEVELS.length - 1) loadLevel(i + 1); }
 }
 
 async function boot() {
@@ -151,6 +164,7 @@ async function boot() {
     setMode(cx, cy, m) { const t = towerAt({ x: cx, y: cy }); if (t) t.mode = m; return !!t; },
     select(id) { selected = id; },
     setGold(n) { state.gold = n; },
+    loadLevel,                    // [P3] __td.loadLevel(n) 切关测试(0-based)
     early() { if (state.phase === 'prep') state.earlyRequested = true; },
     setSpeed(n) { state.speed = n; },
   };

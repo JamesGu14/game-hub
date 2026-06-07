@@ -4,6 +4,7 @@ import { BAL } from '../data/balance.js';
 import { bus } from './eventBus.js';
 import { waveSystem } from '../systems/waveSystem.js';
 import { pathSystem } from '../systems/pathSystem.js';
+import { bossSystem } from '../systems/bossSystem.js';
 import { targetingSystem } from '../systems/targetingSystem.js';
 import { combatSystem } from '../systems/combatSystem.js';
 import { statusSystem } from '../systems/statusSystem.js';
@@ -16,6 +17,7 @@ export function step(state, dt) {
   if (state.phase === 'won' || state.phase === 'lost') { bus.flush(); return; }
   waveSystem(state, dt);          // prep & combat（自身判相位）
   pathSystem(state, dt);          // ↓ 各系统入口 if(phase!=='combat')return
+  bossSystem(state, dt);          // [P3] 司马懿召兵/震将（targeting 前：召出兵当帧可被锁）
   targetingSystem(state, dt);
   combatSystem(state, dt);
   statusSystem(state, dt);        // [P2] 灼烧 DoT / 治疗 / 净值 / DoT 致死
