@@ -348,7 +348,7 @@ if (e.phase === 'celebrate') {
 ### 世界4 天空回廊 intro
 - 侍从(herald): "这里是天空回廊,飘在云上面。"
 - 马里奥(mario): "樱花、神殿、大蘑菇,还有星空。"
-- 马里奥(mario): "听说闯过这些考验,就能得到厉害的力量!我试一试!"
+- 马里奥(mario): "听说闯过这些考验,就能得到新的本领!我试一试!"
 
 ### 世界4 天空回廊 outro
 - 马里奥(mario): "考验通过!我浑身都是劲儿!"
@@ -357,7 +357,7 @@ if (e.phase === 'celebrate') {
 ### 世界5 烈焰熔域 intro
 - 侍从(herald): "好烫!这里是烈焰熔域,火焰军团的地盘。"
 - 马里奥(mario): "咦?天上有会飞的怪!那是飞翼怪!"
-- 马里奥(mario): "踩它一脚,它就掉下来啦。冲过去!"
+- 马里奥(mario): "踩它一脚,翅膀就掉啦,再补一脚就消灭它!冲过去!"
 
 ### 世界5 烈焰熔域 outro
 - 马里奥(mario): "火焰防线,突破成功!飞的也拦不住我!"
@@ -377,7 +377,7 @@ if (e.phase === 'celebrate') {
 ### 世界7 毒林深处 intro
 - 侍从(herald): "这里是毒林深处,雾好浓。"
 - 侍从(herald): "管道里藏着食人花!它会突然钻出来吓你一跳!"
-- 马里奥(mario): "踩不到它?那我用火球,或者跳着躲开!"
+- 马里奥(mario): "它会咬人、踩不死!用火球打,或者跳着躲开!"
 - 马里奥(mario): "公主在等我,毒林挡不住我!"
 
 ### 世界7 毒林深处 outro
@@ -488,3 +488,23 @@ if (e.phase === 'celebrate') {
 - 新建:`/Users/james/Projects/game-hub/games/pixel-quest/src/story.js`
 - 改:`/Users/james/Projects/game-hub/games/pixel-quest/src/config.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/entities.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/game.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/render.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/sprites.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/levels.js`、`/Users/james/Projects/game-hub/games/pixel-quest/src/main.js`、`/Users/james/Projects/game-hub/games/pixel-quest/index.html`、`/Users/james/Projects/game-hub/games/pixel-quest/style.css`、`/Users/james/Projects/game-hub/games/pixel-quest/tools/_level_kit.md`
 - 不改逻辑:`/Users/james/Projects/game-hub/games/pixel-quest/tools/verify-levels.js`
+
+---
+
+## 九、评审(OpenCode 2026-06-07)纳入的修订
+
+> 以下条目对前文相应处做**覆盖/补充,以本节为准**。已采纳 OpenCode review 的全部高优先级项 + 多数中低优先级项。两条产品向定调:`驸马` 用词**保留**(产品方原话);剧情**确定零生字、不加拼音**(已与产品方确认)。
+
+**A. `_level_kit.md` 必须先于阶段 C 更新(阻塞项)** —— 新增实体字符说明:`v 飞翼怪(空中,须摆在地面/平台上方)`、`z 冲刺兽(地面,前方留一段平直地)`、`p 食人花(管口,踩不死;本段必须配火花道具 M + 留"等它缩回再跳过"的躲避路径)`、`a 甲壳兽(踩反伤;必须与 k 同摆,供踢壳消灭)`、`m 炎魔(定时喷火球)`、`W 酷霸王(仅 10-5)`;把"NEVER place A"放宽为"**仅 `10-5` 可放 `A`,且 `10-5` 无 `F`、不放 `c`**,其余关仍恰好一个 `F`";内嵌 §一世界主题速查表(每个 agent 开局必读);每世界怪物密度建议(世界5 约 6-8 含 2-3 个 `v` … 世界9 约 10-12 全怪混合)。
+
+**B. Boss 竞技场 `10-5`(覆盖 §一/§三 中的 time)** —— `time: 300`(非 999,避免 `⏱` 挤占 HUD 并抑制时间分);**不放 checkpoint `c`**(Boss 战一命到底,符合仪式感);Boss 每次受击(踩/火球)播 `Sound.stomp()` 并 `addScore(200)`;`hit()` 维持 `invuln 0.9s` + 击退以防连击/秒杀。Boss `HP` 默认 5,阶段 D 真机后可在 3–5 间微调。
+
+**C. 对话弹窗 UI 细化(补 §四)** —— `#overlay-dialogue` 用 `z-index: 550`(在 touch-controls 之上、持久按钮 9999 之下);`.dlg-portrait { width:96px; height:96px; image-rendering:pixelated; }`;对话面板整体上移(如 `margin-top:-8vh`)避免被手指挡住;`story.js` 加开发期断言"每个节点 `text.length ≤ 38`";**零生字、无拼音字段、UI 不留拼音行**;`Sprites.portrait()` 默认兜底改为 `herald`(写错 portrait key 时侍从出场比马里奥自言自语自然)。
+
+**D. 新怪歧义补全(补 §二)** —— 飞翼怪 `v`:关卡作者须保证其正下方有地面/平台(掉翅膀退化为地面巡逻后能落地;若摆在坑上,则其自身坠坑死亡,可接受)。冲刺兽 `z`:仅当玩家位于其**前方**水平区域且 `|脚部 y 差| < TILE` 时进入 windup/dash;玩家在其正上方(踩头)**不触发**,避免抖动。食人花 `p`:**统一 `baseY = y`(=作图字符所在格上沿);`hidden` 时整体缩到 `baseY+TILE` 以下,`shown` 时升到 `baseY` 暴露**;"压管口不冒出"判定为真则保持 hidden:`player.x+player.w > p.x-4 && player.x < p.x+p.w+4 && player.y+player.h <= baseY+8`。敌方火球 `EnemyShot` 尺寸 `14×14`、紫色 `#c46bff`,与玩家火球 `12×12` 橙色区分。
+
+**E. 关卡结构兼容(补 §六)** —— 阶段 C 加入世界 5-9 时,把现有 `4-5`(lvlCelestial)的城堡 `A` **改回旗杆 `F`**(否则非末关的城堡会触发"早通关");在阶段 D 的 `10-5` 上线前,临时由"最后一关旗杆 → `nextLevel` → `win`"路径收尾(暂无结局过场);阶段 D 再把城堡过场恢复到 `10-5`(castle `A`)。阶段 A/C 开头增加校验:现有 20 关 `id` 与 `worldOf()` 严格对齐(并顺手把 `lvl4`(实为 2-5)/`lvlLava`(实为 1-4)等**误导性常量名重构**,降低并行 agent 用错主题/顺序的概率)。
+
+**F. 开发期保护(补 §二 P2)** —— 开发阶段把 `ENEMY_CTORS` 未知类型改成**抛错**(`const C = ENEMY_CTORS[e.type]; if (!C) throw new Error('Unknown enemy type: '+e.type);`),便于及早发现关卡数据笔误;正式上线前再改回 `|| Goomba` 兜底。
+
+**G. 文案与机制对齐(已就地改 §五)** —— 世界4 intro "厉害的力量"→"新的本领";世界5 intro 改为"踩一脚翅膀掉、再补一脚"(飞翼怪需两脚);世界7 intro 改为食人花准确说法("会咬人、踩不死,用火球打或跳着躲",非原来的"踩不到")。
