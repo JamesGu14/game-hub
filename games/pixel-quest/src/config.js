@@ -38,6 +38,12 @@ export const THEMES = {
   underground:{ skyTop:'#04122b', skyBot:'#0a2247', ground:'#2f6db0', groundDark:'#1d3f70', grass:'#2f6db0', hills:'#0a2247' },
   sky:        { skyTop:'#7ec0ff', skyBot:'#cdeeff', ground:'#c4731f', groundDark:'#9c560f', grass:'#3fa845', hills:'#bcd9ff' },
   castle:     { skyTop:'#1a1320', skyBot:'#2a1d33', ground:'#6b5b73', groundDark:'#473b4f', grass:'#6b5b73', hills:'#2a1d33' },
+  lava:       { skyTop:'#2a0d0d', skyBot:'#5a1c0a', ground:'#7a3b1f', groundDark:'#4f2410', grass:'#c2451c', hills:'#3a0f0a' },
+  snow:       { skyTop:'#a8d8ff', skyBot:'#eaf5ff', ground:'#cfd8e3', groundDark:'#9aa7b5', grass:'#ffffff', hills:'#d6e6f5' },
+  desert:     { skyTop:'#f3c98b', skyBot:'#ffe9c2', ground:'#e0b46a', groundDark:'#b3863f', grass:'#e8c27a', hills:'#e6b97a' },
+  forest:     { skyTop:'#7ec85a', skyBot:'#cdeeae', ground:'#7a5a2f', groundDark:'#543d1f', grass:'#3fa845', hills:'#2f7d3a' },
+  beach:      { skyTop:'#5fd0e6', skyBot:'#d8f6ff', ground:'#e9d8a6', groundDark:'#c2a86a', grass:'#ffe9a8', hills:'#7fd6c0' },
+  night:      { skyTop:'#0a0a2a', skyBot:'#1e1b3a', ground:'#3a3550', groundDark:'#262238', grass:'#3a3550', hills:'#15132a' },
 };
 
 export const SCORE = { coin:100, stomp:100, shellHit:200, fireKill:200, powerup:1000, flagBase:500, timeBonus:20, levelClear:1000, oneUpAtCoins:100 };

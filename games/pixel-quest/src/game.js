@@ -308,6 +308,7 @@ export class Game {
       }
       return;
     }
+    if (this.state === 'ending') { this._updateEnding(dt); return; }
     if (this.state !== 'playing') return;
 
     // Fire action consumed via Input subscription in main.js -> game.tryFire()
@@ -421,16 +422,23 @@ export class Game {
           if (stomping) { e.toShell(this._world); p.vy = -440; this.score += SCORE.stomp; }
           else this._hurtPlayer();
         } else if (e.kickGrace <= 0) {
-          // shell OR slide never hurts the player: stomp stops it, side-touch kicks it away.
-          if (stomping) {
+          // Shell never hurts the player. A STOPPED shell gets kicked away on ANY
+          // contact — that slides it out from under the player, fixing the
+          // stand-on-shell-edge jitter + score spam (each frame used to re-trigger
+          // stopShell + a stomp bounce + score). A MOVING shell is stopped by a
+          // stomp, otherwise redirected.
+          if (e.state === 'shell') {
+            const dir = (p.x + p.w / 2) < (e.x + e.w / 2) ? 1 : -1;
+            e.kickShell(dir, this._world);
+            this.score += SCORE.shellHit;
+            if (stomping) p.vy = -440;
+          } else if (stomping) {
             e.stopShell(this._world);
             p.vy = -440;
             this.score += SCORE.stomp;
           } else {
-            const wasStill = e.state === 'shell';
             const dir = (p.x + p.w / 2) < (e.x + e.w / 2) ? 1 : -1;
             e.kickShell(dir, this._world);
-            if (wasStill) this.score += SCORE.shellHit;
           }
         }
       }
@@ -440,7 +448,10 @@ export class Game {
   _checkGoal() {
     const lv = this.level;
     const p = this.player;
-    if (lv.flagX != null && this.flagAnim <= 0 && p.x + p.w > lv.flagX) {
+    // The pole is drawn ~22px into the flag cell (blit at flagX+8, pole at logical
+    // x7 × SC2). Require the player to actually reach the pole, not just enter the
+    // cell, so victory triggers on contact instead of ~2cm short.
+    if (lv.flagX != null && this.flagAnim <= 0 && p.x + p.w > lv.flagX + 20) {
       this.flagAnim = 1.0;
       this.player.vx = 0;
       const groundY = lv.height - 2 * TILE;
@@ -472,8 +483,69 @@ export class Game {
     this.score += SCORE.levelClear;
     this.score += Math.floor(this.timeLeft) * SCORE.timeBonus;
     this._saveBest();
-    this.state = 'win';
     Sound.win();
+    // Play the victory cutscene; the win panel (HTML overlay) appears only once it
+    // finishes (state 'ending' is not in main.js's overlay map, so nothing covers
+    // the canvas during the scene).
+    const lv = this.level;
+    const p = this.player;
+    p.vx = 0; p.vy = 0; p.faceRight = true;
+    this.enemies = []; // clear the stage for a clean celebration
+    this.ending = {
+      phase: 'walk',
+      t: 0,
+      meetX: lv.castleX + TILE - 24 - p.w / 2, // stand a step left of the princess
+      crownY: null,
+      confettiT: 0,
+    };
+    this.state = 'ending';
+  }
+
+  // Scripted ending: hero walks to the princess, kneels & kisses her hand, she
+  // crowns him, then confetti rains before the win panel shows.
+  _updateEnding(dt) {
+    const e = this.ending;
+    const p = this.player;
+    if (!e) { this.state = 'win'; return; }
+    e.t += dt;
+    if (e.phase === 'walk') {
+      const dx = e.meetX - p.x;
+      const step = 70 * dt;
+      if (Math.abs(dx) <= step || dx < 0) { p.x = e.meetX; e.phase = 'kneel'; e.t = 0; }
+      else { p.x += step; p.faceRight = true; }
+      return;
+    }
+    if (e.phase === 'kneel') {            // kneel + kiss the hand (hearts in render)
+      p.faceRight = true;
+      if (e.t > 1.4) { e.phase = 'crown'; e.t = 0; e.crownY = -42; }
+      return;
+    }
+    if (e.phase === 'crown') {            // princess lowers the crown onto the hero
+      e.crownY = Math.min(0, e.crownY + 70 * dt);
+      if (e.t > 1.3) { e.phase = 'celebrate'; e.t = 0; }
+      return;
+    }
+    if (e.phase === 'celebrate') {        // confetti, then reveal the win panel
+      e.confettiT -= dt;
+      if (e.confettiT <= 0) { this._spawnConfetti(); e.confettiT = 0.04; }
+      if (e.t > 2.8) this.state = 'win';
+      return;
+    }
+  }
+
+  _spawnConfetti() {
+    const colors = ['#ff5a5f', '#ffd23f', '#5fd97a', '#4f9bff', '#c46bff', '#ff9f1c'];
+    for (let i = 0; i < 5; i++) {
+      this.particles.push({
+        x: this.camera.x + Math.random() * FIELD.W,
+        y: this.camera.y - 12,
+        vx: (Math.random() - 0.5) * 90,
+        vy: 30 + Math.random() * 70,
+        life: 1.6,
+        color: colors[(Math.random() * colors.length) | 0],
+        size: 4 + ((Math.random() * 3) | 0),
+      });
+    }
   }
 
   _onPlayerDead() {

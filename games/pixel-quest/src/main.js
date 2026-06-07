@@ -144,8 +144,15 @@ function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.045);
   last = now;
   Input.poll();
+  const t0 = performance.now();
   game.update(dt);
   renderer.render(game);
+  const cost = performance.now() - t0;
+  // Dev aid: warn on long frames so we can locate jank by level/state instead of
+  // guessing. Normally silent. (Safe to remove once perf is settled.)
+  if (cost > 24) {
+    console.warn(`[perf] long frame ${cost.toFixed(1)}ms · lvl ${game.currentLevelId && game.currentLevelId()} · state=${game.state} · coins=${game.coinsArr && game.coinsArr.length} enemies=${game.enemies && game.enemies.length} particles=${game.particles && game.particles.length} fireballs=${game.fireballs && game.fireballs.length}`);
+  }
   syncOverlays();
   requestAnimationFrame(frame);
 }

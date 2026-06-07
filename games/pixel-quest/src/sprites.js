@@ -303,6 +303,18 @@ function drawPowerup(kind) {
 }
 
 // ---- public API -----------------------------------------------------------
+// Render an emoji glyph to an offscreen canvas ONCE, so it can be blitted cheaply
+// each frame. Per-frame fillText of a colour emoji is a real cost (glyph layout +
+// rasterization) and churns garbage — caching removes it from the hot path.
+function drawEmoji(ch, px) {
+  const o = mk(px, px), x = o.cx;
+  x.textAlign = 'center';
+  x.textBaseline = 'middle';
+  x.font = `${px}px "Apple Color Emoji","Segoe UI Emoji",serif`;
+  x.fillText(ch, px / 2, px / 2);
+  return o;
+}
+
 const cache = new Map();
 function cached(key, make) {
   let v = cache.get(key);
@@ -351,6 +363,11 @@ export const Sprites = {
   powerup(kind) { return cached(`pu:${kind}`, () => drawPowerup(kind)).cv; },
 
   // coin drawn directly with emoji
+  coinCv() { return cached('coinE', () => drawEmoji('🪙', 24)).cv; },
+  powerupCv(kind) {
+    const ch = kind === 'mushroom' ? '🍄' : kind === 'flower' ? '🌻' : '⭐';
+    return cached(`puE:${kind}`, () => drawEmoji(ch, 26)).cv;
+  },
   coin(ctx, cx, cy, size) {
     ctx.save();
     ctx.textAlign = 'center';

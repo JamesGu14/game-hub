@@ -77,6 +77,7 @@ export class Renderer {
     this._enemies(ctx, game);
     this._fireballs(ctx, game);
     this._player(ctx, game);
+    if (game.state === 'ending') this._ending(ctx, game);
     this._particles(ctx, game);
     this._floatTexts(ctx, game);
     ctx.restore();
@@ -88,10 +89,17 @@ export class Renderer {
   _sky(ctx, theme, bleedX, bleedY) {
     const top = -bleedY;
     const bot = FIELD.H + bleedY;
-    const g = ctx.createLinearGradient(0, top, 0, bot);
-    g.addColorStop(0, theme.skyTop);
-    g.addColorStop(1, theme.skyBot);
-    ctx.fillStyle = g;
+    // Cache the gradient — rebuilding it every frame allocated a new object 60×/s,
+    // which showed up as periodic GC stutter. Only rebuild when theme/size changes.
+    const key = `${theme.skyTop}|${theme.skyBot}|${top}|${bot}`;
+    if (this._skyKey !== key) {
+      const g = ctx.createLinearGradient(0, top, 0, bot);
+      g.addColorStop(0, theme.skyTop);
+      g.addColorStop(1, theme.skyBot);
+      this._skyGrad = g;
+      this._skyKey = key;
+    }
+    ctx.fillStyle = this._skyGrad;
     ctx.fillRect(-bleedX, top, FIELD.W + 2 * bleedX, bot - top);
   }
 
@@ -169,27 +177,30 @@ export class Renderer {
       const cv = Sprites.castle();
       const bottom = lv.height - 2 * TILE;
       Sprites.blitBottom(ctx, cv, lv.castleX + TILE, bottom, SC);
-      // princess waiting near the castle door
+      // princess waiting near the castle door (stand on the floor top, not the
+      // castle's sunken base, so she lines up with the hero in the ending scene)
       const pri = Sprites.princess();
-      Sprites.blitBottom(ctx, pri, lv.castleX + TILE, bottom, SC * 0.7);
+      Sprites.blitBottom(ctx, pri, lv.castleX + TILE, lv.height - 4 * TILE, SC * 0.7);
     }
   }
 
   _coins(ctx, game) {
+    const cam = game.camera;
+    const cv = Sprites.coinCv();
     for (const c of game.coinsArr) {
       if (c.dead) continue;
-      Sprites.coin(ctx, c.x + c.w / 2, c.y + c.h / 2, 22);
+      if (c.x + c.w < cam.x || c.x > cam.x + FIELD.W) continue; // cull off-screen
+      Sprites.blit(ctx, cv, c.x + c.w / 2 - cv.width / 2, c.y + c.h / 2 - cv.height / 2, 1);
     }
   }
 
   _powerups(ctx, game) {
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    const cam = game.camera;
     for (const pu of game.powerups) {
       if (pu.dead) continue;
-      const ch = pu.kind === 'mushroom' ? '🍄' : pu.kind === 'flower' ? '🌻' : '⭐';
-      ctx.font = '26px "Apple Color Emoji","Segoe UI Emoji",serif';
-      ctx.fillText(ch, pu.x + pu.w / 2, pu.y + pu.h / 2);
+      if (pu.x + pu.w < cam.x || pu.x > cam.x + FIELD.W) continue; // cull off-screen
+      const cv = Sprites.powerupCv(pu.kind);
+      Sprites.blit(ctx, cv, pu.x + pu.w / 2 - cv.width / 2, pu.y + pu.h / 2 - cv.height / 2, 1);
     }
   }
 
@@ -241,14 +252,40 @@ export class Renderer {
     if (!p) return;
     // flicker during i-frames / rainbow-ish during star
     let alpha = 1;
-    if (p.invuln > 0 && Math.floor(p.invuln * 16) % 2 === 0) alpha = 0.35;
-    if (p.star > 0 && Math.floor(p.star * 12) % 2 === 0) alpha = 0.55;
+    const ending = game.state === 'ending';
+    if (!ending && p.invuln > 0 && Math.floor(p.invuln * 16) % 2 === 0) alpha = 0.35;
+    if (!ending && p.star > 0 && Math.floor(p.star * 12) % 2 === 0) alpha = 0.55;
+    // dip down a touch while kneeling before the princess
+    const dyKneel = (ending && game.ending && game.ending.phase === 'kneel') ? 7 : 0;
     const cv = Sprites.hero(p.form, p.frame(), p.faceRight);
     const sc = p.w / cv.width;
     ctx.save();
     ctx.globalAlpha = alpha;
-    Sprites.blit(ctx, cv, p.x, p.y + p.h - cv.height * sc, sc);
+    Sprites.blit(ctx, cv, p.x, p.y + p.h - cv.height * sc + dyKneel, sc);
     ctx.restore();
+  }
+
+  _ending(ctx, game) {
+    const e = game.ending;
+    const p = game.player;
+    if (!e || !p) return;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    // kiss-the-hand hearts rising toward the princess during the kneel
+    if (e.phase === 'kneel') {
+      ctx.font = '18px "Apple Color Emoji","Segoe UI Emoji",serif';
+      for (let i = 0; i < 3; i++) {
+        const ph = (e.t * 1.4 + i * 0.45) % 1.4;
+        ctx.globalAlpha = Math.max(0, 1 - ph / 1.4);
+        ctx.fillText('❤️', p.x + p.w + 8, p.y + 4 - ph * 26);
+      }
+      ctx.globalAlpha = 1;
+    }
+    // crown descending onto — then resting on — the hero's head
+    if ((e.phase === 'crown' || e.phase === 'celebrate') && e.crownY != null) {
+      ctx.font = '22px "Apple Color Emoji","Segoe UI Emoji",serif';
+      ctx.fillText('👑', p.x + p.w / 2, p.y + e.crownY - 12);
+    }
   }
 
   _particles(ctx, game) {
