@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0d1117" />
+    <!-- 加到主屏后以全屏独立模式运行（iPhone Safari 无元素全屏 API 时的兜底） -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <title>Game Hub · 游戏中心</title>
     <link rel="stylesheet" href="css/hub.css" />
   </head>
@@ -23,6 +26,10 @@
         <div class="status">
           <span class="icons">🔊 📶 🔋</span>
           <span id="clock">--:--</span>
+          <button id="btn-fullscreen" class="status-btn" type="button" title="全屏 / Fullscreen" aria-label="全屏" hidden>
+            <svg class="ic ic-enter" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8V3h5M16 3h5v5M21 16v5h-5M8 21H3v-5" /></svg>
+            <svg class="ic ic-exit" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3v5H3M21 8h-5V3M16 21v-5h5M3 16h5v5" /></svg>
+          </button>
         </div>
       </header>
 
@@ -53,5 +60,34 @@
     </div>
 
     <script type="module" src="js/hub.js"></script>
+
+    <!-- 全屏开关：Mac 各浏览器 + iPadOS Safari 用 Fullscreen API；不支持(如 iPhone Safari)则隐藏按钮。 -->
+    <script>
+      (function () {
+        var btn = document.getElementById('btn-fullscreen');
+        if (!btn) return;
+        var root = document.documentElement;
+        var request = root.requestFullscreen || root.webkitRequestFullscreen;
+        var exit = document.exitFullscreen || document.webkitExitFullscreen;
+        if (!request) return; // iPhone Safari 等无元素全屏 API：按钮保持 hidden
+        btn.hidden = false; // 支持才显示（渐进增强）
+        function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+        function sync() {
+          var on = !!fsElement();
+          root.classList.toggle('is-fullscreen', on);
+          var label = on ? '退出全屏 / Exit' : '全屏 / Fullscreen';
+          btn.title = label; btn.setAttribute('aria-label', label);
+        }
+        btn.addEventListener('click', function () {
+          try {
+            if (fsElement()) { if (exit) exit.call(document); }
+            else { request.call(root); }
+          } catch (e) { /* 用户手势外/被拒：忽略 */ }
+        });
+        document.addEventListener('fullscreenchange', sync);
+        document.addEventListener('webkitfullscreenchange', sync);
+        sync();
+      })();
+    </script>
   </body>
 </html>
