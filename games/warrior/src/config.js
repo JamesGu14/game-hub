@@ -39,9 +39,12 @@ export const ENEMY = {
 
 export const BULLET = { w: 12, h: 6, life: 1.4 };
 
-// Weapon table. M1 ships the default rifle (no letter). M2/M4 add M/S/L/F + R/B.
+// Weapon table. M1 ships the default rifle (no letter). M2 adds M/S/L; M4 adds F + R/B.
 export const WEAPONS = {
-  rifle: { id: 'rifle', letter: '', cooldown: 0.18, dmg: 1, speed: 560, pierce: false, spread: 0 },
+  rifle:   { id: 'rifle',   letter: '',  cooldown: 0.18, dmg: 1,   speed: 560, pierce: false, spread: 0 },
+  machine: { id: 'machine', letter: 'M', cooldown: 0.08, dmg: 0.5, speed: 600, pierce: false, spread: 0 },
+  spread:  { id: 'spread',  letter: 'S', cooldown: 0.34, dmg: 1,   speed: 520, pierce: false, spread: 5, spreadAngle: 0.314 },
+  laser:   { id: 'laser',   letter: 'L', cooldown: 0.40, dmg: 2,   speed: 720, pierce: true,  spread: 0 },
 };
 export const DEFAULT_WEAPON = 'rifle';
 export const RAPID_COOLDOWN_MUL = 0.6; // used from M4
@@ -54,3 +57,34 @@ export const THEMES = {
 export const SCORE = { kill: 100, levelClear: 1000 };
 
 export const STORAGE_KEY = 'jungle-warrior-save'; // used from M3
+
+// ---- M2 additions ----
+// Letter -> what a pickup does. Main weapons switch player.weapon; items grant state.
+export const PICKUPS = {
+  M: { kind: 'weapon', weapon: 'machine' },
+  S: { kind: 'weapon', weapon: 'spread' },
+  L: { kind: 'weapon', weapon: 'laser' },
+  B: { kind: 'item', item: 'barrier' },
+};
+export const BARRIER = { time: 5.0 }; // seconds of invuln + instakill-on-touch
+export const BLINK = 0.12;            // i-frame / barrier blink period
+export const PRONE = { h: 18 };       // crouched hitbox height
+
+export const FALCON = { w: 40, h: 22, speed: 150, dropBlink: 0.2 };
+export const PICKUP = { w: 20, h: 20, life: 8.0, blink: 0.2 };
+
+export const COMBO = { window: 2.5, maxMult: 5 };
+export const SHAKE = { kill: 3, bigKill: 5, bossDie: 8 };
+
+// L1 BOSS 震地要塞·铁壁 Iron Gate Destroyer — the §13 H9 template for all bosses.
+export const BOSSES = {
+  ironGate: {
+    name: '震地要塞·铁壁', enName: 'Iron Gate Destroyer',
+    w: 96, h: 110, maxHp: 40, touchDamage: true,
+    phases: [
+      { upTo: 1.01, slamCd: 2.2, spawnGrunts: 0 }, // >50% hp
+      { upTo: 0.5,  slamCd: 1.5, spawnGrunts: 2 }, // <=50% hp: faster + summons
+    ],
+    score: 2000,
+  },
+};
