@@ -4,7 +4,7 @@
 
 import { TILE, TILES } from './config.js';
 
-const ENTITY_CHARS = new Set(['@', 'r', 'j', 'G']);
+const ENTITY_CHARS = new Set(['@', 'r', 'j', 'u', 't', 'y', 'G']);
 
 // L1 丛林 — tutorial: gentle jogging grunts, basic platforms, a couple of <=3-tile
 // pits, ending at the goal flag (no BOSS in M1).
@@ -56,6 +56,9 @@ export function parseLevel(lvl) {
         if (ch === '@') spawn = { x: px, y: py };
         else if (ch === 'r') enemies.push({ type: 'runner', x: px, y: py });
         else if (ch === 'j') enemies.push({ type: 'jumper', x: px, y: py });
+        else if (ch === 'u') enemies.push({ type: 'gunner', x: px, y: py });
+        else if (ch === 't') enemies.push({ type: 'turret', x: px, y: py });
+        else if (ch === 'y') enemies.push({ type: 'flyer', x: px, y: py });
         else if (ch === 'G') goalX = px;
         continue;
       }
@@ -72,6 +75,7 @@ export function parseLevel(lvl) {
   }));
   const bossType = lvl.boss ? lvl.boss.type : null;
   const bossX = lvl.boss ? goalX - 5 * TILE : null; // trigger the fight just before the flag
+  const difficulty = lvl.difficulty || { enemyMul: 1, fireRateMul: 1, bossHpMul: 1 };
 
   return {
     id: lvl.id,
@@ -88,5 +92,6 @@ export function parseLevel(lvl) {
     falcons,
     bossX,
     bossType,
+    difficulty,
   };
 }

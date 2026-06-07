@@ -55,3 +55,10 @@ test('the boss arena column is solid ground (boss can stand)', () => {
   for (let r = 0; r < lv.rows; r++) if (lv.grid[r] && lv.grid[r][col] && SOLID.has(lv.grid[r][col])) { solid = true; break; }
   assert.equal(solid, true, 'boss column has ground');
 });
+
+test('parseLevel exposes a difficulty triple', () => {
+  const lv = parseLevel(LEVELS[0]);
+  assert.equal(typeof lv.difficulty.enemyMul, 'number');
+  assert.equal(typeof lv.difficulty.fireRateMul, 'number');
+  assert.equal(typeof lv.difficulty.bossHpMul, 'number');
+});
