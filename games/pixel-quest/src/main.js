@@ -22,6 +22,7 @@ const overlays = {
   gameover: el('overlay-gameover'),
   win: el('overlay-win'),
   dialogue: el('overlay-dialogue'),
+  select: el('overlay-select'),
 };
 
 function showOverlay(name) {
@@ -60,6 +61,8 @@ el('btn-win-retry').addEventListener('click', () => game.startGame(game.mode.id)
 el('btn-win-menu').addEventListener('click', () => (game.state = 'menu'));
 // 对话:点击弹窗任意处(含 ▶ 区域,事件冒泡)推进一句。只挂在容器上,避免重复推进。
 el('overlay-dialogue').addEventListener('click', () => game.advanceDialogue());
+// 暂停菜单里的"选关":回到选关页(保留当前难度/分数/命数)。
+el('btn-pause-select').addEventListener('click', () => game.openSelect());
 
 // Mute toggle (top-right).
 const muteBtn = el('btn-mute');
@@ -141,6 +144,7 @@ function handleConfirm() {
     case 'ready': game.confirm(); break;
     case 'paused': game.togglePause(); break;
     case 'dialogue': game.confirm(); break;
+    case 'select': game.confirm(); break;
     case 'levelclear':
     case 'gameover':
     case 'win': game.confirm(); break;
@@ -186,7 +190,9 @@ function syncOverlays() {
   }
   lastState = s;
 
-  if (s === 'menu') {
+  if (s === 'select') {
+    renderSelectGrid();
+  } else if (s === 'menu') {
     setMenuChoice(game.menuChoice);
     updateMenuBest();
   } else if (s === 'levelclear') {
@@ -203,6 +209,44 @@ function syncOverlays() {
 
 function updateMenuBest() {
   el('menu-best').textContent = `🏆 最高分 ${game.best.score} · 最远第 ${game.best.level} 关`;
+}
+
+// Build the level-select grid: levels grouped by world, marked cleared ✓ / next ▶ /
+// locked 🔒. Selectable = all cleared + the next uncleared (indices 0..unlocked-1).
+function renderSelectGrid() {
+  const grid = el('select-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const total = game.totalLevels();
+  const U = game.unlockedCount();
+  let curWorld = -1, row = null;
+  for (let i = 0; i < total; i++) {
+    const w = Math.floor(i / 5) + 1;
+    if (w !== curWorld) {
+      curWorld = w;
+      const sec = document.createElement('div');
+      sec.className = 'lvl-world';
+      const title = document.createElement('div');
+      title.className = 'lvl-world-title';
+      title.textContent = '世界 ' + w;
+      sec.appendChild(title);
+      row = document.createElement('div');
+      row.className = 'lvl-row';
+      sec.appendChild(row);
+      grid.appendChild(sec);
+    }
+    const info = game.levelInfo(i) || { id: '?', name: '' };
+    const locked = i >= U;
+    const cleared = i < U - 1;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'lvl-btn ' + (locked ? 'locked' : cleared ? 'cleared' : 'current');
+    const tag = locked ? '🔒' : cleared ? '✓' : '▶';
+    btn.innerHTML = `<span class="lvl-id">${info.id}</span><span class="lvl-name">${tag} ${locked ? '' : info.name}</span>`;
+    if (locked) btn.disabled = true;
+    else btn.addEventListener('click', () => game.selectLevel(i));
+    row.appendChild(btn);
+  }
 }
 
 // ---- Main loop ------------------------------------------------------------

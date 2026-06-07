@@ -59,9 +59,15 @@ export class Game {
   _loadBest() {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) {
+        const b = JSON.parse(raw);
+        // Migrate old saves (no `unlocked`): derive from furthest level reached.
+        if (b.unlocked == null) b.unlocked = clamp(b.level || 1, 1, LEVELS.length);
+        b.unlocked = clamp(b.unlocked, 1, LEVELS.length);
+        return b;
+      }
     } catch { /* ignore */ }
-    return { score: 0, level: 1 };
+    return { score: 0, level: 1, unlocked: 1 };
   }
   _saveBest() {
     const level = this.levelIndex + 1;
@@ -69,6 +75,16 @@ export class Game {
     if (level > this.best.level) this.best.level = level;
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(this.best)); } catch { /* ignore */ }
   }
+
+  // ---- level-select progression (global, shared across difficulties) ----
+  // `best.unlocked` = how many levels are selectable (indices 0..unlocked-1):
+  // all cleared levels plus the next uncleared one. Clearing level i unlocks i+1.
+  unlockedCount() { return clamp(this.best.unlocked || 1, 1, LEVELS.length); }
+  _unlockLevel(clearedIndex) {
+    const want = Math.min(clearedIndex + 2, LEVELS.length);
+    if ((this.best.unlocked || 1) < want) { this.best.unlocked = want; this._saveBest(); }
+  }
+  levelInfo(i) { const L = LEVELS[i]; return L ? { id: L.id, name: L.name } : null; }
 
   // ---- world facade handed to entities ----
   _makeWorld() {
@@ -101,13 +117,30 @@ export class Game {
     this.coins = 0;
     this.lives = this.mode.lives;
     this.levelIndex = 0;
-    this.state = 'story';
+    this.state = 'select'; // choose a level first
     Sound.ui();
   }
 
   beginAfterStory() {
     // 点"开始冒险"→ 开场对话 → 世界1 intro → 进第一关。
     this.startDialogue(OPENING, () => this.startDialogue(introFor(0), () => this.loadLevel(0)));
+  }
+
+  // Open the level-select screen (e.g. from the pause menu).
+  openSelect() { this.state = 'select'; Sound.stopMusic(); Sound.ui(); }
+
+  // Player picked level `i` from the level-select screen. Plays the opening (1-1)
+  // or the world intro (a world's first level) before loading; otherwise jumps in.
+  selectLevel(i) {
+    if (i < 0 || i >= LEVELS.length || i >= this.unlockedCount()) return; // locked / invalid
+    this.levelIndex = i;
+    if (i === 0) {
+      this.startDialogue(OPENING, () => this.startDialogue(introFor(0), () => this.loadLevel(0)));
+    } else if (isWorldFirstLevel(i)) {
+      this.startDialogue(introFor(i), () => this.loadLevel(i));
+    } else {
+      this.loadLevel(i);
+    }
   }
 
   loadLevel(i) {
@@ -211,6 +244,7 @@ export class Game {
       case 'levelclear': this.nextLevel(); break;
       case 'gameover': this.continueRun(); break;
       case 'dialogue': this.advanceDialogue(); break;
+      case 'select': this.selectLevel(this.unlockedCount() - 1); break; // 确认=玩最新解锁的关
       case 'win': this.state = 'menu'; break;
     }
   }
@@ -512,6 +546,7 @@ export class Game {
     this.score += Math.floor(this.timeLeft) * SCORE.timeBonus;
     this.score += SCORE.levelClear;
     this._saveBest();
+    this._unlockLevel(this.levelIndex); // cleared this level → next is selectable
     this.state = 'levelclear';
     Sound.levelClear();
   }
@@ -520,6 +555,7 @@ export class Game {
     this.score += SCORE.levelClear;
     this.score += Math.floor(this.timeLeft) * SCORE.timeBonus;
     this._saveBest();
+    this._unlockLevel(this.levelIndex); // cleared the final level
     Sound.win();
     // Play the victory cutscene; the win panel (HTML overlay) appears only once it
     // finishes (state 'ending' is not in main.js's overlay map, so nothing covers

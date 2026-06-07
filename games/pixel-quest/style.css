@@ -304,3 +304,53 @@ body {
 .tc-run {
   background: rgba(47, 95, 208, 0.45);
 }
+
+/* ---- Level select ------------------------------------------------------- */
+.select-panel { max-width: 680px; }
+.select-grid {
+  max-height: 56vh;
+  overflow-y: auto;
+  margin: 16px 0;
+  text-align: left;
+}
+.lvl-world { margin-bottom: 14px; }
+.lvl-world-title {
+  font-weight: 800;
+  color: #9c560f;
+  font-size: 15px;
+  margin: 6px 2px;
+}
+.lvl-row { display: flex; flex-wrap: wrap; gap: 10px; }
+.lvl-btn {
+  flex: 0 0 auto;
+  width: 112px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 6px;
+  border-radius: 12px;
+  border: 3px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(80, 40, 10, 0.15);
+  transition: transform 0.1s ease;
+}
+.lvl-btn .lvl-id { font-size: 16px; font-weight: 800; color: #e8362b; }
+.lvl-btn .lvl-name { font-size: 12px; color: #8a5a30; }
+.lvl-btn.cleared { border-color: #3fa845; }
+.lvl-btn.cleared .lvl-id { color: #2f7d3a; }
+.lvl-btn.current {
+  border-color: #e8362b;
+  box-shadow: 0 6px 16px rgba(232, 54, 43, 0.4);
+  transform: scale(1.04);
+}
+.lvl-btn.locked {
+  background: #e7ddd0;
+  cursor: not-allowed;
+  box-shadow: none;
+  opacity: 0.7;
+}
+.lvl-btn.locked .lvl-id,
+.lvl-btn.locked .lvl-name { color: #b3a392; }
+.lvl-btn:not(.locked):hover { transform: translateY(-2px) scale(1.04); }
