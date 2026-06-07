@@ -4,7 +4,7 @@
 
 import { PHYSICS, WEAPONS, STARTING_WEAPONS, CRATE, STORAGE_KEY, FIELD, WATER, AIM } from './config.js';
 import { Sound } from './audio.js';
-import { buildLevel } from './levels.js';
+import { buildLevel, LEVELS } from './levels.js';
 import { Terrain } from './terrain.js';
 import { makeWorm, makeTeam } from './worm.js';
 import { stepWorm } from './physics.js';
@@ -149,7 +149,7 @@ export class Game {
   /** Advance to the next level (from levelclear). */
   nextLevel() {
     const next = this.levelIndex + 1;
-    if (next >= 6) {
+    if (next >= LEVELS.length) {
       this.state = 'win';
     } else {
       this.startGame(next, this.mode);
@@ -164,6 +164,11 @@ export class Game {
     this.projectiles = [];
     this.crates = [];
     this.effects = [];
+  }
+
+  /** Show the pre-game level-select route map (its own state → overlay-levelselect). */
+  showLevelSelect() {
+    this.state = 'levelselect';
   }
 
   /** Toggle pause (only when in aim or paused). */
