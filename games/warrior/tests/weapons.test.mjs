@@ -30,3 +30,29 @@ test('unknown weapon id falls back to the rifle', () => {
 test('cooldownFor returns the weapon cooldown', () => {
   assert.equal(cooldownFor('rifle'), WEAPONS.rifle.cooldown);
 });
+
+test('machine gun fires one fast bullet on a short cooldown', () => {
+  const specs = fire('machine', 0, 0, { x: 1, y: 0 });
+  assert.equal(specs.length, 1);
+  assert.equal(specs[0].vx, WEAPONS.machine.speed); // 600
+  assert.equal(specs[0].dmg, 0.5);
+  assert.equal(cooldownFor('machine'), 0.08);
+});
+
+test('spread fires 5 bullets in a fan centered on aim', () => {
+  const specs = fire('spread', 0, 0, { x: 1, y: 0 });
+  assert.equal(specs.length, 5);
+  const angs = specs.map((s) => Math.atan2(s.vy, s.vx)).sort((a, b) => a - b);
+  assert.ok(Math.abs(angs[2]) < 1e-6, 'center bullet is horizontal');
+  assert.ok(Math.abs(angs[0] + angs[4]) < 1e-6, 'fan is symmetric');
+  assert.ok(angs[4] - angs[0] > 0.5, 'fan has real spread');
+  for (const s of specs) assert.ok(Math.abs(Math.hypot(s.vx, s.vy) - WEAPONS.spread.speed) < 1e-6);
+});
+
+test('laser pierces and hits hard', () => {
+  const specs = fire('laser', 0, 0, { x: 0, y: -1 });
+  assert.equal(specs.length, 1);
+  assert.equal(specs[0].pierce, true);
+  assert.equal(specs[0].dmg, 2);
+  assert.equal(specs[0].vy, -WEAPONS.laser.speed); // -720
+});
