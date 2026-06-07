@@ -28,6 +28,7 @@ The theme color set is added by the orchestrator; you only use the theme key nam
   留"等它缩回再跳过"的躲避路径),`a` 甲壳兽(踩反伤,小写 `a`≠大写 `A` 城堡;必须与 `k` 同摆,
   供踢壳消灭),`m` 炎魔(定时喷火球,须给玩家躲火球的横向空间)。
 - 注意:verifier 对新怪透明,不校验"摆位合理性"(飞翼下方有地/食人花配 M/甲壳配 k),阶段 C 须人工+真机验收。
+- 世界10(theme `bowser`)配方:m 炎魔 / a 甲壳兽(必配 k 供踢壳)/ z 冲刺兽 + g/k;约 10-12 只,高强度混合。`W` 仅 10-5(orchestrator 手写)。
 
 ## Layout conventions (14 rows tall)
 - Rows 10–13 = the main floor (`#`). Carve pits by leaving spaces.
@@ -49,7 +50,8 @@ Physics: jump apex ≈ 4.3 tiles, walk reach ≈ 3.8 tiles. So:
 3. **Bumpable blocks (`? M * B b`)**: must sit in rows 4–9 (not higher than row 4),
    and NOT within 1 column of any pit edge (keep them ≥2 cols from pits) — otherwise
    they "block a jump over a pit".
-4. **Goal**: include exactly one `F` (flag). NEVER place `A` (castle).
+4. **Goal**: include exactly one `F` (flag). 城堡 `A` 仅 10-5(Boss 竞技场,orchestrator 手写)可用;
+   普通关一律 `F`、不放 `A`。Boss 字符 `W` 仅 10-5 用,普通关不放。
 5. **Checkpoint `c`**: place one, mid-level, on a column that has solid floor below it.
 6. **Spawn `@`**: must be over solid floor.
 7. All 14 rows must be the SAME length.
