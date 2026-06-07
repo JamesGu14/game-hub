@@ -10,6 +10,9 @@ import {
 } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
 import {
+  OPENING, ENDING, introFor, outroFor, isWorldFirstLevel, isWorldLastLevel,
+} from './story.js';
+import {
   Player, Goomba, Koopa, Coin, Powerup, Fireball, MovingPlatform,
 } from './entities.js';
 import { aabb } from './physics.js';
@@ -46,6 +49,7 @@ export class Game {
 
     this.flagAnim = 0; // >0 while sliding the flag
     this.winTimer = 0;
+    this.dialogue = null; // { script, index, onDone } 进行中的对话
 
     this.best = this._loadBest();
     this._world = this._makeWorld();
@@ -171,6 +175,31 @@ export class Game {
     return { x: sx, y: sy }; // no ground anywhere on this row — leave as-is
   }
 
+  // 播放一段对话;播完调 onDone(由 onDone 决定 state 去向)。空脚本直接 onDone。
+  startDialogue(script, onDone) {
+    if (!script || script.length === 0) { if (onDone) onDone(); return; }
+    this.dialogue = { script, index: 0, onDone: onDone || null };
+    this.state = 'dialogue';
+    Sound.stopMusic();
+    Sound.ui();
+  }
+  advanceDialogue() {
+    const d = this.dialogue;
+    if (!d) return;
+    d.index += 1;
+    if (d.index >= d.script.length) {
+      const done = d.onDone;
+      this.dialogue = null;
+      if (done) done();
+      return;
+    }
+    Sound.ui();
+  }
+  currentDialogueNode() {
+    const d = this.dialogue;
+    return d ? d.script[d.index] : null;
+  }
+
   // ---- input-driven actions ----
   confirm() {
     switch (this.state) {
@@ -180,6 +209,7 @@ export class Game {
       case 'paused': this.togglePause(); break;
       case 'levelclear': this.nextLevel(); break;
       case 'gameover': this.continueRun(); break;
+      case 'dialogue': this.advanceDialogue(); break;
       case 'win': this.state = 'menu'; break;
     }
   }
