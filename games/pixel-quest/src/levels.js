@@ -233,9 +233,8 @@ const lvlNight = {
 };
 
 // ---------------------------------------------------------------------------
-// World 3 (3-1 毒沼泽 … 3-5 终焉魔城) — the endgame world. 3-1..3-4 end at a flag;
-// the grand finale 3-5 is castle-only (no flag), so reaching the castle fires the
-// victory cutscene + win. Authored by parallel agents, all verifier-checked.
+// World 3 (3-1 毒沼泽 … 3-5 终焉魔城). All end at a flag (3-5 reverts from the old
+// castle finale to a flag now that World 4 is the endgame). Verifier-checked.
 const lvlSwamp = {
   id: '3-1', name: '毒沼泽', theme: 'swamp', time: 360,
   rows: [
@@ -330,7 +329,7 @@ const lvlAbyss = {
     'X     M                            o  o  o                                            ??             oooo              X',
     'X       oooo                          XXXX          o    o  o            ooooo                o  o                     X',
     'X                                  XX XXXX XX                                                                 XX       X',
-    'X   @    gg       k        gk    X XX XXXX XX  g   ===  === ==  kc  gg     k       gk     k  === ==   gg     XXX A  g  X',
+    'X   @    gg       k        gk    X XX XXXX XX  g   ===  === ==  kc  gg     k       gk     k  === ==   gg     XXX F  g  X',
     'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
     'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
     'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
@@ -338,9 +337,117 @@ const lvlAbyss = {
   ],
 };
 
+// ---------------------------------------------------------------------------
+// World 4 (4-1 樱花古道 … 4-5 苍穹王座) — post-endgame bonus world, hardest yet but
+// fair. 4-1..4-4 end at a flag; the grand finale 4-5 is castle-only (no flag) so
+// reaching the throne fires the victory cutscene + win. Authored by parallel
+// agents, all verifier-checked. (3-5 终焉魔城 reverts to a flag level here.)
+const lvlSakura = {
+  id: '4-1', name: '樱花古道', theme: 'sakura', time: 380,
+  rows: [
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                     *                                                ',
+    '          M           ? ?                    b ?                                           ? ?                        ',
+    '        oo                       ooo                     ooo                    ooo                     ooo           ',
+    '           X          ooo               ooo  ooo            X       ooo               ooo  ooo                        ',
+    '         X X X                     X                      X X X                   X                             F     ',
+    '    @  X X X X X    g      === g X X Xk     g    c ===  X X X X    g   k  ===   X X g          k ===  g      g        ',
+    '################   ########   ##########   ########   #########   ########   #########   ########   ##################',
+    '################   ########   ##########   ########   #########   ########   #########   ########   ##################',
+    '################   ########   ##########   ########   #########   ########   #########   ########   ##################',
+    '################   ########   ##########   ########   #########   ########   #########   ########   ##################',
+  ],
+};
+
+const lvlTemple = {
+  id: '4-2', name: '黄金神殿', theme: 'temple', time: 380,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X                                                                                                                    X',
+    'X                                                                                                                    X',
+    'X                                                                                                                    X',
+    'X                                                                                                                    X',
+    'X                   ?b?          M         ??           oooo                    *            ??             ooo      X',
+    'X     ooo                        ooo                                                oooo                             X',
+    'X        []          X      ===[]                      []                   === []            X             []       X',
+    'X        []         XXX        []         XXXX         []         ===           []           XXX       ===  []       X',
+    'X   @    [] gk     XXXg        []  g      XXXXgk     g [] c           gk        []  g     gkXXXX g          []gk  F  X',
+    'X#############   #######   ##########   ########   ##########   ########   ###########   ##########   ###############X',
+    'X#############   #######   ##########   ########   ##########   ########   ###########   ##########   ###############X',
+    'X#############   #######   ##########   ########   ##########   ########   ###########   ##########   ###############X',
+    'X#############   #######   ##########   ########   ##########   ########   ###########   ##########   ###############X',
+  ],
+};
+
+const lvlMushroom = {
+  id: '4-3', name: '蘑菇乐园', theme: 'mushroom', time: 380,
+  rows: [
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '             ?              *               M ?                               ?                                 ?       ',
+    '        ooo        o    o           o   o            o    o              o             o    o             oo     ooo    ',
+    '        ===                    o   ===       ===         ===       o           ===                  o                   ',
+    '                  ===  ===             ===          ===                 ===           ===  ===            ==        F   ',
+    '   @     k   g               g               g k               gc             g  k                g   k          g      ',
+    '################           ###  ##        ########            ####  ##       #######            ###  ###      ##########',
+    '################           ###  ##        ########            ####  ##       #######            ###  ###      ##########',
+    '################           ###  ##        ########            ####  ##       #######            ###  ###      ##########',
+    '################           ###  ##        ########            ####  ##       #######            ###  ###      ##########',
+  ],
+};
+
+const lvlCosmic = {
+  id: '4-4', name: '星空回廊', theme: 'cosmic', time: 390,
+  rows: [
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '        *                   ooo                             ?             o    o   o            ooo         M           ',
+    '              o          o        o    o   o       o            o                        o  oo      o                   ',
+    '             o o   X    o o ===                   o o    X     o o       ===  ===  ==   o o === ===o o                  ',
+    '                  XX             ===  ===  ==           XXX                                                      F      ',
+    '    @  g g       XXX kg     g                 gk      cXXXX kg      g k               g       kg        gk              ',
+    '#############   ########   ######            #####   ##########   #######            ###   ########   ##################',
+    '#############   ########   ######            #####   ##########   #######            ###   ########   ##################',
+    '#############   ########   ######            #####   ##########   #######            ###   ########   ##################',
+    '#############   ########   ######            #####   ##########   #######            ###   ########   ##################',
+  ],
+};
+
+// 4-5 苍穹王座 — GRAND FINALE. Castle-only (agent's flag 'F' swapped to castle 'A')
+// so reaching the throne triggers _winGame -> the kneel/crown/confetti cutscene.
+const lvlCelestial = {
+  id: '4-5', name: '苍穹王座', theme: 'celestial', time: 420,
+  rows: [
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '                                                                                                                        ',
+    '          b           ooo        ?M?                                          *                                         ',
+    '         ooo                                     oo                                  oo        ooo                      ',
+    '                                                                                  ===  ===                              ',
+    '                                              ===  ===                                                          A       ',
+    '    @   g    k       XXXgX         k        g            k      c g            g              g k           XXXXXXXXXXXX',
+    '################   ########   ########   #####           ###   ########   ########           #####   ###################',
+    '################   ########   ########   #####           ###   ########   ########           #####   ###################',
+    '################   ########   ########   #####           ###   ########   ########           #####   ###################',
+    '################   ########   ########   #####           ###   ########   ########           #####   ###################',
+  ],
+};
+
 export const LEVELS = [
   lvl1, lvl2, lvl3, lvlLava, lvlSnow, lvlDesert, lvlForest, lvlBeach, lvlNight, lvl4,
   lvlSwamp, lvlCrystal, lvlStorm, lvlSteel, lvlAbyss,
+  lvlSakura, lvlTemple, lvlMushroom, lvlCosmic, lvlCelestial,
 ];
 
 // ---------------------------------------------------------------------------

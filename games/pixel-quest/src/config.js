@@ -49,6 +49,11 @@ export const THEMES = {
   storm:      { skyTop:'#2a3340', skyBot:'#566677', ground:'#5a6b7a', groundDark:'#3a4754', grass:'#7a8a99', hills:'#34404d' },
   steel:      { skyTop:'#2b2f36', skyBot:'#454c56', ground:'#6b7280', groundDark:'#454b54', grass:'#8a929c', hills:'#363b42' },
   abyss:      { skyTop:'#1a0608', skyBot:'#3a0c10', ground:'#4a2326', groundDark:'#2a1214', grass:'#7a2530', hills:'#250a0c' },
+  sakura:     { skyTop:'#ffb7d5', skyBot:'#ffe3ef', ground:'#b5826a', groundDark:'#8a5f4a', grass:'#ff9ec4', hills:'#f7c6dc' },
+  temple:     { skyTop:'#e8c878', skyBot:'#f7e6b8', ground:'#c9a05a', groundDark:'#9a7338', grass:'#d9b86a', hills:'#cdaa6a' },
+  mushroom:   { skyTop:'#3a2a6b', skyBot:'#6b5aa8', ground:'#7a5a9a', groundDark:'#523c6b', grass:'#ff7ac4', hills:'#4a3a7a' },
+  cosmic:     { skyTop:'#0c0a28', skyBot:'#241a52', ground:'#34305c', groundDark:'#201d3e', grass:'#7c6cff', hills:'#171238' },
+  celestial:  { skyTop:'#8fd0ff', skyBot:'#fff3cf', ground:'#e8d98f', groundDark:'#bfa85f', grass:'#ffe9a0', hills:'#cfe6ff' },
 };
 
 export const SCORE = { coin:100, stomp:100, shellHit:200, fireKill:200, powerup:1000, flagBase:500, timeBonus:20, levelClear:1000, oneUpAtCoins:100 };
