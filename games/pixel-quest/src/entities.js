@@ -454,7 +454,81 @@ export class Flyer {
   stomp(world) { this.squish = 0.4; this.vx = 0; world.sound.stomp(); }
   kill(world) { this.dead = true; world.sound.kick(); }
 }
-export class Dasher { constructor(x, y) { this.w = 28; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.dasherPatrol; this.vy = 0; this.dead = false; this.squish = 0; this.anim = 0; } update() {} }
+// ---------------------------------------------------------------------------
+// 冲刺兽 Dasher(世界6;字符 z)。三态:patrol→windup→dash。触发(spec 九.D):
+// 玩家在其【前方】水平区域内、且 |脚部 y 差| < TILE 才蓄力冲刺;正上方踩头不触发。
+// 撞墙/前方悬崖结束 dash 并冷却。掉血在 game._playerEnemyCollisions,不在此扣血。
+export class Dasher {
+  constructor(x, y) {
+    this.w = 28; this.h = 24;
+    this.x = x + (TILE - this.w) / 2;
+    this.y = y + (TILE - this.h);
+    this.vx = -ENEMY.dasherPatrol;
+    this.vy = 0;
+    this.onGround = false;
+    this.dead = false;
+    this.state = 'patrol';   // 'patrol' | 'windup' | 'dash'
+    this.timer = 0;
+    this.cooldown = 0;
+    this.dashDir = -1;
+    this.squish = 0;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    if (this.squish > 0) { this.squish -= dt; if (this.squish <= 0) this.dead = true; return; }
+    const mul = world.mode.enemyMul;
+    if (this.cooldown > 0) this.cooldown -= dt;
+    const p = world.player;
+
+    if (this.state === 'patrol') {
+      const spd = ENEMY.dasherPatrol * mul;
+      this.vx = this.vx < 0 ? -spd : spd;
+      const info = collideTiles(this, world.grid, dt);
+      if (info.hitWall) this.vx = -this.vx;
+      if (this.onGround) {
+        const aheadX = this.vx > 0 ? this.x + this.w + 1 : this.x - 1;
+        if (!groundAhead(world.grid, aheadX, this.y + this.h)) this.vx = -this.vx;
+      }
+      this.anim += dt * 5;
+      if (this.cooldown <= 0 && p && p.dying <= 0) {
+        const sameRow = Math.abs((p.y + p.h) - (this.y + this.h)) < TILE;
+        const dir = this.vx < 0 ? -1 : 1;
+        const dx = (p.x + p.w / 2) - (this.x + this.w / 2);
+        const inFront = dir < 0 ? (dx < 0) : (dx > 0);
+        if (sameRow && inFront && Math.abs(dx) <= ENEMY.dasherSight) {
+          this.state = 'windup';
+          this.timer = ENEMY.dasherWindup;
+          this.dashDir = dir;
+          this.vx = 0;
+          world.sound.bump();
+        }
+      }
+    } else if (this.state === 'windup') {
+      this.vx = 0;
+      collideTiles(this, world.grid, dt);
+      this.timer -= dt;
+      this.anim += dt * 14;
+      if (this.timer <= 0) { this.state = 'dash'; this.vx = ENEMY.dasherDash * this.dashDir; }
+    } else { // dash
+      this.vx = ENEMY.dasherDash * this.dashDir * mul;
+      const info = collideTiles(this, world.grid, dt);
+      this.anim += dt * 16;
+      let stop = info.hitWall;
+      if (!stop && this.onGround) {
+        const aheadX = this.dashDir > 0 ? this.x + this.w + 1 : this.x - 1;
+        if (!groundAhead(world.grid, aheadX, this.y + this.h)) stop = true;
+      }
+      if (stop) {
+        this.state = 'patrol';
+        this.cooldown = ENEMY.dasherCooldown;
+        this.vx = this.dashDir < 0 ? ENEMY.dasherPatrol : -ENEMY.dasherPatrol;
+      }
+    }
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  stomp(world) { this.squish = 0.4; this.vx = 0; this.state = 'patrol'; world.sound.stomp(); }
+  kill(world) { this.dead = true; world.sound.kick(); }
+}
 export class Piranha{ constructor(x, y) { this.w = 26; this.h = 30; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.baseY = y; this.dead = false; this.state = 'hidden'; this.anim = 0; } update() {} }
 export class Spiked { constructor(x, y) { this.w = 26; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.spikedSpeed; this.vy = 0; this.dead = false; this.anim = 0; } update() {} }
 export class Flamer { constructor(x, y) { this.w = 26; this.h = 28; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = 0; this.vy = 0; this.dead = false; this.throwTimer = ENEMY.flameThrowEvery; this.squish = 0; this.anim = 0; } update() {} }

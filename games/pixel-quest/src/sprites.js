@@ -177,6 +177,36 @@ function drawFlyer(state, frame) {
   return o;
 }
 
+// 冲刺兽:低身带犄角;dash 态身体发红(#ff5a3c)、奔跑两帧。
+function drawDasher(state, frame) {
+  const o = mk(24, 20), x = o.cx;
+  const dashing = state === 'dash';
+  const body = dashing ? '#ff5a3c' : '#7a5cff';
+  const bodyDk = dashing ? '#c43320' : '#5238c0';
+  const bodyLt = dashing ? '#ff8a72' : '#a48cff';
+  x.fillStyle = body; E(x, 12, 12, 11, 7.5); r(x, 1, 12, 22, 6);
+  x.fillStyle = bodyDk; r(x, 1, 17, 22, 2);
+  x.fillStyle = bodyLt; E(x, 12, 9.5, 8, 2.6);
+  x.fillStyle = '#f4f0e0';
+  x.beginPath(); x.moveTo(2, 8); x.lineTo(6, 3); x.lineTo(7, 8); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(22, 8); x.lineTo(18, 3); x.lineTo(17, 8); x.closePath(); x.fill();
+  x.fillStyle = '#fff'; E(x, 8, 11, 2.2, 2.6); E(x, 16, 11, 2.2, 2.6);
+  x.fillStyle = '#1b1e26'; E(x, 8.4, 11.4, 1.1, 1.6); E(x, 15.6, 11.4, 1.1, 1.6);
+  x.fillStyle = bodyDk; r(x, 5.5, 8.2, 4, 1.4); r(x, 14.5, 8.2, 4, 1.4);
+  x.fillStyle = '#3a1208'; r(x, 8, 15, 8, 1.6);
+  x.fillStyle = '#fff';
+  x.beginPath(); x.moveTo(9, 15); x.lineTo(10.4, 15); x.lineTo(9.7, 17); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(15, 15); x.lineTo(13.6, 15); x.lineTo(14.3, 17); x.closePath(); x.fill();
+  x.fillStyle = '#2a1a0a';
+  if (frame === 1) { E(x, 6, 19, 3, 1.8); E(x, 18, 19, 3, 1.8); }
+  else { E(x, 9, 19, 3, 1.8); E(x, 15, 19, 3, 1.8); }
+  if (dashing) {
+    x.fillStyle = '#ffd23f';
+    r(x, 0, 6, 3, 1); r(x, 0, 10, 4, 1); r(x, 0, 14, 3, 1);
+  }
+  return o;
+}
+
 // ---- princess / castle / flag --------------------------------------------
 function drawPrincess() {
   const o = mk(26, 34), x = o.cx;
@@ -560,6 +590,10 @@ export const Sprites = {
   },
   flyer(state, frame) {
     return cached(`fly:${state}:${frame & 1}`, () => drawFlyer(state, frame & 1)).cv;
+  },
+  dasher(state, frame) {
+    return cached(`dsh:${state === 'dash' ? 'dash' : 'patrol'}:${frame & 1}`, () =>
+      drawDasher(state === 'dash' ? 'dash' : 'patrol', frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {

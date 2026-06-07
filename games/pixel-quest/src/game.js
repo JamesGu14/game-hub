@@ -544,6 +544,15 @@ export class Game {
             e.kickShell(dir, this._world);
           }
         }
+      } else if (e instanceof Dasher) {
+        if (e.squish > 0) continue;
+        if (stomping) {
+          e.stomp(this._world);
+          p.vy = -440;
+          this.score += SCORE.stomp;
+        } else {
+          this._hurtPlayer(); // 冲刺中撞到也走这里,无敌帧天然防连击
+        }
       }
     }
   }

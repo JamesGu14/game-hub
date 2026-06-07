@@ -261,6 +261,16 @@ export class Renderer {
           continue;
         }
         cv = Sprites.flyer(e.winged ? 'fly' : 'walk', e.frame());
+      } else if (e instanceof Dasher) {
+        if (e.squish > 0) {
+          cv = Sprites.dasher('patrol', 0);
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(cv, Math.round(e.x), Math.round(e.y + e.h * 0.6), e.w, e.h * 0.4);
+          ctx.restore();
+          continue;
+        }
+        cv = Sprites.dasher(e.state, e.frame());
       }
       if (cv) {
         const sc = e.w / cv.width;
