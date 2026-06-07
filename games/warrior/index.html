@@ -18,9 +18,33 @@
   <div class="overlay show" id="overlay-title">
     <div class="panel">
       <h1>丛林勇士</h1>
-      <p class="sub">JUNGLE WARRIOR · M1</p>
-      <button class="big" id="btn-start">开始游戏</button>
-      <p class="hint">← → 移动 · ↑↓ 瞄准 · Z 射击 · 空格/X 跳 · 休闲模式无限复活</p>
+      <p class="sub">JUNGLE WARRIOR</p>
+      <div class="modes">
+        <button class="mode-btn selected" id="mode-casual">休闲<small>无限复活</small></button>
+        <button class="mode-btn" id="mode-classic">经典<small>3 命挑战</small></button>
+      </div>
+      <button class="big" id="btn-start">选关进入</button>
+      <p class="hint" id="title-best"></p>
+      <p class="hint">← → 移动 · ↑↓ 瞄准 · Z 射击 · 空格 跳</p>
+    </div>
+  </div>
+
+  <!-- level select overlay -->
+  <div class="overlay" id="overlay-select">
+    <div class="panel wide">
+      <h2>选择关卡</h2>
+      <div id="select-grid"></div>
+      <button class="small-btn" id="btn-select-back">← 返回标题</button>
+    </div>
+  </div>
+
+  <!-- game over overlay (classic) -->
+  <div class="overlay" id="overlay-gameover">
+    <div class="panel">
+      <h2 class="go-title">GAME OVER</h2>
+      <p class="hint" id="go-score"></p>
+      <button class="big" id="btn-continue">再来一次</button>
+      <button class="small-btn" id="btn-go-select">选关</button>
     </div>
   </div>
 

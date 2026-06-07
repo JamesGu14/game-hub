@@ -29,3 +29,44 @@ body { font-family: system-ui, -apple-system, "PingFang SC", sans-serif; -webkit
   border: none; border-radius: 12px; padding: 12px 40px; cursor: pointer;
 }
 .big:active { transform: translateY(1px); }
+
+.panel h2 { font-size: 30px; color: #8bc34a; margin-bottom: 16px; text-shadow: 2px 2px 0 #33501a; }
+.panel.wide { max-width: 760px; }
+
+/* mode toggle */
+.modes { display: flex; gap: 12px; justify-content: center; margin: 4px 0 20px; }
+.mode-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 22px; border: 2px solid #4a6b2f; border-radius: 12px;
+  background: rgba(20,40,15,0.6); color: #cdeeae; font-size: 17px; font-weight: 700; cursor: pointer;
+}
+.mode-btn small { font-size: 11px; font-weight: 400; color: #9bbf82; }
+.mode-btn.selected { background: #8bc34a; color: #14250a; border-color: #b6e87a; }
+.mode-btn.selected small { color: #2f5022; }
+
+/* level select grid */
+#select-grid { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin: 8px 0 18px; }
+.level-card {
+  width: 130px; min-height: 84px; padding: 12px; border-radius: 12px; cursor: pointer;
+  border: 2px solid #4a6b2f; background: rgba(20,40,15,0.6); color: #fff;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+}
+.level-card b { font-size: 17px; }
+.level-card span { font-size: 13px; color: #ffe066; min-height: 16px; }
+.level-card.next { border-color: #ffe066; box-shadow: 0 0 0 2px rgba(255,224,102,0.35); }
+.level-card.locked { opacity: 0.5; cursor: not-allowed; border-style: dashed; }
+.level-card.locked b { color: #9bbf82; }
+
+.small-btn {
+  margin-top: 6px; padding: 8px 18px; border: none; border-radius: 10px;
+  background: rgba(0,0,0,0.4); color: #cdeeae; font-size: 14px; font-weight: 600; cursor: pointer;
+}
+.go-title { color: #ff6b6b !important; text-shadow: 2px 2px 0 #5a1010; }
+
+/* konami toast */
+#konami-toast {
+  position: fixed; top: 54px; left: 50%; transform: translateX(-50%); z-index: 40;
+  padding: 10px 22px; border-radius: 12px; background: rgba(140,60,200,0.9); color: #fff;
+  font-weight: 700; font-size: 16px; opacity: 0; transition: opacity 0.3s; pointer-events: none;
+}
+#konami-toast.show { opacity: 1; }

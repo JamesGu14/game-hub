@@ -82,7 +82,7 @@ export class Renderer {
       if (game.boss && !game.boss.dead) this._bossBar(ctx, game);
       if (game.combo && game.combo.count >= 2) this._comboHud(ctx, game);
       if (game.state === 'ready') this._banner(ctx, `${game.level.name}`, '准备出发！按 跳 / ✕ 开始');
-      if (game.state === 'clear') this._banner(ctx, '关卡通关！🎉', '按 跳 / ✕ 返回');
+      if (game.state === 'clear') this._banner(ctx, '关卡通关！🎉', `${'⭐'.repeat(game.lastStars || 0)}  按 跳 / ✕ 返回`);
     } catch (err) {
       if ((this._errs = (this._errs || 0) + 1) <= 8) console.error('[render] frame error — clearing caches:', err);
       try { ctx.setTransform(1, 0, 0, 1, 0, 0); } catch (_) { /* ignore */ }
