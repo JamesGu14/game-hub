@@ -26,9 +26,13 @@ export function stepWorm(w, dt, mask, opts) {
   // integrate Y
   const ny = w.y + w.vy * dt;
   if (w.vy >= 0) {
-    // falling: check feet
+    // falling (or resting): check feet
     if (solidAt(mask, w.x, ny + HALF_H)) {
-      let gy = ny + HALF_H;
+      // Snap to the ground top using an INTEGER row. Keeping gy fractional made a
+      // resting worm drift down ~0.4px each frame (the sub-pixel gravity step) and
+      // pop back up ~1px every few frames — a ~20Hz shimmer on whichever worm is
+      // re-stepped each frame (i.e. the active worm during aiming). Flooring fixes it.
+      let gy = (ny + HALF_H) | 0;
       while (gy > 0 && solidAt(mask, w.x, gy - 1)) gy--; // snap to ground top
       w.y = gy - HALF_H; w.vy = 0; w.onGround = true;
     } else { w.y = ny; w.onGround = false; }
