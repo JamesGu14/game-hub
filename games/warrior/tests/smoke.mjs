@@ -39,23 +39,43 @@ async function holdKey(key, ms) {
   await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key);
 }
 await holdKey('x', 60);            // ready -> playing
+// run & gun a bit (verifies normal play)
 await page.keyboard.down('ArrowRight');
 await page.keyboard.down('z');
-await sleep(2500);                 // run & gun for a bit
-await page.keyboard.up('z');
+await sleep(2500);
 await page.keyboard.up('ArrowRight');
 
-const state = await page.evaluate(() => ({
-  state: window.__game?.state,
-  x: window.__game?.player?.x ?? 0,
-  score: window.__game?.score ?? 0,
-}));
+// Fast-forward to the boss arena with a strong weapon — we're verifying the boss
+// WIRING + render in-browser, not the player's stamina across 8 screens.
+await page.evaluate(() => {
+  const g = window.__game;
+  if (g && g.player && g.level && g.level.bossX != null) {
+    g.player.weapon = 'laser';
+    g.player.x = g.level.bossX - 60;
+  }
+});
+await page.keyboard.down('ArrowRight');
+await sleep(600);                  // cross bossX -> spawn the boss
+await page.keyboard.up('ArrowRight');
+await sleep(4500);                 // laser the boss
+await page.keyboard.up('z');
+
+const state = await page.evaluate(() => {
+  const g = window.__game;
+  return {
+    state: g?.state,
+    x: Math.round(g?.player?.x ?? 0),
+    score: g?.score ?? 0,
+    bossSpawned: !!g?.boss,
+    bossHurt: g?.boss ? g.boss.hp < g.boss.maxHp : false,
+    bossHp: g?.boss ? g.boss.hp : null,
+  };
+});
 
 await page.screenshot({ path: 'tests/_smoke.png' });
 await browser.close();
 
 if (errors.length) { console.error('SMOKE FAIL — page errors:\n' + errors.join('\n')); process.exit(1); }
-if (!['playing', 'clear'].includes(state.state)) {
-  console.error('SMOKE FAIL — unexpected state', state); process.exit(1);
-}
-console.log(`SMOKE PASS — state=${state.state} x=${Math.round(state.x)} score=${state.score} (see tests/_smoke.png)`);
+const ok = state.state === 'clear' || (state.bossSpawned && state.bossHurt);
+if (!ok) { console.error('SMOKE FAIL — boss not engaged', state); process.exit(1); }
+console.log(`SMOKE PASS — state=${state.state} bossSpawned=${state.bossSpawned} bossHp=${state.bossHp} score=${state.score} (see tests/_smoke.png)`);
