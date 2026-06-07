@@ -253,3 +253,83 @@ body {
   font-size: 12px;
   margin-top: 10px;
 }
+
+/* ---- Level select (route map) ------------------------------------------ */
+.panel.panel-wide {
+  max-width: 760px;
+}
+#levelselect-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 6px 4px 12px;
+  margin: 10px 0 16px;
+  -webkit-overflow-scrolling: touch;
+}
+#levelselect-track {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  min-width: max-content;
+  position: relative;
+  padding: 30px 18px;
+}
+/* the winding path line behind the nodes */
+#levelselect-track::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 50%;
+  height: 4px;
+  transform: translateY(-50%);
+  background: repeating-linear-gradient(90deg,
+    rgba(255, 159, 67, 0.5) 0 14px, transparent 14px 26px);
+  z-index: 0;
+}
+.ls-node {
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+  background: rgba(20, 8, 40, 0.85);
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+/* meander via margin so transform stays free for hover */
+.ls-node:nth-child(odd)  { margin-bottom: 36px; }
+.ls-node:nth-child(even) { margin-top: 36px; }
+.ls-node .ls-num  { font-size: 22px; font-weight: 900; line-height: 1; }
+.ls-node .ls-name { font-size: 11px; opacity: 0.85; text-align: center; }
+.ls-node .ls-badge { font-size: 13px; height: 14px; line-height: 1; }
+.ls-node:not(.locked):hover {
+  transform: translateY(-4px) scale(1.06);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+/* cleared: solid theme color, replayable */
+.ls-node.cleared {
+  background: var(--node-color, #5a8a3c);
+  border-color: rgba(255, 255, 255, 0.55);
+  color: #0d0618;
+}
+/* next: orange highlight, the call-to-action */
+.ls-node.next {
+  border-color: #ff9f43;
+  background: rgba(255, 159, 67, 0.18);
+  box-shadow: 0 0 0 3px rgba(255, 159, 67, 0.35), 0 6px 18px rgba(0, 0, 0, 0.5);
+}
+/* locked: dim, not interactive */
+.ls-node.locked {
+  opacity: 0.4;
+  filter: grayscale(0.7);
+  cursor: not-allowed;
+}

@@ -6,6 +6,8 @@ import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Sound, Music } from './audio.js';
+import { LEVELS } from './levels.js';
+import { levelNodeState } from './progress.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -30,11 +32,12 @@ Input.on((action) => {
 // Overlay map: game.state → overlay element id
 // ---------------------------------------------------------------------------
 const OVERLAY_IDS = {
-  menu:       'overlay-menu',
-  paused:     'overlay-pause',
-  levelclear: 'overlay-levelclear',
-  gameover:   'overlay-gameover',
-  win:        'overlay-win',
+  menu:        'overlay-menu',
+  levelselect: 'overlay-levelselect',
+  paused:      'overlay-pause',
+  levelclear:  'overlay-levelclear',
+  gameover:    'overlay-gameover',
+  win:         'overlay-win',
 };
 
 function showOverlay(stateName) {
@@ -86,6 +89,12 @@ function syncOverlays() {
   const goMsg = document.getElementById('go-msg');
   if (goMsg && game.state === 'gameover') {
     goMsg.textContent = game.mode === 'duo' ? '本局结束！' : '再努力一次！';
+  }
+
+  // Win message (all levels cleared) — dynamic, replaces the old hardcoded text (§11.13)
+  const winMsg = document.getElementById('win-msg');
+  if (winMsg && game.state === 'win') {
+    winMsg.textContent = '恭喜通关全部 ' + LEVELS.length + ' 关！🎉';
   }
 
   // Turn banner
@@ -140,6 +149,53 @@ import('./aim.js').then(m => { _aimRef = m.Aim; });
 import('./config.js').then(m => { _aimConfigRef = m.AIM; });
 
 // ---------------------------------------------------------------------------
+// Level select route map
+// ---------------------------------------------------------------------------
+function populateLevelSelect() {
+  const track = document.getElementById('levelselect-track');
+  const prog = document.getElementById('levelselect-progress');
+  if (!track) return;
+  const best = (game.best && game.best.level) ? game.best.level : 0; // highest cleared, 1-based
+  const total = LEVELS.length;
+  if (prog) {
+    prog.textContent = best > 0
+      ? '🏆 最远进度：第 ' + best + ' 关已通关'
+      : '🏆 还未通关任何关卡';
+  }
+  track.innerHTML = '';
+  let nextNode = null;
+  LEVELS.forEach((lv, idx) => {
+    const num = idx + 1;
+    const stt = levelNodeState(num, best, total); // 'cleared' | 'next' | 'locked'
+    const node = document.createElement('button');
+    node.type = 'button';
+    node.className = 'ls-node ' + stt;
+    node.style.setProperty('--node-color', lv.palette.land);
+    node.disabled = (stt === 'locked');
+    const badge = stt === 'locked' ? '🔒' : (stt === 'next' ? '▶' : '✓');
+    node.innerHTML =
+      '<span class="ls-num">' + num + '</span>' +
+      '<span class="ls-name">' + lv.name + '</span>' +
+      '<span class="ls-badge">' + badge + '</span>';
+    if (stt !== 'locked') {
+      node.addEventListener('click', () => {
+        Sound.resume();
+        Sound.ui();
+        game.startGame(idx, 'solo');
+      });
+    }
+    track.appendChild(node);
+    if (stt === 'next') nextNode = node;
+  });
+  // Auto-scroll to the next playable node — deferred one frame so the overlay
+  // (toggled to display:flex by the next syncOverlays) is laid out first.
+  const target = nextNode || track.lastElementChild;
+  if (target && target.scrollIntoView) {
+    requestAnimationFrame(() => target.scrollIntoView({ inline: 'center', block: 'nearest' }));
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Button wiring
 // ---------------------------------------------------------------------------
 const BTN = (id, fn) => {
@@ -154,7 +210,16 @@ const startIndex = Number.isFinite(levelParam) ? Math.max(0, levelParam - 1) : 0
 BTN('btn-solo', () => {
   Sound.resume();
   Sound.ui();
-  game.startGame(startIndex, 'solo');
+  if (Number.isFinite(levelParam)) {
+    game.startGame(startIndex, 'solo'); // ?level=N debug shortcut → skip the select screen
+  } else {
+    populateLevelSelect();
+    game.showLevelSelect();
+  }
+});
+BTN('btn-ls-back', () => {
+  Sound.ui();
+  game.toMenu();
 });
 BTN('btn-duo', () => {
   Sound.resume();

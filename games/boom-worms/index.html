@@ -58,6 +58,21 @@
     </div>
   </div>
 
+  <!-- ── Overlay: Level Select (route map) ──────────────────────────── -->
+  <div id="overlay-levelselect" class="overlay">
+    <div class="panel panel-wide">
+      <h1 class="game-title">🗺️ 选择关卡</h1>
+      <p id="levelselect-progress" class="best-line">🏆 还未通关任何关卡</p>
+      <div id="levelselect-scroll">
+        <div id="levelselect-track"><!-- nodes injected by main.js --></div>
+      </div>
+      <div class="btn-col">
+        <button id="btn-ls-back" class="big-btn ghost" type="button">← 返回菜单</button>
+      </div>
+      <p class="tiny">点亮的关卡可重玩 · ▶ 为下一关 · 🔒 尚未解锁</p>
+    </div>
+  </div>
+
   <!-- ── Overlay: Pause ─────────────────────────────────────────────── -->
   <div id="overlay-pause" class="overlay">
     <div class="panel">
@@ -100,7 +115,7 @@
   <div id="overlay-win" class="overlay">
     <div class="panel">
       <h1 class="game-title">🏆 全部通关！</h1>
-      <p id="win-msg" class="best-line">恭喜打败彩虹山 BOSS！</p>
+      <p id="win-msg" class="best-line"></p>
       <div class="btn-col">
         <button id="btn-win-replay" class="big-btn" type="button">↻ 再玩一次</button>
         <a class="big-btn ghost" href="../../index.html">← 返回 HUB</a>
