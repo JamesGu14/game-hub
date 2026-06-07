@@ -30,52 +30,43 @@ page.on('console', (m) => {
 await page.setViewport({ width: 900, height: 600 });
 await page.goto(URL, { waitUntil: 'networkidle0' });
 
-// title -> start
-await page.click('#btn-start');
-await sleep(200);
+async function holdKey(key, ms) { await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key); }
 
-// drive the game: press X to start playing, then hold Right + Z to advance & shoot
-async function holdKey(key, ms) {
-  await page.keyboard.down(key); await sleep(ms); await page.keyboard.up(key);
-}
+// title -> select -> pick the first (unlocked) level -> ready
+await page.click('#btn-start');
+await sleep(250);
+await page.click('#select-grid .level-card');
+await sleep(250);
 await holdKey('x', 60);            // ready -> playing
-// run & gun a bit (verifies normal play)
+
+// run & gun, then fast-forward to the boss arena + laser (verify boss wiring in-browser)
 await page.keyboard.down('ArrowRight');
 await page.keyboard.down('z');
-await sleep(2500);
+await sleep(2000);
 await page.keyboard.up('ArrowRight');
-
-// Fast-forward to the boss arena with a strong weapon — we're verifying the boss
-// WIRING + render in-browser, not the player's stamina across 8 screens.
 await page.evaluate(() => {
   const g = window.__game;
-  if (g && g.player && g.level && g.level.bossX != null) {
-    g.player.weapon = 'laser';
-    g.player.x = g.level.bossX - 60;
-  }
+  if (g && g.player && g.level && g.level.bossX != null) { g.player.weapon = 'laser'; g.player.x = g.level.bossX - 60; }
 });
 await page.keyboard.down('ArrowRight');
-await sleep(600);                  // cross bossX -> spawn the boss
+await sleep(600);
 await page.keyboard.up('ArrowRight');
-await sleep(4500);                 // laser the boss
+await sleep(4500);
 await page.keyboard.up('z');
 
-const state = await page.evaluate(() => {
-  const g = window.__game;
-  return {
-    state: g?.state,
-    x: Math.round(g?.player?.x ?? 0),
-    score: g?.score ?? 0,
-    bossSpawned: !!g?.boss,
-    bossHurt: g?.boss ? g.boss.hp < g.boss.maxHp : false,
-    bossHp: g?.boss ? g.boss.hp : null,
-  };
-});
+const cleared = await page.evaluate(() => ({ state: window.__game?.state }));
 
+// reload -> the save must persist (real localStorage in Chrome)
+await page.reload({ waitUntil: 'networkidle0' });
+const save = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('jungle-warrior-save')); } catch { return null; } });
+await page.click('#btn-start'); await sleep(250); // show the select grid (L1 should now have ⭐)
 await page.screenshot({ path: 'tests/_smoke.png' });
 await browser.close();
 
 if (errors.length) { console.error('SMOKE FAIL — page errors:\n' + errors.join('\n')); process.exit(1); }
-const ok = state.state === 'clear' || (state.bossSpawned && state.bossHurt);
-if (!ok) { console.error('SMOKE FAIL — boss not engaged', state); process.exit(1); }
-console.log(`SMOKE PASS — state=${state.state} bossSpawned=${state.bossSpawned} bossHp=${state.bossHp} score=${state.score} (see tests/_smoke.png)`);
+const l1cleared = save?.perLevel?.['1']?.cleared === true;
+const l2unlocked = (save?.unlockedMax || 0) >= 2;
+if (!(cleared.state === 'clear' && l1cleared && l2unlocked)) {
+  console.error('SMOKE FAIL', { state: cleared.state, l1cleared, l2unlocked, save }); process.exit(1);
+}
+console.log(`SMOKE PASS — L1 cleared (⭐${save.perLevel['1'].bestStars}), persisted after reload (unlockedMax=${save.unlockedMax})`);
