@@ -207,6 +207,32 @@ function drawDasher(state, frame) {
   return o;
 }
 
+function drawPiranha(frame) {
+  const o = mk(26, 30), x = o.cx;
+  x.fillStyle = '#2c9b34'; r(x, 10, 16, 6, 14);
+  x.fillStyle = '#5fd06a'; r(x, 10, 16, 2, 14);
+  x.fillStyle = '#1d6a24'; r(x, 14, 16, 2, 14);
+  x.fillStyle = '#e23b2e'; E(x, 13, 11, 11, 10);
+  x.fillStyle = '#ff6d5c'; E(x, 9, 7, 3, 2.2);
+  x.fillStyle = '#fff';
+  E(x, 7, 6, 1.6, 1.6); E(x, 18, 6, 1.6, 1.6);
+  E(x, 5.5, 12, 1.6, 1.6); E(x, 20, 12, 1.6, 1.6);
+  E(x, 13, 4.5, 1.6, 1.6);
+  x.fillStyle = '#3a0a06';
+  if (frame === 1) {
+    x.beginPath(); x.ellipse(13, 13, 8, 5.5, 0, 0, 7); x.fill();
+    x.fillStyle = '#ff9b8a'; x.beginPath(); x.ellipse(13, 14, 5, 3, 0, 0, 7); x.fill();
+    x.fillStyle = '#fff';
+    for (const tx of [6, 10, 14, 18]) { x.beginPath(); x.moveTo(tx, 9); x.lineTo(tx + 2.6, 9); x.lineTo(tx + 1.3, 12); x.closePath(); x.fill(); }
+    for (const tx of [6, 10, 14, 18]) { x.beginPath(); x.moveTo(tx, 17.5); x.lineTo(tx + 2.6, 17.5); x.lineTo(tx + 1.3, 14.5); x.closePath(); x.fill(); }
+  } else {
+    r(x, 5, 12, 16, 2.4);
+    x.fillStyle = '#fff';
+    for (const tx of [6, 10, 14, 18]) { x.beginPath(); x.moveTo(tx, 12); x.lineTo(tx + 2.6, 12); x.lineTo(tx + 1.3, 14.6); x.closePath(); x.fill(); }
+  }
+  return o;
+}
+
 // ---- princess / castle / flag --------------------------------------------
 function drawPrincess() {
   const o = mk(26, 34), x = o.cx;
@@ -594,6 +620,9 @@ export const Sprites = {
   dasher(state, frame) {
     return cached(`dsh:${state === 'dash' ? 'dash' : 'patrol'}:${frame & 1}`, () =>
       drawDasher(state === 'dash' ? 'dash' : 'patrol', frame & 1)).cv;
+  },
+  piranha(frame) {
+    return cached(`piranha:${frame & 1}`, () => drawPiranha(frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {

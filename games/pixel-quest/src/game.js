@@ -496,6 +496,7 @@ export class Game {
 
       // Star: instakill on touch
       if (p.star > 0) {
+        if (e instanceof Piranha && e.hittable === false) continue; // hidden 食人花不被星星误杀
         if (e instanceof Koopa) e.dead = true; else if (e.kill) e.kill(this._world);
         this.score += SCORE.stomp;
         continue;
@@ -553,6 +554,10 @@ export class Game {
         } else {
           this._hurtPlayer(); // 冲刺中撞到也走这里,无敌帧天然防连击
         }
+      } else if (e instanceof Piranha) {
+        // 踩不死:藏起来跳过;否则无条件掉血(不读 stomping)。火球/星星杀走别处。
+        if (!e.hittable) continue;
+        this._hurtPlayer();
       }
     }
   }

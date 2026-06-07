@@ -529,7 +529,58 @@ export class Dasher {
   stomp(world) { this.squish = 0.4; this.vx = 0; this.state = 'patrol'; world.sound.stomp(); }
   kill(world) { this.dead = true; world.sound.kick(); }
 }
-export class Piranha{ constructor(x, y) { this.w = 26; this.h = 30; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.baseY = y; this.dead = false; this.state = 'hidden'; this.anim = 0; } update() {} }
+// ---------------------------------------------------------------------------
+// Piranha 食人花(世界7,字符 'p'):固定位置,四态定时升降,踩不死。baseY = y(作图格上沿)。
+// shown 升到 baseY,hidden 缩到 baseY+TILE。掉血由 game._playerEnemyCollisions 无条件触发
+// (踩也掉血,不读 stomping)。kill() 供火球/星星消灭。hittable: hidden 态为 false,
+// 让顶部星星 instakill 与碰撞分支都跳过藏在管里的花(评审 #10)。
+export class Piranha {
+  constructor(x, y) {
+    this.w = 26; this.h = 30;
+    this.x = x + (TILE - this.w) / 2;
+    this.baseY = y;
+    this.topY = y + TILE;
+    this.y = this.topY;
+    this.vx = 0; this.vy = 0;
+    this.dead = false;
+    this.state = 'hidden';   // 'hidden' | 'rising' | 'shown' | 'sinking'
+    this.hittable = false;   // 只有非 hidden 态可被碰/被星星杀
+    this.timer = ENEMY.piranhaHideT;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    this.anim += dt * 6;
+    const p = world.player;
+    const hiY = this.baseY + TILE;
+    const loY = this.baseY;
+
+    if (this.state === 'hidden') {
+      const onTop = p && !p.dead && p.dying <= 0 &&
+        p.x + p.w > this.x - 4 && p.x < this.x + this.w + 4 &&
+        p.y + p.h <= this.baseY + 8;
+      this.topY = hiY;
+      if (onTop) { this.timer = ENEMY.piranhaHideT; }
+      else {
+        this.timer -= dt;
+        if (this.timer <= 0) { this.state = 'rising'; }
+      }
+    } else if (this.state === 'rising') {
+      this.topY -= ENEMY.piranhaUp * dt;
+      if (this.topY <= loY) { this.topY = loY; this.state = 'shown'; this.timer = ENEMY.piranhaShowT; }
+    } else if (this.state === 'shown') {
+      this.topY = loY;
+      this.timer -= dt;
+      if (this.timer <= 0) { this.state = 'sinking'; }
+    } else { // sinking
+      this.topY += ENEMY.piranhaUp * dt;
+      if (this.topY >= hiY) { this.topY = hiY; this.state = 'hidden'; this.timer = ENEMY.piranhaHideT; }
+    }
+    this.hittable = this.state !== 'hidden';
+    this.y = this.topY;
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  kill(world) { this.dead = true; world.sound.kick(); }
+}
 export class Spiked { constructor(x, y) { this.w = 26; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.spikedSpeed; this.vy = 0; this.dead = false; this.anim = 0; } update() {} }
 export class Flamer { constructor(x, y) { this.w = 26; this.h = 28; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = 0; this.vy = 0; this.dead = false; this.throwTimer = ENEMY.flameThrowEvery; this.squish = 0; this.anim = 0; } update() {} }
 
