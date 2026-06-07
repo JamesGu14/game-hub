@@ -19,7 +19,14 @@ export const PLAYER = {
 
 export const FORGIVE = { coyote: 0.10, jumpBuffer: 0.12 };
 
-export const ENEMY = { goombaSpeed: 46, koopaSpeed: 40, shellSpeed: 320, fireballSpeed: 320, fireballBounce: 360 };
+export const ENEMY = {
+  goombaSpeed: 46, koopaSpeed: 40, shellSpeed: 320, fireballSpeed: 320, fireballBounce: 360,
+  flyerSpeed: 55, flyerAmp: 40, flyerFreq: 1.6,
+  dasherPatrol: 30, dasherDash: 280, dasherSight: 260, dasherCooldown: 1.2, dasherWindup: 0.35,
+  piranhaUp: 90, piranhaHideT: 1.6, piranhaShowT: 1.8, piranhaRise: 30,
+  spikedSpeed: 38,
+  flameThrowEvery: 2.2, flameSpeed: 200,
+};
 
 export const MODES = {
   easy:    { id:'easy',    label:'简单', sub:'友好儿童版', lives:5, enemyMul:0.8, coyoteMul:1.6, powerupGenerous:true,  checkpoints:true },
