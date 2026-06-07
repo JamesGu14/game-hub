@@ -10,7 +10,7 @@ import {
 } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
 import {
-  OPENING, ENDING, introFor, outroFor, isWorldFirstLevel, isWorldLastLevel,
+  OPENING, ENDING, BOSS_INTRO, introFor, outroFor, isWorldFirstLevel, isWorldLastLevel,
 } from './story.js';
 import {
   Player, Goomba, Koopa, Coin, Powerup, Fireball, MovingPlatform,
@@ -151,6 +151,8 @@ export class Game {
     this.levelIndex = i;
     if (i === 0) {
       this.startDialogue(OPENING, () => this.startDialogue(introFor(0), () => this.loadLevel(0)));
+    } else if (i === LEVELS.length - 1) {
+      this.startDialogue(BOSS_INTRO, () => this.loadLevel(i)); // 选关直接进 10-5
     } else if (isWorldFirstLevel(i)) {
       this.startDialogue(introFor(i), () => this.loadLevel(i));
     } else {
@@ -289,7 +291,8 @@ export class Game {
     const next = justFinished + 1;
     if (next >= LEVELS.length) { this.state = 'win'; this._saveBest(); Sound.win(); return; }
     const afterOutro = () => {
-      if (isWorldFirstLevel(next)) this.startDialogue(introFor(next), () => this.loadLevel(next));
+      if (next === LEVELS.length - 1) this.startDialogue(BOSS_INTRO, () => this.loadLevel(next)); // 进 10-5 前
+      else if (isWorldFirstLevel(next)) this.startDialogue(introFor(next), () => this.loadLevel(next));
       else this.loadLevel(next);
     };
     if (isWorldLastLevel(justFinished)) this.startDialogue(outroFor(justFinished), afterOutro);

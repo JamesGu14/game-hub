@@ -1,5 +1,5 @@
 // 剧情数据 + 世界推导。零生字、短句(每句 ≤38 字)。speaker=中文名,portrait=英文 key。
-// 世界 5-10 故意留空(阶段 B-D 再填):空脚本 → introFor/outroFor 返回 [],运行器立即 onDone,不卡死。
+// 世界 1-10 intro + 世界 1-9 outro + BOSS_INTRO + 完整 ENDING 已填(世界10无 outro,收尾走 ENDING)。
 
 export const OPENING = [
   { speaker: '国王', portrait: 'king',   text: '不好啦!桃花公主被酷霸王抓走了!' },
@@ -60,6 +60,13 @@ export const WORLD_INTRO = {
     { speaker: "马里奥", portrait: "mario", text: "全到齐了?正好,我一个一个收拾!" },
     { speaker: "马里奥", portrait: "mario", text: "闯过去,酷霸王魔城就在眼前!" },
   ],
+  10: [
+    { speaker: '侍从', portrait: 'herald', text: '到了……这就是酷霸王魔城,又黑又大。' },
+    { speaker: '马里奥', portrait: 'mario', text: '桃花公主,我来救你啦!' },
+    { speaker: '酷霸王', portrait: 'bowser', text: '哈哈哈!又来一个小不点!' },
+    { speaker: '酷霸王', portrait: 'bowser', text: '公主是我的!想救她,先过我这一关!' },
+    { speaker: '马里奥', portrait: 'mario', text: '哼,等我打败你,就带公主回家!' },
+  ],
 };
 
 export const WORLD_OUTRO = {
@@ -104,15 +111,26 @@ export const WORLD_OUTRO = {
   ],
 };
 
-// 阶段 A 占位结局(救出 + 婚礼,不含 Boss 战台词);阶段 D 用 spec §五 完整版替换。
+// Boss 登场(进入 10-5 前由 nextLevel 触发;世界10无 outro)。
+export const BOSS_INTRO = [
+  { speaker: '酷霸王', portrait: 'bowser', text: '小不点,你居然闯到这里!佩服佩服……才怪!' },
+  { speaker: '酷霸王', portrait: 'bowser', text: '尝尝我的大火球!哈哈哈!' },
+  { speaker: '桃花公主', portrait: 'princess', text: '马里奥,小心!我相信你一定行!' },
+  { speaker: '马里奥', portrait: 'mario', text: '公主别怕!我用天空回廊的力量!踩他、火球招呼,我一定赢!' },
+];
+
+// 完整结局(spec §五:Boss 收尾 → 救出 → 婚礼 → 收尾)。零生字、每句 ≤38。
 export const ENDING = [
+  { speaker: '马里奥', portrait: 'mario', text: '酷霸王,看招!这一下,为了公主!' },
+  { speaker: '酷霸王', portrait: 'bowser', text: '不……不可能!我输了……' },
   { speaker: '桃花公主', portrait: 'princess', text: '马里奥!你真的来救我了!' },
-  { speaker: '马里奥', portrait: 'mario', text: '我说过的,再难也挡不住我!' },
+  { speaker: '马里奥', portrait: 'mario', text: '我说过的,毒林、雪山、火海都挡不住我!' },
   { speaker: '桃花公主', portrait: 'princess', text: '我们回家吧,回到我们的王国!' },
   { speaker: '国王', portrait: 'king', text: '勇士啊!你救回了我的女儿,了不起!' },
   { speaker: '国王', portrait: 'king', text: '我说话算话——封你为驸马!全国一起庆祝!' },
   { speaker: '侍从', portrait: 'herald', text: '大家快来呀,王国要办大喜事啦!' },
-  { speaker: '马里奥', portrait: 'mario', text: '公主,我答应过一定带你回家!' },
+  { speaker: '桃花公主', portrait: 'princess', text: '谢谢你,马里奥。一路上你从没放弃过我。' },
+  { speaker: '马里奥', portrait: 'mario', text: '因为我答应过,一定把你带回家。' },
 ];
 
 // ---- 世界推导(每 5 关一个世界;levelIndex 0-based)----
@@ -124,7 +142,7 @@ export function outroFor(i) { return WORLD_OUTRO[worldOf(i)] || []; }
 
 // 开发期自检:节点结构 + 句长(不抛错,只告警,避免影响线上)
 (() => {
-  const all = [OPENING, ENDING, ...Object.values(WORLD_INTRO), ...Object.values(WORLD_OUTRO)].flat();
+  const all = [OPENING, ENDING, BOSS_INTRO, ...Object.values(WORLD_INTRO), ...Object.values(WORLD_OUTRO)].flat();
   for (const b of all) {
     if (!b || !b.speaker || !b.portrait || typeof b.text !== 'string') { console.warn('story: 坏节点', b); continue; }
     if (b.text.length > 38) console.warn('story: 文案过长(>38)', b.text);

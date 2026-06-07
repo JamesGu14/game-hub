@@ -1,6 +1,6 @@
 // 纯逻辑断言:story.js 的推导函数 + 数据完整性。Run: node tools/_story_test.mjs
 import {
-  OPENING, ENDING, WORLD_INTRO, WORLD_OUTRO,
+  OPENING, ENDING, BOSS_INTRO, WORLD_INTRO, WORLD_OUTRO,
   worldOf, isWorldFirstLevel, isWorldLastLevel, introFor, outroFor,
 } from '../src/story.js';
 
@@ -25,14 +25,14 @@ ok(Array.isArray(introFor(0)) && introFor(0).length > 0, 'world1 intro filled');
 ok(introFor(15).length > 0, 'world4 intro filled (idx15)');
 ok(introFor(20).length > 0, 'world5 intro filled (idx20)');
 ok(introFor(40).length > 0, 'world9 intro filled (idx40)');
-ok(introFor(45).length === 0, 'world10 intro empty -> [] (idx45)');
+ok(introFor(45).length > 0, 'world10 intro filled (idx45)');
 ok(outroFor(0).length > 0, 'world1 outro filled');
 ok(outroFor(20).length > 0, 'world5 outro filled (idx20)');
 ok(outroFor(45).length === 0, 'world10 outro empty -> [] (idx45)');
 
 // 数据完整性 + 长度约束(零生字短句)
 const PORTRAITS = new Set(['king', 'mario', 'princess', 'bowser', 'herald']);
-const all = [OPENING, ENDING, ...Object.values(WORLD_INTRO), ...Object.values(WORLD_OUTRO)].flat();
+const all = [OPENING, ENDING, BOSS_INTRO, ...Object.values(WORLD_INTRO), ...Object.values(WORLD_OUTRO)].flat();
 ok(all.length > 0, 'has beats');
 for (const b of all) {
   ok(b && typeof b.speaker === 'string' && b.speaker.length > 0, 'beat has speaker: ' + JSON.stringify(b));
