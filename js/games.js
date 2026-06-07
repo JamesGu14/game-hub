@@ -90,4 +90,15 @@ export const GAMES = [
     tags: ['策略', '回合制', '键鼠/手柄'],
     path: 'games/boom-worms/index.html',
   },
+  {
+    id: 'tower-defender',
+    title: '成都保卫战',
+    subtitle: '三国塔防 · 守城御敌',
+    desc: '实时波次塔防 · 蜀汉六将布防 · 升级招牌技 · 三势力 8 关战役 · 名将 BOSS · 键鼠/触屏',
+    icon: '🏯',
+    accent: '#e8a020',
+    accent2: '#4d3a24',
+    tags: ['塔防', '策略', '三国', '键鼠/触屏'],
+    path: 'games/tower-defender/index.html',
+  },
 ];
