@@ -61,6 +61,7 @@ export const THEMES = {
   mushroom:   { skyTop:'#3a2a6b', skyBot:'#6b5aa8', ground:'#7a5a9a', groundDark:'#523c6b', grass:'#ff7ac4', hills:'#4a3a7a' },
   cosmic:     { skyTop:'#0c0a28', skyBot:'#241a52', ground:'#34305c', groundDark:'#201d3e', grass:'#7c6cff', hills:'#171238' },
   celestial:  { skyTop:'#8fd0ff', skyBot:'#fff3cf', ground:'#e8d98f', groundDark:'#bfa85f', grass:'#ffe9a0', hills:'#cfe6ff' },
+  bowser:     { skyTop:'#1a0508', skyBot:'#3a0a0a', ground:'#4a2a2a', groundDark:'#2a1414', grass:'#7a2020', hills:'#250606' },
 };
 
 export const SCORE = { coin:100, stomp:100, shellHit:200, fireKill:200, powerup:1000, flagBase:500, timeBonus:20, levelClear:1000, oneUpAtCoins:100 };

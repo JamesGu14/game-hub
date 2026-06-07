@@ -361,6 +361,12 @@ export class Fireball {
     for (const e of world.enemies) {
       if (e.dead) continue;
       if (aabb(this, e)) {
+        // Boss:鸭子类型判定(规避同模块类声明顺序);扣血/加分/音效在 e.hit() 内。
+        if (typeof e.hit === 'function' && e.hp !== undefined) {
+          e.hit(world, this.vx >= 0 ? 1 : -1);
+          this.dead = true;
+          return;
+        }
         if (e instanceof Koopa) e.dead = true;
         else if (e.kill) e.kill(world);
         world.addScore(200);
@@ -653,6 +659,79 @@ export class Flamer {
   frame() { return Math.floor(this.anim) % 2; }
   stomp(world) { this.squish = 0.4; this.vx = 0; world.sound.stomp(); }
   kill(world) { this.dead = true; world.sound.kick(); }
+}
+
+// ---------------------------------------------------------------------------
+// 酷霸王 Bowser(字符 'W',仅 10-5)。HP=5,踩一脚/玩家火球/星星接触各扣 1(受 0.9s
+// 无敌帧限频防秒杀)。朝玩家慢走 + 定时跳 + 定时喷敌方火球(EnemyShot)。血空 → state
+// 'defeated'(倒地)→ game._defeatBoss → _winGame → ENDING。加分/音效集中在 hit()。
+export class Bowser {
+  constructor(x, y) {
+    this.w = 54; this.h = 58;
+    this.x = x + (TILE - this.w) / 2;   // 宽于一格,居中到出生列(会左探出,正常)
+    this.y = y + (TILE - this.h);       // 脚底贴出生格底部
+    this.vx = 0; this.vy = 0;
+    this.onGround = false;
+    this.dead = false;
+    this.hp = 5;
+    this.invuln = 0;                     // 受击后短无敌(限频)
+    this.state = 'walk';                 // 'walk' | 'defeated'
+    this.faceRight = false;
+    this.throwTimer = 1.4;               // 首发稍慢,给玩家进场时间
+    this.jumpTimer = 2.0;
+    this.defeatT = 0;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    this.anim += dt * 4;
+    if (this.invuln > 0) this.invuln -= dt;
+    const p = world.player;
+
+    if (this.state === 'defeated') {     // 倒地:只受重力,累计倒地计时(game 冻结期间不调本函数)
+      this.vx = 0;
+      this.defeatT += dt;
+      collideTiles(this, world.grid, dt);
+      return;
+    }
+
+    // 朝玩家慢走
+    if (p) this.faceRight = (p.x + p.w / 2) >= (this.x + this.w / 2);
+    const dir = this.faceRight ? 1 : -1;
+    this.vx = dir * 70 * world.mode.enemyMul;
+
+    // 定时跳(站地时)
+    this.jumpTimer -= dt;
+    if (this.onGround && this.jumpTimer <= 0) {
+      this.vy = -620;
+      this.jumpTimer = 2.4 + Math.random() * 1.2;
+      world.sound.jump();
+    }
+
+    // 定时喷敌方火球(EnemyShot;玩家碰撞由 game.update 主循环统一处理)
+    this.throwTimer -= dt;
+    if (this.throwTimer <= 0) {
+      this.throwTimer = 1.8;
+      const sx = this.x + (dir > 0 ? this.w : -14);
+      const sy = this.y + this.h * 0.25;
+      world.spawnEnemyShot(sx, sy, 200 * dir, -150);
+      world.sound.fireball();
+    }
+
+    collideTiles(this, world.grid, dt);  // 重力/落地/撞墙(撞墙下一帧靠朝向自然折返)
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  // 受击:扣血 + 限频无敌 + 击退;加分/音效在此(单一出处)。血空返回 true。
+  hit(world, fromDir) {
+    if (this.invuln > 0 || this.state === 'defeated') return false;
+    this.hp -= 1;
+    this.invuln = 0.9;
+    this.vx = fromDir * 120;
+    this.vy = -200;
+    world.sound.stomp();
+    world.addScore(200);
+    if (this.hp <= 0) { this.state = 'defeated'; this.vy = -260; return true; }
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
