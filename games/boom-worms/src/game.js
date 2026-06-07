@@ -595,6 +595,34 @@ export class Game {
     return t ? t.worms[this.active.wormIdx] : null;
   }
 
+  /**
+   * Walk a worm one frame for the AI — same physics path the human uses, just
+   * driven by `moveX` ∈ [-1,1] instead of input. Kept here (not in ai.js) so
+   * `stepWorm` stays a game.js concern. AIController.step calls this.
+   */
+  _aiWalk(worm, moveX, dt) {
+    if (!worm || !worm.alive || !this.terrain) return;
+    stepWorm(worm, dt, this.terrain.mask, {
+      waterY: this.level.waterY,
+      moveX,
+      wantJump: false,
+    });
+  }
+
+  /**
+   * Footing check the AI uses before stepping toward `x`: is there solid ground
+   * there whose top stays safely above the water line? Returns false over a
+   * gap / water / out-of-bounds so the AI never walks itself into a drowning
+   * fall. `margin` keeps it off the very lip of the water.
+   */
+  _aiFootingSafe(x, margin = 8) {
+    if (!this.terrain) return false;
+    if (x < 4 || x > FIELD.W - 4) return false;
+    const waterY = this.level.waterY;
+    const gy = this.terrain.ground(x | 0, 0);
+    return gy != null && gy < waterY - margin;
+  }
+
   _trackCamera(worm) {
     const targetX = worm.x - FIELD.W / 2;
     const maxCamX = FIELD.W - FIELD.W; // world is same width as field (no scroll needed for 960px)
