@@ -39,6 +39,7 @@ export class Game {
     this.falcons = [];
     this._falconDefs = [];
     this.boss = null;
+    this.enemyBullets = [];
     this.combo = { count: 0, mult: 1, timer: 0 };
     this._world = this._makeWorld();
   }
@@ -57,12 +58,16 @@ export class Game {
       get pickups() { return game.pickups; },
       get falcons() { return game.falcons; },
       get boss() { return game.boss; },
+      get enemyBullets() { return game.enemyBullets; },
+      get levelMul() { return (game.level && game.level.difficulty && game.level.difficulty.enemyMul) || 1; },
+      get fireRateMul() { return (game.level && game.level.difficulty && game.level.difficulty.fireRateMul) || 1; },
       input: Input,
       addScore(n) { game.score += n; },
       killScore(base) { game.score += game.registerKill(base); },
       spawnEnemy(type, x, y) { game.spawnEnemy(type, x, y); },
       spawnPickup(letter, x, y) { game.pickups.push(new Pickup(letter, x, y)); },
       spawnBullets(specs) { for (const s of specs) game.bullets.push(new Bullet(s)); },
+      spawnEnemyBullet(spec) { game.enemyBullets.push(new Bullet({ ...spec, hostile: true })); },
       playSound(id) { Sound.play(id); },
       shake(intensity) { game.shake = Math.max(game.shake, intensity); },
       addFloatText(text, x, y, color) { game.floatTexts.push({ text, x, y, color, life: 1 }); },
@@ -101,6 +106,7 @@ export class Game {
     this.falcons = [];
     this._falconDefs = (lv.falcons || []).map((f) => ({ ...f, fired: false }));
     this.boss = null;
+    this.enemyBullets = [];
     this.combo = { count: 0, mult: 1, timer: 0 };
     this.camera.x = clamp(this.player.x - FIELD.W / 2, 0, Math.max(0, lv.width - FIELD.W));
     this.camera.y = clamp(this.player.y - FIELD.H / 2, 0, Math.max(0, lv.height - FIELD.H));
@@ -241,6 +247,16 @@ export class Game {
       }
     }
 
+    // Enemy bullets (hostile): move, die on terrain, damage the player on contact.
+    for (const b of this.enemyBullets) {
+      if (b.dead) continue;
+      b.update(dt, this._world);
+      if (!b.dead && p.dying <= 0 && aabb(p, b)) {
+        if (p.barrier > 0) b.dead = true;
+        else if (!p.isInvulnerable()) { p.takeDamage(this._world); b.dead = true; }
+      }
+    }
+
     // Combo decay
     if (this.combo.timer > 0) {
       this.combo.timer -= dt;
@@ -250,6 +266,7 @@ export class Game {
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.enemies = this.enemies.filter((e) => !e.dead);
     this.pickups = this.pickups.filter((pk) => !pk.dead);
+    this.enemyBullets = this.enemyBullets.filter((b) => !b.dead);
 
     // No-boss levels clear by reaching the goal flag (boss levels clear on boss death).
     if (this.boss == null && lv.bossX == null && p.x + p.w > lv.goalX) { this._levelClear(); return; }
