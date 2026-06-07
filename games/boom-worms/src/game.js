@@ -2,7 +2,8 @@
 // Holds all live state: teams, terrain, projectiles, effects, crates, turn flow.
 // No canvas/DOM here — pure logic driven by main.js.
 
-import { PHYSICS, WEAPONS, STARTING_WEAPONS, CRATE, STORAGE_KEY, FIELD, WATER } from './config.js';
+import { PHYSICS, WEAPONS, STARTING_WEAPONS, CRATE, STORAGE_KEY, FIELD, WATER, AIM } from './config.js';
+import { Sound } from './audio.js';
 import { buildLevel } from './levels.js';
 import { Terrain } from './terrain.js';
 import { makeWorm, makeTeam } from './worm.js';
@@ -204,6 +205,7 @@ export class Game {
         // Handled continuously in update() via Input.poll — but also on keydown
         worm.vy = -360;
         worm.onGround = false;
+        Sound.jump();
         break;
 
       case 'mouseAim':
@@ -347,6 +349,16 @@ export class Game {
     if (aimDir !== 0) Aim.nudgeAngle(aimDir, dt);
 
     Aim.stepCharge(dt);
+
+    // Rising-pitch charge tick (throttled to a chip-chip, not a buzz).
+    if (Aim.charging) {
+      this._chargeSndT = (this._chargeSndT || 0) + dt;
+      if (this._chargeSndT >= 0.07) {
+        this._chargeSndT = 0;
+        const lvl = (Aim.power - AIM.minSpeed) / (AIM.maxSpeed - AIM.minSpeed);
+        Sound.charge(Math.max(0, Math.min(1, lvl)));
+      }
+    }
 
     // If charge was released (chargeHeld just went false), release
     // — main path is via handleAction(chargeRelease); also handle key held release
@@ -501,6 +513,7 @@ export class Game {
     if (worm) this._trackCamera(worm);
     const teamName = this.teams[next.team].name;
     this._showBanner(teamName + ' 的回合', 1500);
+    Sound.turn();
     this.state = 'aim';
   }
 
@@ -513,6 +526,8 @@ export class Game {
     const worm = this._activeWorm();
     const activeTeam = this.teams[this.active.team];
     if (!worm || !activeTeam) return;
+
+    Sound.fire(this.weaponKey);
 
     // Airstrike needs a target column. Mouse users: where they pointed last.
     // Key/pad users: project along the aim direction scaled by charge power.
@@ -542,6 +557,7 @@ export class Game {
   }
 
   _onExplode(x, y, radius, dmg, weaponKey) {
+    Sound.explode(radius >= 55);
     if (radius > 0 && dmg > 0) {
       const allWorms = this._allWorms();
       const hits = applyExplosion(allWorms, x, y, radius, dmg, 1);
@@ -635,6 +651,7 @@ export class Game {
   }
 
   _spawnEffect(type, x, y, r, extra = {}) {
+    if (type === 'splash') Sound.splash();  // covers worm + crate drowning (single choke point)
     this.effects.push({
       type, x, y, r,
       t: 0,
@@ -705,6 +722,7 @@ export class Game {
             }
           }
           this._spawnEffect('explosion', c.x, c.y, 16);
+          Sound.pickup();
           break;
         }
       }

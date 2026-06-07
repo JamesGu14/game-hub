@@ -5,7 +5,7 @@
 import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
-import { Sound } from './audio.js';
+import { Sound, Music } from './audio.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -44,8 +44,24 @@ function showOverlay(stateName) {
   }
 }
 
+let _prevState = null;
+
 function syncOverlays() {
   showOverlay(game.state);
+
+  // --- Audio: fire terminal stings + start/stop BGM on state transitions ---
+  if (game.state !== _prevState) {
+    if (game.state === 'levelclear') Sound.levelClear();
+    else if (game.state === 'gameover') Sound.gameOver();
+    else if (game.state === 'win') Sound.win();
+
+    const inPlay = game.state === 'aim' || game.state === 'firing' ||
+                   game.state === 'projectile' || game.state === 'resolve';
+    if (inPlay) Music.start(game.levelIndex || 0);  // idempotent while already playing
+    else Music.stop();                              // menu / pause / clear / over / win
+
+    _prevState = game.state;
+  }
 
   // Menu: best progress
   const menuBest = document.getElementById('menu-best');
