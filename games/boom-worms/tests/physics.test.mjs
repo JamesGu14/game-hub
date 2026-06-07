@@ -28,3 +28,17 @@ test('stepWorm: below waterY marks not-alive (drowned)', () => {
   for (let i = 0; i < 600; i++) stepWorm(w, 1 / 60, m, { waterY: 512, moveX: 0, wantJump: false });
   assert.equal(w.alive, false);
 });
+
+test('stepWorm accepts a reserved hazards option without changing behavior (§11.13)', () => {
+  // 空 mask（全 0）→ 无实体，worm 自由下落；对比有无 hazards:[] 两次步进结果一致。
+  const mask = { w: 400, h: 400, cells: new Uint8Array(400 * 400) };
+  const mk = () => ({ alive: true, hp: 100, x: 100, y: 100, vx: 0, vy: 0, facing: 1, onGround: false });
+  const a = mk();
+  const b = mk();
+  stepWorm(a, 0.016, mask, { waterY: 9999, moveX: 1 });
+  stepWorm(b, 0.016, mask, { waterY: 9999, moveX: 1, hazards: [] });
+  assert.equal(a.x, b.x);
+  assert.equal(a.y, b.y);
+  assert.equal(a.vx, b.vx);
+  assert.equal(a.vy, b.vy);
+});

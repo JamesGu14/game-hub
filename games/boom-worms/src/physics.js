@@ -7,7 +7,9 @@ const HALF_W = WORM.w / 2, HALF_H = WORM.h / 2;
 // Advance one worm. opts: { waterY, moveX(-1..1), wantJump }
 export function stepWorm(w, dt, mask, opts) {
   if (!w.alive) return;
-  const { waterY, moveX = 0, wantJump = false } = opts;
+  // `hazards` reserved for M2 (ice friction / bounce / lava / acid / spikes). Destructured
+  // now so all 5 call sites are already M2-ready (spec §11.13); unused in M1.
+  const { waterY, moveX = 0, wantJump = false, hazards = [] } = opts;
 
   // horizontal intent
   w.vx = moveX * PHYSICS.moveSpeed;
