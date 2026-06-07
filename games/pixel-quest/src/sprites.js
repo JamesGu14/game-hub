@@ -315,6 +315,53 @@ function drawEmoji(ch, px) {
   return o;
 }
 
+// ---- portraits (对话头像,逻辑尺寸 ~32px,blit 时放大;卡通不吓人) -------------
+function drawKingHead() {
+  const o = mk(32, 32), x = o.cx;
+  x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);                 // 脸
+  x.fillStyle = '#ffd23f'; r(x, 6, 6, 20, 5);                    // 皇冠底
+  x.beginPath(); x.moveTo(6, 6); x.lineTo(9, 1); x.lineTo(12, 6);
+  x.lineTo(16, 1); x.lineTo(20, 6); x.lineTo(23, 1); x.lineTo(26, 6); x.closePath(); x.fill();
+  x.fillStyle = '#e8362b'; r(x, 14, 7, 4, 3);                    // 宝石
+  x.fillStyle = '#23314a'; E(x, 12, 18, 1.4, 1.8); E(x, 20, 18, 1.4, 1.8); // 眼
+  x.fillStyle = '#f4f4f4'; x.beginPath(); x.moveTo(8, 22); x.lineTo(24, 22);
+  x.lineTo(20, 31); x.lineTo(12, 31); x.closePath(); x.fill();   // 胡子
+  x.fillStyle = '#f4f4f4'; E(x, 13, 23, 3, 1.4); E(x, 19, 23, 3, 1.4);
+  return o;
+}
+function drawMarioHead() {
+  const o = mk(32, 32), x = o.cx;
+  x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);
+  x.fillStyle = '#e8362b'; x.beginPath(); x.ellipse(16, 11, 11, 8, 0, Math.PI, 0); x.fill(); r(x, 5, 10, 22, 3);
+  x.fillStyle = '#fff'; E(x, 16, 9, 3, 3); x.fillStyle = '#e8362b'; E(x, 16, 9, 1.2, 1.2);
+  x.fillStyle = '#23314a'; E(x, 12, 18, 1.4, 2); E(x, 20, 18, 1.4, 2);
+  x.fillStyle = '#f3a86a'; E(x, 16, 21, 2.2, 2);                 // 鼻
+  x.fillStyle = '#5a3413'; E(x, 12, 23, 3, 1.6); E(x, 20, 23, 3, 1.6); r(x, 14, 22, 4, 1.4); // 胡子
+  return o;
+}
+function drawBowserHead() {
+  const o = mk(34, 32), x = o.cx;
+  x.fillStyle = '#5aa83f'; E(x, 17, 19, 11, 9);                  // 绿头
+  x.fillStyle = '#e0c060'; E(x, 17, 24, 7, 4);                   // 口鼻
+  x.fillStyle = '#f4f0e0';                                       // 角
+  x.beginPath(); x.moveTo(7, 10); x.lineTo(10, 3); x.lineTo(12, 11); x.fill();
+  x.beginPath(); x.moveTo(27, 10); x.lineTo(24, 3); x.lineTo(22, 11); x.fill();
+  x.fillStyle = '#e87a1a'; r(x, 11, 6, 12, 4);                   // 橙发
+  x.fillStyle = '#fff'; E(x, 13, 16, 2.4, 2.6); E(x, 21, 16, 2.4, 2.6);
+  x.fillStyle = '#23314a'; E(x, 13.5, 16.5, 1.1, 1.4); E(x, 20.5, 16.5, 1.1, 1.4);
+  x.fillStyle = '#fff'; r(x, 13, 26, 2, 2); r(x, 19, 26, 2, 2);  // 小牙(友好)
+  return o;
+}
+function drawHeraldHead() {
+  const o = mk(32, 32), x = o.cx;
+  x.fillStyle = '#fcc08a'; E(x, 16, 19, 8.5, 8);
+  x.fillStyle = '#2fa85a'; x.beginPath(); x.ellipse(16, 10, 10, 5, 0, Math.PI, 0); x.fill(); r(x, 6, 9, 20, 2);
+  x.fillStyle = '#ffd23f'; x.beginPath(); x.moveTo(24, 9); x.lineTo(30, 4); x.lineTo(26, 11); x.fill(); // 羽毛
+  x.fillStyle = '#23314a'; E(x, 12, 19, 1.3, 1.7); E(x, 20, 19, 1.3, 1.7);
+  x.strokeStyle = '#a23b2b'; x.lineWidth = 1.2; x.beginPath(); x.arc(16, 22, 3, 0.2, Math.PI - 0.2); x.stroke();
+  return o;
+}
+
 const cache = new Map();
 function cached(key, make) {
   let v = cache.get(key);
@@ -335,6 +382,16 @@ export const Sprites = {
     return cached(`kp:walk:${frame & 1}`, () => drawKoopaWalk(frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
+  portrait(key) {
+    switch (key) {
+      case 'princess': return Sprites.princess();
+      case 'king':     return cached('portrait:king',   () => drawKingHead()).cv;
+      case 'mario':    return cached('portrait:mario',  () => drawMarioHead()).cv;
+      case 'bowser':   return cached('portrait:bowser', () => drawBowserHead()).cv;
+      case 'herald':   return cached('portrait:herald', () => drawHeraldHead()).cv;
+      default:         return cached('portrait:herald', () => drawHeraldHead()).cv;
+    }
+  },
   castle() { return cached('castle', () => drawCastle()).cv; },
   flag(heightPx) {
     const h = Math.max(16, Math.round(heightPx));
