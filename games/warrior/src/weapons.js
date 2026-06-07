@@ -21,7 +21,7 @@ export function fire(weaponId, originX, originY, aim, opts = {}) {
   const specs = [];
 
   const push = (vx, vy) => specs.push({
-    x: originX, y: originY, vx, vy, dmg: w.dmg, pierce: !!w.pierce, life: BULLET.life,
+    x: originX, y: originY, vx, vy, dmg: w.dmg, pierce: !!w.pierce, life: BULLET.life, gravity: w.gravity || 0,
   });
 
   if (w.spread && w.spread > 1) {

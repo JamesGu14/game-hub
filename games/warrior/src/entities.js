@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS, BOSSES } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS, BOSSES, RAPID, RAPID_COOLDOWN_MUL, ENEMY_RANGED } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -26,6 +26,7 @@ export class Player {
     this.dying = 0;
     this.prone = false;
     this.barrier = 0;
+    this.rapid = 0; // R stacks
   }
 
   update(dt, world) {
@@ -89,14 +90,15 @@ export class Player {
   }
 
   fire(world) {
-    this.fireTimer = cooldownFor(this.weapon);
+    this.fireTimer = cooldownFor(this.weapon) * Math.pow(RAPID_COOLDOWN_MUL, this.rapid);
     const m = this._muzzle();
-    const specs = fire(this.weapon, m.x, m.y, this.aim);
+    const specs = fire(this.weapon, m.x, m.y, this.aim, { rapid: this.rapid > 0 });
     world.spawnBullets(specs);
     world.playSound('shoot');
   }
 
   giveBarrier() { this.barrier = BARRIER.time; }
+  giveRapid() { this.rapid = Math.min(RAPID.maxStacks, this.rapid + 1); }
   isInvulnerable() { return this.invuln > 0 || this.barrier > 0 || this.dying > 0; }
 
   // One hit = down (spec §3.4). Returns true if this hit started a death.
@@ -207,18 +209,22 @@ export class Bullet {
     this.vx = spec.vx; this.vy = spec.vy;
     this.dmg = spec.dmg; this.pierce = !!spec.pierce;
     this.life = spec.life; this.dead = false;
+    this.gravity = spec.gravity || 0; // F fireball arc
+    this.hostile = !!spec.hostile;    // enemy bullet: damages the player, not enemies
   }
   update(dt, world) {
     this.life -= dt;
     if (this.life <= 0) { this.dead = true; return; }
+    if (this.gravity) this.vy += this.gravity * dt;
     this.x += this.vx * dt;
     this.y += this.vy * dt;
 
-    // Solid tile -> die (bullets do not pass through terrain in M1).
+    // Solid tile -> die (bullets do not pass through terrain).
     const col = Math.floor((this.x + this.w / 2) / TILE);
     const row = Math.floor((this.y + this.h / 2) / TILE);
     const gridRow = world.grid[row];
     if (gridRow && gridRow[col] && SOLID.has(gridRow[col])) { this.dead = true; return; }
+    if (this.hostile) return; // player damage is applied by game.update
 
     // Enemies
     for (const e of world.enemies) {
@@ -284,6 +290,7 @@ export class Pickup {
     world.playSound('pickup');
     if (def && def.kind === 'weapon') { player.weapon = def.weapon; return true; }
     if (def && def.item === 'barrier') { player.giveBarrier(); }
+    if (def && def.item === 'rapid') { player.giveRapid(); }
     return false;
   }
 }

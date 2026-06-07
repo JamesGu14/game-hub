@@ -56,3 +56,11 @@ test('laser pierces and hits hard', () => {
   assert.equal(specs[0].dmg, 2);
   assert.equal(specs[0].vy, -WEAPONS.laser.speed); // -720
 });
+
+test('fire weapon emits a single parabolic (gravity) bullet', () => {
+  const specs = fire('fire', 0, 0, { x: 1, y: 0 });
+  assert.equal(specs.length, 1);
+  assert.equal(specs[0].vx, WEAPONS.fire.speed); // 420
+  assert.ok(specs[0].gravity > 0, 'fireball carries gravity');
+  assert.equal(specs[0].dmg, 2);
+});

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { TILE, MODES } from '../src/config.js';
+import { TILE, MODES, WEAPONS } from '../src/config.js';
 import { Player, Runner, Jumper, Bullet } from '../src/entities.js';
 
 // floor at row 5 across the width; everything above is empty
@@ -135,4 +135,29 @@ test('barrier expires after its duration', () => {
   for (let i = 0; i < 6 * 60; i++) p.update(1 / 60, w); // 6s > 5s
   assert.equal(p.barrier <= 0, true);
   assert.equal(p.isInvulnerable(), false);
+});
+
+test('rapid stacks shorten the fire cooldown (cap at maxStacks)', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.giveRapid(); p.giveRapid(); p.giveRapid(); p.giveRapid(); // 4 -> capped at 3
+  assert.equal(p.rapid, 3);
+  p.faceRight = true; w.input.intent.fireHeld = true;
+  p.update(1 / 60, w);
+  assert.ok(p.fireTimer < WEAPONS.rifle.cooldown, 'rapid shortened the cooldown');
+});
+
+test('a hostile bullet ignores enemies (player-damage handled by game)', () => {
+  const w = flatWorld();
+  const e = new Runner(5 * TILE, 4 * TILE); w.enemies.push(e);
+  const b = new Bullet({ x: e.x - 4, y: e.y + 4, vx: 400, vy: 0, dmg: 1, life: 1, hostile: true });
+  for (let i = 0; i < 6; i++) b.update(1 / 60, w);
+  assert.equal(e.dead, false, 'hostile bullet does not hit enemies');
+});
+
+test('a fireball bullet arcs downward under gravity', () => {
+  const w = flatWorld();
+  const b = new Bullet({ x: 2 * TILE, y: 1 * TILE, vx: 300, vy: 0, dmg: 2, life: 1, gravity: 900 });
+  for (let i = 0; i < 20; i++) b.update(1 / 60, w);
+  assert.ok(b.vy > 0, 'gravity pulled the fireball down');
 });
