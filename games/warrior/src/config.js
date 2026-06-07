@@ -45,6 +45,7 @@ export const WEAPONS = {
   machine: { id: 'machine', letter: 'M', cooldown: 0.08, dmg: 0.5, speed: 600, pierce: false, spread: 0 },
   spread:  { id: 'spread',  letter: 'S', cooldown: 0.34, dmg: 1,   speed: 520, pierce: false, spread: 5, spreadAngle: 0.314 },
   laser:   { id: 'laser',   letter: 'L', cooldown: 0.40, dmg: 2,   speed: 720, pierce: true,  spread: 0 },
+  fire:    { id: 'fire',    letter: 'F', cooldown: 0.5,  dmg: 2,   speed: 420, pierce: false, spread: 0, gravity: 900 },
 };
 export const DEFAULT_WEAPON = 'rifle';
 export const RAPID_COOLDOWN_MUL = 0.6; // used from M4
@@ -52,6 +53,10 @@ export const RAPID_SPEED_MUL = 1.3;    // used from M4
 
 export const THEMES = {
   forest: { skyTop: '#7ec85a', skyBot: '#cdeeae', ground: '#7a5a2f', groundDark: '#543d1f', grass: '#3fa845', hills: '#2f7d3a' },
+  steel:  { skyTop: '#2b2f36', skyBot: '#454c56', ground: '#6b7280', groundDark: '#454b54', grass: '#8a929c', hills: '#363b42' },
+  beach:  { skyTop: '#5fd0e6', skyBot: '#d8f6ff', ground: '#e9d8a6', groundDark: '#c2a86a', grass: '#ffe9a8', hills: '#7fd6c0' },
+  snow:   { skyTop: '#a8d8ff', skyBot: '#eaf5ff', ground: '#cfd8e3', groundDark: '#9aa7b5', grass: '#ffffff', hills: '#d6e6f5' },
+  abyss:  { skyTop: '#1a0608', skyBot: '#3a0c10', ground: '#4a2326', groundDark: '#2a1214', grass: '#7a2530', hills: '#250a0c' },
 };
 
 export const SCORE = { kill: 100, levelClear: 1000 };
@@ -64,7 +69,9 @@ export const PICKUPS = {
   M: { kind: 'weapon', weapon: 'machine' },
   S: { kind: 'weapon', weapon: 'spread' },
   L: { kind: 'weapon', weapon: 'laser' },
+  F: { kind: 'weapon', weapon: 'fire' },
   B: { kind: 'item', item: 'barrier' },
+  R: { kind: 'item', item: 'rapid' },
 };
 export const BARRIER = { time: 5.0 }; // seconds of invuln + instakill-on-touch
 export const BLINK = 0.12;            // i-frame / barrier blink period
@@ -75,6 +82,15 @@ export const PICKUP = { w: 20, h: 20, life: 8.0, blink: 0.2 };
 
 export const COMBO = { window: 2.5, maxMult: 5 };
 export const SHAKE = { kill: 3, bigKill: 5, bossDie: 8 };
+
+// ---- M4 additions ----
+export const RAPID = { maxStacks: 3 };  // R cap (spec §13 H4)
+export const FIRE = { gravity: 900 };   // fireball parabola
+export const ENEMY_RANGED = {
+  gunner: { w: 24, h: 28, hp: 2, score: 150, fireCd: 1.6, bulletSpeed: 280, bulletDmg: 1 },
+  turret: { w: 30, h: 26, hp: 3, score: 200, fireCd: 2.0, burst: 3, spreadAngle: 0.35, bulletSpeed: 260, bulletDmg: 1 },
+  flyer:  { w: 26, h: 20, hp: 1, score: 180, speed: 90, amp: 60, freq: 2.2, fireCd: 2.4, bulletSpeed: 240, bulletDmg: 1 },
+};
 
 // L1 BOSS 震地要塞·铁壁 Iron Gate Destroyer — the §13 H9 template for all bosses.
 export const BOSSES = {
@@ -87,6 +103,10 @@ export const BOSSES = {
     ],
     score: 2000,
   },
+  cyclops:  { name: '独眼核心·加尔玛', enName: 'Cyclops Core',     w: 90,  h: 100, maxHp: 55,  touchDamage: true, fires: true,        phases: [{ upTo: 1.01, slamCd: 2.0, spawnGrunts: 0, fireCd: 1.4 }, { upTo: 0.5, slamCd: 1.4, spawnGrunts: 2, fireCd: 0.9 }], score: 2600 },
+  valkyrie: { name: '旋翼死神·瓦尔基里', enName: 'Valkyrie Gunship', w: 100, h: 70,  maxHp: 60,  touchDamage: true, fires: true, fly: true, phases: [{ upTo: 1.01, slamCd: 1.8, spawnGrunts: 0, fireCd: 1.1 }, { upTo: 0.5, slamCd: 1.4, spawnGrunts: 1, fireCd: 0.8 }], score: 2800 },
+  frost:    { name: '寒霜重坦·克隆', enName: 'Frost Crawler',     w: 110, h: 90,  maxHp: 70,  touchDamage: true, fires: true,        phases: [{ upTo: 1.01, slamCd: 1.8, spawnGrunts: 1, fireCd: 1.2 }, { upTo: 0.5, slamCd: 1.2, spawnGrunts: 2, fireCd: 0.8 }], score: 3200 },
+  gomera:   { name: '创魔之心·戈梅拉', enName: 'Heart of Gomera',  w: 120, h: 120, maxHp: 100, touchDamage: true, fires: true,        phases: [{ upTo: 1.01, slamCd: 1.8, spawnGrunts: 1, fireCd: 1.2 }, { upTo: 0.66, slamCd: 1.4, spawnGrunts: 2, fireCd: 0.9 }, { upTo: 0.33, slamCd: 1.0, spawnGrunts: 3, fireCd: 0.6 }], score: 5000 },
 };
 
 export const STARS = { timeThreshold: 75, timeMul2: 1.6 }; // 3⭐ <=75s, 2⭐ <=120s, else 1⭐
