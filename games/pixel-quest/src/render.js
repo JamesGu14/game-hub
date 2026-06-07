@@ -4,7 +4,7 @@
 
 import { FIELD, TILE, THEMES } from './config.js';
 import { Sprites } from './sprites.js';
-import { Goomba, Koopa, Flyer, Dasher, Piranha, Spiked, Flamer } from './entities.js';
+import { Goomba, Koopa, Flyer, Dasher, Piranha, Spiked, Flamer, Bowser } from './entities.js';
 
 const SC = TILE / 16; // sprite logical px -> world px (tiles are drawn at 16px)
 
@@ -209,6 +209,22 @@ export class Renderer {
       // castle's sunken base, so she lines up with the hero in the ending scene)
       const pri = Sprites.princess();
       Sprites.blitBottom(ctx, pri, lv.castleX + TILE, lv.height - 4 * TILE, SC * 0.7);
+      // 公主笼:bowser 魔城且 Boss 未败时画竖铁栏;击败/ending/win 时笼开(不画)。
+      if (game.level.theme === 'bowser' && !game.bossDefeated
+          && game.state !== 'ending' && game.state !== 'win') {
+        const cx = lv.castleX + TILE;          // 公主中心 x
+        const top = lv.height - 5 * TILE;
+        const cageL = cx - 22, cageR = cx + 22;
+        ctx.save();
+        ctx.strokeStyle = '#b8c2cf';
+        ctx.lineWidth = 2;
+        for (let bx = cageL; bx <= cageR; bx += 11) {
+          ctx.beginPath(); ctx.moveTo(bx, top); ctx.lineTo(bx, bottom); ctx.stroke();
+        }
+        ctx.beginPath(); ctx.moveTo(cageL, top); ctx.lineTo(cageR, top); ctx.stroke();         // 顶横梁
+        ctx.beginPath(); ctx.moveTo(cageL, (top + bottom) / 2); ctx.lineTo(cageR, (top + bottom) / 2); ctx.stroke(); // 中横梁
+        ctx.restore();
+      }
     }
   }
 
@@ -286,6 +302,29 @@ export class Renderer {
           continue;
         }
         cv = Sprites.flamer(e.frame());
+      } else if (e instanceof Bowser) {
+        const bcv = Sprites.bowser(e.frame());
+        const sc = e.w / bcv.width;
+        ctx.save();
+        // 受击无敌帧闪烁;倒地半透明
+        if (e.state === 'defeated') ctx.globalAlpha = 0.55;
+        else if (e.invuln > 0 && Math.floor(e.invuln * 16) % 2 === 0) ctx.globalAlpha = 0.4;
+        Sprites.blit(ctx, bcv, e.x, e.y + e.h - bcv.height * sc, sc);
+        ctx.restore();
+        // HP 血心(头顶):满心 ❤️ / 空心 🖤
+        if (e.state !== 'defeated') {
+          ctx.save();
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.font = '14px "Apple Color Emoji","Segoe UI Emoji",serif';
+          const total = 5;
+          for (let i = 0; i < total; i++) {
+            ctx.fillText(i < e.hp ? '❤️' : '🖤',
+              e.x + e.w / 2 + (i - (total - 1) / 2) * 16, e.y - 10);
+          }
+          ctx.restore();
+        }
+        continue;
       }
       if (cv) {
         const sc = e.w / cv.width;

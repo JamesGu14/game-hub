@@ -583,6 +583,48 @@ function drawBowserHead() {
   x.beginPath(); x.moveTo(19.4, 25.6); x.lineTo(18.2, 25.6); x.lineTo(18.9, 27.8); x.closePath(); x.fill();
   return o;
 }
+// 关内酷霸王:绿身 + 橙鬃 + 双角 + 棘壳;frame 切换双腿。画布 44×48(render 放大到 e.w)。
+function drawBowser(frame) {
+  const o = mk(44, 48), x = o.cx;
+  const step = frame ? 2 : -2;
+  // 腿
+  x.fillStyle = '#4f9636';
+  r(x, 13 + step, 40, 7, 7); r(x, 24 - step, 40, 7, 7);
+  x.fillStyle = '#e8cf86'; r(x, 13 + step, 45, 7, 2); r(x, 24 - step, 45, 7, 2); // 爪
+  // 壳(背)
+  x.fillStyle = '#7a3b16'; E(x, 22, 30, 15, 13);
+  x.fillStyle = '#c75e0e'; E(x, 22, 30, 12, 10);
+  x.fillStyle = '#e8cf86'; E(x, 22, 31, 8, 7);
+  x.fillStyle = '#7a3b16';                 // 壳棘
+  [10, 22, 34].forEach((cx) => { x.beginPath(); x.moveTo(cx - 3, 20); x.lineTo(cx, 13); x.lineTo(cx + 3, 20); x.closePath(); x.fill(); });
+  // 身/肚
+  x.fillStyle = '#6abf45'; E(x, 22, 28, 11, 10);
+  x.fillStyle = '#e8cf86'; E(x, 22, 31, 7, 6);
+  // 手臂
+  x.fillStyle = '#6abf45'; E(x, 8, 28, 3.5, 5); E(x, 36, 28, 3.5, 5);
+  // 鬃毛
+  x.fillStyle = '#e87a1a';
+  [13, 18, 22, 26, 31].forEach((cx, i) => E(x, cx, 12 - (i === 2 ? 2 : 0), 3, 3));
+  // 角
+  x.fillStyle = '#f4f0e0';
+  x.beginPath(); x.moveTo(12, 12); x.lineTo(14, 4); x.lineTo(17, 12); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(32, 12); x.lineTo(30, 4); x.lineTo(27, 12); x.closePath(); x.fill();
+  // 头
+  x.fillStyle = '#6abf45'; E(x, 22, 16, 9, 8);
+  x.fillStyle = '#5aa83f'; E(x, 22, 19, 7.5, 4.5);
+  // 眼
+  x.fillStyle = '#fff'; E(x, 18.5, 15, 2, 2.3); E(x, 25.5, 15, 2, 2.3);
+  x.fillStyle = '#1b1e26'; E(x, 18.8, 15.3, 0.9, 1.3); E(x, 25.2, 15.3, 0.9, 1.3);
+  // 眉(凶萌)
+  x.fillStyle = '#3f7a2c'; r(x, 15.5, 12.5, 4, 1.4); r(x, 24.5, 12.5, 4, 1.4);
+  // 嘴 + 獠牙
+  x.fillStyle = '#7a3b16'; x.beginPath(); x.ellipse(22, 20, 5, 1.8, 0, 0, Math.PI); x.fill();
+  x.fillStyle = '#fff';
+  x.beginPath(); x.moveTo(18.5, 19.6); x.lineTo(19.7, 19.6); x.lineTo(19, 22); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(25.5, 19.6); x.lineTo(24.3, 19.6); x.lineTo(25, 22); x.closePath(); x.fill();
+  return o;
+}
+
 function drawHeraldHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
   // 耳朵
@@ -685,6 +727,9 @@ export const Sprites = {
   },
   flamer(frame) {
     return cached(`flm:${frame & 1}`, () => drawFlamer(frame & 1)).cv;
+  },
+  bowser(frame) {
+    return cached(`bowser:${frame & 1}`, () => drawBowser(frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {
