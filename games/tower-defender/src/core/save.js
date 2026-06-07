@@ -46,6 +46,16 @@ export function applyClear(save, levelId, stars) {
   return next;
 }
 
+// [P4] 选关助手(纯函数)。levelId 1-based;LEVELS 索引 0-based。
+export function isUnlocked(save, levelId) {
+  return levelId <= save.unlockedLevel;
+}
+// 「下一未通关」的 0-based 索引(全通关 → 末关)。total = LEVELS.length。
+export function nextPlayableIndex(save, total) {
+  for (let i = 0; i < total; i++) { if (!save.stars[i + 1]) return i; }
+  return Math.max(0, total - 1);
+}
+
 // 浏览器便捷封装
 export const browserLoad = () => loadSave(window.localStorage);
 export const browserWrite = (s) => writeSave(window.localStorage, s);

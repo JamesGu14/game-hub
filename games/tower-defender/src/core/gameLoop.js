@@ -44,12 +44,13 @@ export function advance(state, frameDtSec, stepFn = step) {
   return n;
 }
 
-export function makeLoop(state, render) {
+export function makeLoop(state, render, isActive = () => true) {
   let last = 0, raf = 0, running = false;
   state._acc = 0;
   function frame(now) {
     if (!running) return;
-    if (state.paused) { last = now; render(state); raf = requestAnimationFrame(frame); return; }
+    // [P4] 非游戏屏(选关/结算)或暂停 → 不推进模拟,仅渲染。
+    if (!isActive() || state.paused) { last = now; render(state); raf = requestAnimationFrame(frame); return; }
     const frameDt = (now - last) / 1000; last = now;
     advance(state, frameDt);
     render(state);
