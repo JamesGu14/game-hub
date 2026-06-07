@@ -31,6 +31,35 @@ export const WORLD_INTRO = {
     { speaker: '马里奥', portrait: 'mario', text: '樱花、神殿、大蘑菇,还有星空。' },
     { speaker: '马里奥', portrait: 'mario', text: '闯过这些考验,就能得到新的本领!我试一试!' },
   ],
+  5: [
+    { speaker: "侍从", portrait: "herald", text: "好烫!这里是烈焰熔域,火焰军团的地盘。" },
+    { speaker: "马里奥", portrait: "mario", text: "咦?天上有会飞的怪!那是飞翼怪!" },
+    { speaker: "马里奥", portrait: "mario", text: "踩它一脚,翅膀就掉啦,再补一脚就消灭它!冲过去!" },
+  ],
+  6: [
+    { speaker: "侍从", portrait: "herald", text: "勇士!前面是寒霜绝境,到处都是冰!" },
+    { speaker: "马里奥", portrait: "mario", text: "好冷啊……我哈口气暖暖手!" },
+    { speaker: "侍从", portrait: "herald", text: "小心!这里有会突然冲过来的冲刺兽!" },
+    { speaker: "马里奥", portrait: "mario", text: "我看准它,一脚踩扁!穿过去就行!" },
+  ],
+  7: [
+    { speaker: "侍从", portrait: "herald", text: "这里是毒林深处,雾好浓。" },
+    { speaker: "侍从", portrait: "herald", text: "管道里藏着食人花!它会突然钻出来吓你一跳!" },
+    { speaker: "马里奥", portrait: "mario", text: "它会咬人、踩不死!用火球打,或者跳着躲开!" },
+    { speaker: "马里奥", portrait: "mario", text: "公主在等我,毒林挡不住我!" },
+  ],
+  8: [
+    { speaker: "侍从", portrait: "herald", text: "欢迎来到黄沙古城,好多老机关。" },
+    { speaker: "侍从", portrait: "herald", text: "守卫是甲壳兽,身上有刺,踩它会扎手哦!" },
+    { speaker: "马里奥", portrait: "mario", text: "明白!我用火球、踢龟壳,或者吃星星打它!" },
+    { speaker: "马里奥", portrait: "mario", text: "古城再难,也拦不住我!" },
+  ],
+  9: [
+    { speaker: "侍从", portrait: "herald", text: "这里是星界回廊,最后的大考验!" },
+    { speaker: "侍从", portrait: "herald", text: "会喷火球的炎魔来了,前面的怪都聚在这儿!" },
+    { speaker: "马里奥", portrait: "mario", text: "全到齐了?正好,我一个一个收拾!" },
+    { speaker: "马里奥", portrait: "mario", text: "闯过去,酷霸王魔城就在眼前!" },
+  ],
 };
 
 export const WORLD_OUTRO = {
@@ -50,6 +79,28 @@ export const WORLD_OUTRO = {
   4: [
     { speaker: '马里奥', portrait: 'mario', text: '考验通过!我浑身都是劲儿!' },
     { speaker: '马里奥', portrait: 'mario', text: '有了新本领,坏蛋们等着吧!' },
+  ],
+  5: [
+    { speaker: "马里奥", portrait: "mario", text: "火焰防线,突破成功!飞的也拦不住我!" },
+    { speaker: "马里奥", portrait: "mario", text: "想到能救出公主,我就更有劲了。" },
+    { speaker: "马里奥", portrait: "mario", text: "前面好冷……是冰天雪地。继续走!" },
+  ],
+  6: [
+    { speaker: "侍从", portrait: "herald", text: "太棒了!你冲过了冰天雪地!" },
+    { speaker: "马里奥", portrait: "mario", text: "下一站……呀,是黑黑的毒林!" },
+  ],
+  7: [
+    { speaker: "马里奥", portrait: "mario", text: "呼,终于走出毒林啦!" },
+    { speaker: "侍从", portrait: "herald", text: "前面是黄沙古城,离公主越来越近了!" },
+  ],
+  8: [
+    { speaker: "马里奥", portrait: "mario", text: "破解古城啦!我闻到星星的味道了!" },
+    { speaker: "桃花公主", portrait: "princess", text: "马里奥……我在这里……快来救我……" },
+    { speaker: "马里奥", portrait: "mario", text: "是公主的声音!公主,等我!" },
+  ],
+  9: [
+    { speaker: "马里奥", portrait: "mario", text: "我做到了!星界回廊也走通了!" },
+    { speaker: "侍从", portrait: "herald", text: "勇士,前面就是酷霸王魔城,公主就在里面!" },
   ],
 };
 

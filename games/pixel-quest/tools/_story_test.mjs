@@ -20,12 +20,15 @@ ok(isWorldFirstLevel(4) === false, 'mid not first');
 ok(isWorldLastLevel(4) === true && isWorldLastLevel(9) === true, 'last-of-world');
 ok(isWorldLastLevel(3) === false, 'mid not last');
 
-// 世界 1-4 有 intro/outro;世界 5-10 空脚本安全降级为 []
+// 世界 1-9 有 intro/outro(阶段A 填 1-4,阶段C 填 5-9);世界 10 空脚本安全降级为 []
 ok(Array.isArray(introFor(0)) && introFor(0).length > 0, 'world1 intro filled');
 ok(introFor(15).length > 0, 'world4 intro filled (idx15)');
-ok(introFor(20).length === 0, 'world5 intro empty -> [] (idx20)');
+ok(introFor(20).length > 0, 'world5 intro filled (idx20)');
+ok(introFor(40).length > 0, 'world9 intro filled (idx40)');
+ok(introFor(45).length === 0, 'world10 intro empty -> [] (idx45)');
 ok(outroFor(0).length > 0, 'world1 outro filled');
-ok(outroFor(20).length === 0, 'world5 outro empty -> [] (idx20)');
+ok(outroFor(20).length > 0, 'world5 outro filled (idx20)');
+ok(outroFor(45).length === 0, 'world10 outro empty -> [] (idx45)');
 
 // 数据完整性 + 长度约束(零生字短句)
 const PORTRAITS = new Set(['king', 'mario', 'princess', 'bowser', 'herald']);
