@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>丛林勇士 JUNGLE WARRIOR</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- top-right controls -->
+  <a class="hud-btn" id="btn-hub" href="../../index.html" title="返回大厅">← HUB</a>
+  <button class="hud-btn" id="btn-fullscreen" title="全屏">⛶</button>
+  <button class="hud-btn" id="btn-mute" title="静音">🔊</button>
+
+  <!-- title overlay -->
+  <div class="overlay show" id="overlay-title">
+    <div class="panel">
+      <h1>丛林勇士</h1>
+      <p class="sub">JUNGLE WARRIOR · M1</p>
+      <button class="big" id="btn-start">开始游戏</button>
+      <p class="hint">← → 移动 · ↑↓ 瞄准 · Z 射击 · X 跳 · 休闲模式无限复活</p>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

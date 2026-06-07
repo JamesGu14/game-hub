@@ -1,0 +1,31 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+body { font-family: system-ui, -apple-system, "PingFang SC", sans-serif; -webkit-user-select: none; user-select: none; touch-action: none; }
+#game { display: block; width: 100vw; height: 100vh; }
+
+.hud-btn {
+  position: fixed; top: 10px; z-index: 20;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 32px; padding: 0 10px; border: none; border-radius: 8px;
+  background: rgba(0,0,0,0.45); color: #fff; font-size: 15px; font-weight: 600;
+  text-decoration: none; cursor: pointer;
+}
+#btn-hub { left: 10px; }
+#btn-fullscreen { right: 52px; width: 36px; }
+#btn-mute { right: 10px; width: 36px; }
+
+.overlay {
+  position: fixed; inset: 0; z-index: 30; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(8, 20, 8, 0.72);
+}
+.overlay.show { display: flex; }
+.panel { text-align: center; color: #fff; padding: 28px 36px; }
+.panel h1 { font-size: 44px; color: #8bc34a; text-shadow: 2px 2px 0 #33501a; }
+.panel .sub { color: #cdeeae; letter-spacing: 3px; margin: 6px 0 22px; }
+.panel .hint { margin-top: 18px; color: #b8d6a0; font-size: 13px; }
+.big {
+  font-size: 22px; font-weight: 700; color: #14250a; background: #8bc34a;
+  border: none; border-radius: 12px; padding: 12px 40px; cursor: pointer;
+}
+.big:active { transform: translateY(1px); }
