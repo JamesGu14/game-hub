@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS, BOSSES } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -285,5 +285,50 @@ export class Pickup {
     if (def && def.kind === 'weapon') { player.weapon = def.weapon; return true; }
     if (def && def.item === 'barrier') { player.giveBarrier(); }
     return false;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// BOSS model (spec §4.2). Iron Gate is the M2 template; later bosses reuse this shape.
+// A stationary fortress that telegraphs then slams (screen shake), and at <=50% hp
+// also summons grunts. Bullets/contact damage it via game.js.
+export class Boss {
+  constructor(typeId, x, y) {
+    const cfg = BOSSES[typeId] || BOSSES.ironGate;
+    this.cfg = cfg; this.typeId = typeId;
+    this.w = cfg.w; this.h = cfg.h;
+    this.x = x; this.y = y; this.vx = 0; this.vy = 0; this.onGround = false;
+    this.maxHp = cfg.maxHp; this.hp = cfg.maxHp;
+    this.phase = 0; this.dead = false; this.dying = 0;
+    this.slamTimer = cfg.phases[0].slamCd; this.telegraph = 0; this.anim = 0;
+  }
+  _phaseFor(hpFrac) { return hpFrac > 0.5 ? 0 : 1; }
+  hit(dmg, world) {
+    if (this.dead) return;
+    this.hp -= dmg;
+    world.playSound('hit');
+    if (this.hp <= 0) {
+      this.hp = 0; this.dead = true; this.dying = 1.2;
+      world.addScore(this.cfg.score);
+      world.spawnParticles(this.x + this.w / 2, this.y + this.h / 2, { count: 40, color: '#ffcc33', speed: 320 });
+      world.shake(8);
+      world.playSound('die');
+    }
+  }
+  update(dt, world) {
+    if (this.dead) return;
+    this.anim += dt;
+    this.phase = this._phaseFor(this.hp / this.maxHp);
+    const ph = this.cfg.phases[this.phase];
+    if (this.telegraph > 0) {
+      this.telegraph -= dt;
+      if (this.telegraph <= 0) {
+        world.shake(6); world.playSound('hit');
+        if (ph.spawnGrunts) for (let i = 0; i < ph.spawnGrunts; i++) world.spawnEnemy('runner', this.x, this.y);
+      }
+      return;
+    }
+    this.slamTimer -= dt;
+    if (this.slamTimer <= 0) { this.slamTimer = ph.slamCd; this.telegraph = 0.5; }
   }
 }
