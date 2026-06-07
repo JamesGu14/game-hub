@@ -172,7 +172,7 @@ function syncOverlays() {
         const px = pc.getContext('2d');
         px.imageSmoothingEnabled = false;
         px.clearRect(0, 0, pc.width, pc.height);
-        // 头像按原始像素尺寸居中绘制(画布 40×40,CSS 放大到 96 pixelated)
+        // 头像 1:1 居中绘制(128×128 画布;CSS 平滑缩小到 104px,圆头像更清晰)
         px.drawImage(cv, Math.floor((pc.width - cv.width) / 2), Math.floor((pc.height - cv.height) / 2));
       }
     }

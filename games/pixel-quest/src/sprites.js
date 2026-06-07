@@ -317,7 +317,7 @@ function drawEmoji(ch, px) {
 
 // ---- portraits (对话头像,逻辑尺寸 ~32px,blit 时放大;卡通不吓人) -------------
 function drawKingHead() {
-  const o = mk(32, 32), x = o.cx;
+  const o = mk(128, 128), x = o.cx; x.scale(4, 4);
   x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);                 // 脸
   x.fillStyle = '#ffd23f'; r(x, 6, 6, 20, 5);                    // 皇冠底
   x.beginPath(); x.moveTo(6, 6); x.lineTo(9, 1); x.lineTo(12, 6);
@@ -330,7 +330,7 @@ function drawKingHead() {
   return o;
 }
 function drawMarioHead() {
-  const o = mk(32, 32), x = o.cx;
+  const o = mk(128, 128), x = o.cx; x.scale(4, 4);
   x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);
   x.fillStyle = '#e8362b'; x.beginPath(); x.ellipse(16, 11, 11, 8, 0, Math.PI, 0); x.fill(); r(x, 5, 10, 22, 3);
   x.fillStyle = '#fff'; E(x, 16, 9, 3, 3); x.fillStyle = '#e8362b'; E(x, 16, 9, 1.2, 1.2);
@@ -340,7 +340,7 @@ function drawMarioHead() {
   return o;
 }
 function drawBowserHead() {
-  const o = mk(34, 32), x = o.cx;
+  const o = mk(128, 128), x = o.cx; x.scale(4, 4);
   x.fillStyle = '#5aa83f'; E(x, 17, 19, 11, 9);                  // 绿头
   x.fillStyle = '#e0c060'; E(x, 17, 24, 7, 4);                   // 口鼻
   x.fillStyle = '#f4f0e0';                                       // 角
@@ -353,12 +353,27 @@ function drawBowserHead() {
   return o;
 }
 function drawHeraldHead() {
-  const o = mk(32, 32), x = o.cx;
+  const o = mk(128, 128), x = o.cx; x.scale(4, 4);
   x.fillStyle = '#fcc08a'; E(x, 16, 19, 8.5, 8);
   x.fillStyle = '#2fa85a'; x.beginPath(); x.ellipse(16, 10, 10, 5, 0, Math.PI, 0); x.fill(); r(x, 6, 9, 20, 2);
   x.fillStyle = '#ffd23f'; x.beginPath(); x.moveTo(24, 9); x.lineTo(30, 4); x.lineTo(26, 11); x.fill(); // 羽毛
   x.fillStyle = '#23314a'; E(x, 12, 19, 1.3, 1.7); E(x, 20, 19, 1.3, 1.7);
   x.strokeStyle = '#a23b2b'; x.lineWidth = 1.2; x.beginPath(); x.arc(16, 22, 3, 0.2, Math.PI - 0.2); x.stroke();
+  return o;
+}
+
+function drawPrincessHead() {
+  const o = mk(128, 128), x = o.cx; x.scale(4, 4);
+  x.fillStyle = '#e9c46a'; E(x, 16, 17, 11, 10);            // 金发
+  x.fillStyle = '#fcc08a'; E(x, 16, 19, 8, 7.5);            // 脸
+  x.fillStyle = '#ffd23f';                                  // 皇冠
+  x.beginPath(); x.moveTo(9, 7); x.lineTo(11, 2); x.lineTo(13, 7); x.lineTo(16, 1);
+  x.lineTo(19, 7); x.lineTo(21, 2); x.lineTo(23, 7); x.closePath(); x.fill();
+  r(x, 9, 6, 14, 2);
+  x.fillStyle = '#ff5d8f'; r(x, 15, 2, 2, 2);               // 宝石
+  x.fillStyle = '#23314a'; E(x, 12.5, 18, 1.3, 1.7); E(x, 19.5, 18, 1.3, 1.7); // 眼
+  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.7; E(x, 10, 21, 1.6, 1.1); E(x, 22, 21, 1.6, 1.1); x.globalAlpha = 1;
+  x.strokeStyle = '#d4548c'; x.lineWidth = 1.2; x.beginPath(); x.arc(16, 21, 2.5, 0.2, Math.PI - 0.2); x.stroke();
   return o;
 }
 
@@ -384,7 +399,7 @@ export const Sprites = {
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {
     switch (key) {
-      case 'princess': return Sprites.princess();
+      case 'princess': return cached('portrait:princess', () => drawPrincessHead()).cv;
       case 'king':     return cached('portrait:king',   () => drawKingHead()).cv;
       case 'mario':    return cached('portrait:mario',  () => drawMarioHead()).cv;
       case 'bowser':   return cached('portrait:bowser', () => drawBowserHead()).cv;

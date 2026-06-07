@@ -92,12 +92,13 @@ body {
 .dialogue-panel { margin-top: -8vh; max-width: 560px; }
 .dlg-row { display: flex; align-items: center; gap: 16px; text-align: left; margin-bottom: 14px; }
 #dlg-portrait {
-  width: 96px; height: 96px; image-rendering: pixelated;
-  background: rgba(0, 0, 0, 0.25); border-radius: 10px; flex: 0 0 auto;
+  /* 128px 画布按比例缩放显示(平滑),圆头像比 pixelated 放大更清晰 */
+  width: 104px; height: 104px;
+  background: rgba(0, 0, 0, 0.16); border-radius: 12px; flex: 0 0 auto;
 }
 .dlg-body { flex: 1 1 auto; }
-.dlg-speaker { font-weight: 700; color: #ffd23f; font-size: 18px; margin-bottom: 6px; }
-.dlg-text { color: #fff; font-size: 20px; line-height: 1.5; }
+.dlg-speaker { font-weight: 800; color: #c2410c; font-size: 19px; margin-bottom: 6px; }
+.dlg-text { color: #4a2810; font-size: 20px; line-height: 1.5; font-weight: 600; }
 
 /* ---- Overlays ----------------------------------------------------------- */
 .overlay {
