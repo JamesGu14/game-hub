@@ -274,6 +274,8 @@ export class Renderer {
       } else if (e instanceof Piranha) {
         if (!e.hittable) continue; // 藏起来不画(管口内)
         cv = Sprites.piranha(e.frame());
+      } else if (e instanceof Spiked) {
+        cv = Sprites.spiked(e.frame());
       }
       if (cv) {
         const sc = e.w / cv.width;

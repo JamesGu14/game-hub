@@ -233,6 +233,31 @@ function drawPiranha(frame) {
   return o;
 }
 
+// 甲壳兽 Spiked:深蓝灰硬壳 + 三根背刺,踩反伤(视觉上要"扎手")。行走两帧晃脚。
+function drawSpiked(frame) {
+  const o = mk(20, 18), x = o.cx;
+  x.fillStyle = '#cdd6e0';
+  [[5, 6], [10, 8], [15, 6]].forEach(([sx, sy]) => {
+    x.beginPath(); x.moveTo(sx - 2.4, sy); x.lineTo(sx, sy - 5.5); x.lineTo(sx + 2.4, sy); x.closePath(); x.fill();
+  });
+  x.fillStyle = '#8a97a8';
+  [[5, 6], [10, 8], [15, 6]].forEach(([sx, sy]) => {
+    x.beginPath(); x.moveTo(sx, sy - 5.5); x.lineTo(sx + 2.4, sy); x.lineTo(sx + 0.6, sy); x.closePath(); x.fill();
+  });
+  x.fillStyle = '#3a4a5e'; x.beginPath(); x.ellipse(10, 11, 9, 6.5, 0, Math.PI, 0); x.fill();
+  r(x, 1, 11, 18, 4);
+  x.fillStyle = '#56708c'; E(x, 10, 11, 6, 3);
+  x.fillStyle = '#26323f'; r(x, 1, 14, 18, 1.5);
+  x.fillStyle = '#26323f'; r(x, 5, 11, 1.4, 3); r(x, 13.6, 11, 1.4, 3);
+  x.fillStyle = '#1b222b'; r(x, 4, 14.5, 12, 1.2);
+  x.fillStyle = '#fff'; E(x, 7, 13.4, 1.8, 2); E(x, 13, 13.4, 1.8, 2);
+  x.fillStyle = '#1b1e26'; E(x, 7.3, 13.8, 0.9, 1.2); E(x, 12.7, 13.8, 0.9, 1.2);
+  x.fillStyle = '#243b2a';
+  if (frame === 1) { E(x, 5, 17, 3, 1.8); E(x, 15, 17, 3, 1.8); }
+  else { E(x, 7, 17, 3, 1.8); E(x, 13, 17, 3, 1.8); }
+  return o;
+}
+
 // ---- princess / castle / flag --------------------------------------------
 function drawPrincess() {
   const o = mk(26, 34), x = o.cx;
@@ -623,6 +648,9 @@ export const Sprites = {
   },
   piranha(frame) {
     return cached(`piranha:${frame & 1}`, () => drawPiranha(frame & 1)).cv;
+  },
+  spiked(frame) {
+    return cached(`spk:${frame & 1}`, () => drawSpiked(frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {

@@ -581,7 +581,36 @@ export class Piranha {
   frame() { return Math.floor(this.anim) % 2; }
   kill(world) { this.dead = true; world.sound.kick(); }
 }
-export class Spiked { constructor(x, y) { this.w = 26; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.spikedSpeed; this.vy = 0; this.dead = false; this.anim = 0; } update() {} }
+// ---------------------------------------------------------------------------
+// 甲壳兽 Spiked(世界8,字符 'a')。行走同 Goomba(collideTiles + groundAhead 折返),
+// 但带刺:踩它反伤(_playerEnemyCollisions 无条件 _hurtPlayer),不能被踩死、无 stomp。
+// 只能 火球 / 踢龟壳 / 星星(三者都调 e.kill)消灭。
+export class Spiked {
+  constructor(x, y) {
+    this.w = 26; this.h = 24;
+    this.x = x + (TILE - this.w) / 2;
+    this.y = y + (TILE - this.h);
+    this.vx = -ENEMY.spikedSpeed;
+    this.vy = 0;
+    this.onGround = false;
+    this.dead = false;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    const spd = ENEMY.spikedSpeed * world.mode.enemyMul;
+    this.vx = this.vx < 0 ? -spd : spd;
+    const info = collideTiles(this, world.grid, dt);
+    if (info.hitWall) this.vx = -this.vx;
+    if (this.onGround) {
+      const aheadX = this.vx > 0 ? this.x + this.w + 1 : this.x - 1;
+      if (!groundAhead(world.grid, aheadX, this.y + this.h)) this.vx = -this.vx;
+    }
+    this.anim += dt * 6;
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  // NO stomp(): 踩到走 _hurtPlayer。
+  kill(world) { this.dead = true; world.sound.kick(); }
+}
 export class Flamer { constructor(x, y) { this.w = 26; this.h = 28; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = 0; this.vy = 0; this.dead = false; this.throwTimer = ENEMY.flameThrowEvery; this.squish = 0; this.anim = 0; } update() {} }
 
 // ---------------------------------------------------------------------------

@@ -558,6 +558,9 @@ export class Game {
         // 踩不死:藏起来跳过;否则无条件掉血(不读 stomping)。火球/星星杀走别处。
         if (!e.hittable) continue;
         this._hurtPlayer();
+      } else if (e instanceof Spiked) {
+        // 带刺:任何接触(含踩)都反伤,不读 stomping。火球/踢壳/星星走 e.kill。
+        this._hurtPlayer();
       }
     }
   }
