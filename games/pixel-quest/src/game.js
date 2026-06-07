@@ -14,7 +14,7 @@ import {
 } from './story.js';
 import {
   Player, Goomba, Koopa, Coin, Powerup, Fireball, MovingPlatform,
-  Flyer, Dasher, Piranha, Spiked, Flamer, EnemyShot,
+  Flyer, Dasher, Piranha, Spiked, Flamer, EnemyShot, Bowser,
 } from './entities.js';
 import { aabb } from './physics.js';
 import { Input } from './input.js';
@@ -26,6 +26,7 @@ import { Sound } from './audio.js';
 const ENEMY_CTORS = {
   goomba: Goomba, koopa: Koopa,
   flyer: Flyer, dasher: Dasher, piranha: Piranha, spiked: Spiked, flamer: Flamer,
+  bowser: Bowser,
 };
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -60,6 +61,8 @@ export class Game {
     this.flagAnim = 0; // >0 while sliding the flag
     this.winTimer = 0;
     this.dialogue = null; // { script, index, onDone } 进行中的对话
+    this.bossDefeated = false;   // 击败 Boss 后的短冻结标记
+    this.bossDefeatTimer = 0;
 
     this.best = this._loadBest();
     this._world = this._makeWorld();
@@ -189,8 +192,7 @@ export class Game {
 
     if (full) {
       this.enemies = lv.enemies.map((e) => {
-        const C = ENEMY_CTORS[e.type];
-        if (!C) throw new Error('Unknown enemy type: ' + e.type);
+        const C = ENEMY_CTORS[e.type] || Goomba;
         return new C(e.x, e.y);
       });
       this.coinsArr = lv.coins.map((c) => new Coin(c.x, c.y));
@@ -398,6 +400,14 @@ export class Game {
     if (this.state === 'ending') { this._updateEnding(dt); return; }
     if (this.state !== 'playing') return;
 
+    // Boss 击败:短冻结(Boss 倒地定格)→ 复用 _winGame cutscene。
+    if (this.bossDefeated) {
+      this.bossDefeatTimer -= dt;
+      if (this.bossDefeatTimer <= 0) { this.bossDefeated = false; this._winGame(); }
+      this._updateCamera();
+      return;
+    }
+
     // Fire action consumed via Input subscription in main.js -> game.tryFire()
     const lv = this.level;
     const p = this.player;
@@ -496,6 +506,7 @@ export class Game {
 
       // Star: instakill on touch
       if (p.star > 0) {
+        if (e instanceof Bowser) { const dead = e.hit(this._world, p.faceRight ? 1 : -1); if (dead) this._defeatBoss(e); continue; }
         if (e instanceof Piranha && e.hittable === false) continue; // hidden 食人花不被星星误杀
         if (e instanceof Koopa) e.dead = true; else if (e.kill) e.kill(this._world);
         this.score += SCORE.stomp;
@@ -570,6 +581,16 @@ export class Game {
         } else {
           this._hurtPlayer();
         }
+      } else if (e instanceof Bowser) {
+        if (e.state === 'defeated') continue;
+        if (e.invuln > 0) continue;            // 击退无敌期:不互伤(防瞬间连击/秒杀)
+        if (stomping) {
+          const dead = e.hit(this._world, p.faceRight ? 1 : -1);
+          p.vy = -440;
+          if (dead) this._defeatBoss(e);
+        } else {
+          this._hurtPlayer();
+        }
       }
     }
   }
@@ -591,7 +612,8 @@ export class Game {
       return;
     }
     if (lv.castleX != null && p.x + p.w > lv.castleX + 10) {
-      this._winGame();
+      // 10-5:Boss 未败前走到城堡不算通关(通关由 _defeatBoss 触发);其余城堡关正常。
+      if (!this.enemies.some((e) => e instanceof Bowser)) this._winGame();
     }
     // checkpoint
     if (!this.checkpointReached && lv.checkpoint && p.x > lv.checkpoint.x) {
@@ -609,6 +631,13 @@ export class Game {
     Sound.levelClear();
   }
 
+  // Boss 血空:进入短冻结,Boss 倒地定格;冻结结束后 update() 调 _winGame → cutscene。
+  _defeatBoss(boss) {
+    this.bossDefeated = true;
+    this.bossDefeatTimer = 1.4;
+    Sound.win();
+  }
+
   _winGame() {
     this.score += SCORE.levelClear;
     this.score += Math.floor(this.timeLeft) * SCORE.timeBonus;
@@ -622,6 +651,7 @@ export class Game {
     const p = this.player;
     p.vx = 0; p.vy = 0; p.faceRight = true;
     this.enemies = []; // clear the stage for a clean celebration
+    this.enemyShots = []; // 清掉残留敌方火球,cutscene 干净
     this.ending = {
       phase: 'walk',
       t: 0,
