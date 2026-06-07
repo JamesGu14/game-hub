@@ -4,7 +4,7 @@
 
 import { FIELD, TILE, THEMES } from './config.js';
 import { Sprites } from './sprites.js';
-import { Goomba, Koopa } from './entities.js';
+import { Goomba, Koopa, Flyer, Dasher, Piranha, Spiked, Flamer } from './entities.js';
 
 const SC = TILE / 16; // sprite logical px -> world px (tiles are drawn at 16px)
 
@@ -88,6 +88,7 @@ export class Renderer {
         this._powerups(ctx, game);
         this._enemies(ctx, game);
         this._fireballs(ctx, game);
+        this._enemyShots(ctx, game);
         this._player(ctx, game);
         if (game.state === 'ending') this._ending(ctx, game);
         this._particles(ctx, game);
@@ -269,6 +270,24 @@ export class Renderer {
       ctx.fillStyle = '#ffe066';
       ctx.beginPath();
       ctx.arc(f.x + f.w / 2, f.y + f.h / 2, f.w / 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  _enemyShots(ctx, game) {
+    const cam = game.camera;
+    for (const s of game.enemyShots) {
+      if (s.dead) continue;
+      if (s.x + s.w < cam.x || s.x > cam.x + FIELD.W) continue; // cull off-screen
+      ctx.save();
+      ctx.fillStyle = '#c46bff';
+      ctx.beginPath();
+      ctx.arc(s.x + s.w / 2, s.y + s.h / 2, s.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e9c6ff';
+      ctx.beginPath();
+      ctx.arc(s.x + s.w / 2, s.y + s.h / 2, s.w / 4, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }

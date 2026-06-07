@@ -14,10 +14,19 @@ import {
 } from './story.js';
 import {
   Player, Goomba, Koopa, Coin, Powerup, Fireball, MovingPlatform,
+  Flyer, Dasher, Piranha, Spiked, Flamer, EnemyShot,
 } from './entities.js';
 import { aabb } from './physics.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
+
+// 敌人类型→构造器查表。开发期:未知类型抛错(便于及早发现关卡数据笔误)。
+// 上线前改回兜底:`const C = ENEMY_CTORS[e.type] || Goomba;`。
+// 注:bowser 属阶段 D,本阶段不在表内;阶段 D 再 import Bowser 并加 `bowser: Bowser`。
+const ENEMY_CTORS = {
+  goomba: Goomba, koopa: Koopa,
+  flyer: Flyer, dasher: Dasher, piranha: Piranha, spiked: Spiked, flamer: Flamer,
+};
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
@@ -39,6 +48,7 @@ export class Game {
     this.coinsArr = [];
     this.powerups = [];
     this.fireballs = [];
+    this.enemyShots = []; // 敌方火球(炎魔/Boss)
     this.movers = [];
     this.floatTexts = [];
     this.particles = [];
@@ -95,6 +105,7 @@ export class Game {
       get coins() { return game.coinsArr; },
       get powerups() { return game.powerups; },
       get fireballs() { return game.fireballs; },
+      get enemyShots() { return game.enemyShots; },
       get movers() { return game.movers; },
       get player() { return game.player; },
       get mode() { return game.mode; },
@@ -103,6 +114,7 @@ export class Game {
       addScore(n) { game.score += n; },
       addCoin() { game._collectCoin(); },
       spawnPowerup(kind, x, y) { game.powerups.push(new Powerup(kind, x, y)); },
+      spawnEnemyShot(x, y, vx, vy) { game.enemyShots.push(new EnemyShot(x, y, vx, vy)); },
       hurtPlayer() { game._hurtPlayer(); },
       bumpTile(col, row, by) { game._bumpTile(col, row, by); },
       floatText(text, x, y, color) { game.floatTexts.push({ text, x, y, color, life: 1 }); },
@@ -169,14 +181,18 @@ export class Game {
     this.player.x = sx;
     this.player.y = sy - this.player.h + TILE; // sit feet near spawn tile bottom
     this.fireballs = [];
+    this.enemyShots = [];
     this.powerups = [];
     this.floatTexts = [];
     this.particles = [];
     this.flagAnim = 0;
 
     if (full) {
-      this.enemies = lv.enemies.map((e) =>
-        e.type === 'koopa' ? new Koopa(e.x, e.y) : new Goomba(e.x, e.y));
+      this.enemies = lv.enemies.map((e) => {
+        const C = ENEMY_CTORS[e.type];
+        if (!C) throw new Error('Unknown enemy type: ' + e.type);
+        return new C(e.x, e.y);
+      });
       this.coinsArr = lv.coins.map((c) => new Coin(c.x, c.y));
       this.movers = (lv.movers || []).map((m) => new MovingPlatform(m));
     }
@@ -448,6 +464,13 @@ export class Game {
       f.update(dt, this._world);
     }
 
+    // Enemy shots (炎魔/Boss 火球) — 更新 + 与玩家碰撞(走 _hurtPlayer 复用无敌帧)
+    for (const s of this.enemyShots) {
+      if (s.dead) continue;
+      s.update(dt, this._world);
+      if (!s.dead && aabb(p, s) && p.dying <= 0) { s.dead = true; this._hurtPlayer(); }
+    }
+
     // Player vs enemies
     this._playerEnemyCollisions();
 
@@ -456,6 +479,7 @@ export class Game {
     this.coinsArr = this.coinsArr.filter((c) => !c.dead);
     this.powerups = this.powerups.filter((pu) => !pu.dead);
     this.fireballs = this.fireballs.filter((f) => !f.dead);
+    this.enemyShots = this.enemyShots.filter((s) => !s.dead);
 
     // Flag / castle reach
     this._checkGoal();

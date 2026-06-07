@@ -5,7 +5,7 @@
 //   bumpTile(col,row), player.
 // Physics uses collideTiles / aabb from physics.js.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, SOLID } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
@@ -370,6 +370,43 @@ export class Fireball {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// 敌方火球(炎魔/Boss 喷出):14×14 紫色、弱重力弧线;撞墙/天花板/超时/落地反弹后即灭。
+// 不在自身 update 里碰玩家——玩家碰撞由 game.update 主循环统一处理(复用无敌帧)。
+export class EnemyShot {
+  constructor(x, y, vx, vy) {
+    this.w = 14; this.h = 14;
+    this.x = x; this.y = y;
+    this.vx = vx;
+    this.vy = vy != null ? vy : -120;
+    this.dead = false;
+    this.life = 3.0;
+    this.bounced = false;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    this.life -= dt;
+    this.anim += dt * 10;
+    if (this.life <= 0) { this.dead = true; return; }
+    const info = collideTiles(this, world.grid, dt, { gravity: 600 });
+    if (info.hitWall || info.hitCeiling) { this.dead = true; return; }
+    if (info.onGround) {
+      if (this.bounced) { this.dead = true; return; } // 反弹一次后再落地即灭
+      this.bounced = true;
+      this.vy = -ENEMY.fireballBounce * 0.6;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 阶段 B 占位 stub —— 让 ENEMY_CTORS 查表与 named import 先跑通。
+// 行为/精灵/碰撞由 Task 2-6 各怪整类替换。合并前务必替换完毕。
+export class Flyer  { constructor(x, y) { this.w = 24; this.h = 22; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.flyerSpeed; this.vy = 0; this.dead = false; this.squish = 0; this.anim = 0; } update() {} }
+export class Dasher { constructor(x, y) { this.w = 28; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.dasherPatrol; this.vy = 0; this.dead = false; this.squish = 0; this.anim = 0; } update() {} }
+export class Piranha{ constructor(x, y) { this.w = 26; this.h = 30; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.baseY = y; this.dead = false; this.state = 'hidden'; this.anim = 0; } update() {} }
+export class Spiked { constructor(x, y) { this.w = 26; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.spikedSpeed; this.vy = 0; this.dead = false; this.anim = 0; } update() {} }
+export class Flamer { constructor(x, y) { this.w = 26; this.h = 28; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = 0; this.vy = 0; this.dead = false; this.throwTimer = ENEMY.flameThrowEvery; this.squish = 0; this.anim = 0; } update() {} }
 
 // ---------------------------------------------------------------------------
 export class MovingPlatform {
