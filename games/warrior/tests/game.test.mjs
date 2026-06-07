@@ -66,22 +66,32 @@ test('reaching the goal clears the level (no-boss path)', () => {
   assert.equal(g.state, 'clear');
 });
 
-test('reaching bossX spawns the boss instead of clearing', () => {
+test('reaching bossX starts the boss intro (boss spawned, frozen)', () => {
   const g = freshGame();
   g.level.bossX = g.player.x + 40;
   g.level.goalX = 1e9; // ensure goal does not pre-empt
   g.player.x = g.level.bossX + 5;
   g.update(1 / 60);
-  assert.ok(g.boss, 'boss spawned');
+  assert.ok(g.boss, 'boss spawned for the reveal');
+  assert.equal(g.state, 'bossintro');
+});
+
+test('the boss intro resumes to playing after panning back', () => {
+  const g = freshGame();
+  g.level.bossX = g.player.x + 40; g.level.goalX = 1e9;
+  g.player.x = g.level.bossX + 5;
+  g.update(1 / 60);
+  for (let i = 0; i < 5 * 60 && g.state === 'bossintro'; i++) g.update(1 / 60);
   assert.equal(g.state, 'playing');
 });
 
 test('clearing requires the boss to die', () => {
   const g = freshGame();
   g.level.bossX = g.player.x; g.level.goalX = 1e9;
-  g.update(1 / 60);              // spawns boss
+  g.update(1 / 60); // -> bossintro
+  for (let i = 0; i < 5 * 60 && g.state !== 'playing'; i++) g.update(1 / 60); // finish the reveal
   assert.equal(g.state, 'playing');
-  g.boss.hit(1e9, g._world);     // kill it
+  g.boss.hit(1e9, g._world);
   for (let i = 0; i < 180 && g.state !== 'clear'; i++) g.update(1 / 60);
   assert.equal(g.state, 'clear');
 });

@@ -80,10 +80,11 @@ export class Renderer {
       }
 
       this._hud(ctx, game);
-      if (game.boss && !game.boss.dead) this._bossBar(ctx, game);
+      if (game.boss && !game.boss.dead && game.state !== 'bossintro') this._bossBar(ctx, game);
       if (game.combo && game.combo.count >= 2) this._comboHud(ctx, game);
       if (game.state === 'ready') this._banner(ctx, `${game.level.name}`, '准备出发！按 跳 / ✕ 开始');
       if (game.state === 'clear') this._banner(ctx, '关卡通关！🎉', `${'⭐'.repeat(game.lastStars || 0)}  按 跳 / ✕ 返回`);
+      if (game.state === 'bossintro') this._bossIntroBanner(ctx, game);
     } catch (err) {
       if ((this._errs = (this._errs || 0) + 1) <= 8) console.error('[render] frame error — clearing caches:', err);
       try { ctx.setTransform(1, 0, 0, 1, 0, 0); } catch (_) { /* ignore */ }
@@ -299,5 +300,25 @@ export class Renderer {
     ctx.fillStyle = '#ffe066'; ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 3;
     const t = `连击 x${game.combo.mult}`;
     ctx.strokeText(t, FIELD.W / 2, 44); ctx.fillText(t, FIELD.W / 2, 44);
+  }
+
+  _bossIntroBanner(ctx, game) {
+    const b = game.boss; if (!b) return;
+    const io = game.bossIntro;
+    let alpha = 1;
+    if (io) {
+      if (io.phase === 'panTo') alpha = Math.min(1, io.t / 0.8);
+      else if (io.phase === 'panBack') alpha = Math.max(0, 1 - io.t / 0.8);
+    }
+    ctx.save(); ctx.globalAlpha = alpha;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, FIELD.H * 0.30, FIELD.W, 76);
+    ctx.fillStyle = '#ff5a5f'; ctx.font = 'bold 13px system-ui, sans-serif';
+    ctx.fillText('⚠ BOSS ⚠', FIELD.W / 2, FIELD.H * 0.30 + 16);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px system-ui, sans-serif';
+    ctx.fillText(b.cfg.name, FIELD.W / 2, FIELD.H * 0.30 + 42);
+    ctx.fillStyle = '#ffe066'; ctx.font = '13px system-ui, sans-serif';
+    ctx.fillText(b.cfg.enName, FIELD.W / 2, FIELD.H * 0.30 + 62);
+    ctx.restore();
   }
 }

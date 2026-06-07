@@ -39,6 +39,7 @@ export class Game {
     this.falcons = [];
     this._falconDefs = [];
     this.boss = null;
+    this.bossIntro = null;
     this.enemyBullets = [];
     this.combo = { count: 0, mult: 1, timer: 0 };
     this._world = this._makeWorld();
@@ -202,6 +203,7 @@ export class Game {
       if (this.readyTimer <= 0) this._startPlaying();
       return;
     }
+    if (this.state === 'bossintro') { this._updateBossIntro(dt); return; }
     if (this.state !== 'playing') return;
 
     const lv = this.level;
@@ -239,7 +241,7 @@ export class Game {
     for (const pk of this.pickups) { if (!pk.dead && aabb(p, pk)) pk.apply(p, this._world); }
 
     // Boss: spawns at bossX, takes bullet/contact damage, gates the level clear.
-    if (!this.boss && lv.bossX != null && p.x + p.w > lv.bossX) this._spawnBoss();
+    if (!this.boss && lv.bossX != null && p.x + p.w > lv.bossX) { this._startBossIntro(); return; }
     if (this.boss) {
       if (!this.boss.dead) this.boss.update(dt, this._world);
       for (const b of this.bullets) {
@@ -355,6 +357,37 @@ export class Game {
     this.boss.maxHp = Math.round(this.boss.maxHp * mul);
     this.boss.hp = this.boss.maxHp;
     Sound.play('hit');
+  }
+
+  // Boss reveal cinematic (playtest feedback): freeze, pan to the boss, hold 2s, pan back.
+  _playerCamX() {
+    const lv = this.level, p = this.player;
+    return clamp(p.x + p.w / 2 - FIELD.W / 2, 0, Math.max(0, lv.width - FIELD.W));
+  }
+  _ease(k) { return k * k * (3 - 2 * k); }
+  _startBossIntro() {
+    this._spawnBoss();
+    this.player.vx = 0;
+    const lv = this.level, b = this.boss;
+    const camTo = clamp(b.x + b.w / 2 - FIELD.W / 2, 0, Math.max(0, lv.width - FIELD.W));
+    this.bossIntro = { phase: 'panTo', t: 0, camFrom: this.camera.x, camTo };
+    this.state = 'bossintro';
+  }
+  _updateBossIntro(dt) {
+    const io = this.bossIntro;
+    if (!io) { this.state = 'playing'; return; }
+    io.t += dt;
+    const PAN = 0.8, HOLD = 2.0;
+    if (io.phase === 'panTo') {
+      this.camera.x = io.camFrom + (io.camTo - io.camFrom) * this._ease(Math.min(1, io.t / PAN));
+      if (io.t >= PAN) { io.phase = 'hold'; io.t = 0; }
+    } else if (io.phase === 'hold') {
+      this.camera.x = io.camTo;
+      if (io.t >= HOLD) { io.phase = 'panBack'; io.t = 0; io.camFrom = this.camera.x; io.camTo = this._playerCamX(); }
+    } else {
+      this.camera.x = io.camFrom + (io.camTo - io.camFrom) * this._ease(Math.min(1, io.t / PAN));
+      if (io.t >= PAN) { this.state = 'playing'; this.bossIntro = null; }
+    }
   }
 
   _updateCamera() {
