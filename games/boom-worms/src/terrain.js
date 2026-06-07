@@ -107,6 +107,11 @@ export class Terrain {
       ctx.fill();
     }
 
+    // --- Floors: stacked solid terraces creating real multi-tier (多个楼层) play.
+    //     Late levels only. Wide, walkable, staggered, and kept clear of spawn
+    //     columns so worms (which fall from the sky) never spawn inside solid. ---
+    this._buildFloors(level, rng, heights, waterY);
+
     // --- Caves: carve elliptical holes into the mountain body ---
     const caveCount = terrainParams.caves ?? 0;
     if (caveCount > 0) {
@@ -126,6 +131,143 @@ export class Terrain {
 
     // --- Visual topping: grass / candy-frost stripe on solid tops (visual only) ---
     this._paintTopping(palette);
+  }
+
+  // Build stacked solid terraces ("floors") for late, complex levels.
+  // Deterministic (driven by the passed seeded rng). Each floor is a wide solid
+  // slab a worm can stand and walk on; floors sit at 2-3 distinct tier heights and
+  // are horizontally staggered to form genuine vertical structures with cover,
+  // chokepoints, and interesting trajectories.
+  //
+  // Spawn safety: worms are released ABOVE the field and FALL onto the first solid
+  // surface, so a floating slab over a spawn is a *valid landing*, never traps a
+  // worm inside solid. Two guarantees keep it fair regardless:
+  //   (1) every slab is a true FLOATING floor — its underside stays clearly above
+  //       the ridgeline at the columns it covers, so it never seals a column shut;
+  //   (2) the two OUTER corner spawns (leftmost player / rightmost enemy) get an
+  //       open-sky guard so players can never be walled into a corner.
+  _buildFloors(level, rng, heights, waterY) {
+    const { ctx, W, H } = this;
+    const floors = level.terrainParams.floors ?? 0;
+    if (floors <= 0) return;
+
+    const land = level.palette.land;
+    const land2 = level.palette.land2;
+
+    const spawnXs = this._spawnXs(level);
+    // Only the extreme corner spawns get a keep-clear guard; inner spawns may have
+    // a floating floor overhead (the worm just lands on it — that's the point).
+    const cornerXs = spawnXs.length
+      ? [Math.min(...spawnXs), Math.max(...spawnXs)]
+      : [];
+    const cornerGuard = 70;
+
+    // Distinct walkable tiers (top y of each slab). Higher tier index = higher up.
+    // Reachable: lowest tier sits a hop above the ~baseY (H*0.60) ground; highest
+    // stays well below the peak ceiling (H*0.16).
+    const tierTops = [
+      Math.round(H * 0.50),  // low mezzanine  (~270)
+      Math.round(H * 0.38),  // mid floor      (~205)
+      Math.round(H * 0.27),  // upper floor    (~146)
+    ];
+    const thickness = 18;    // solid enough to stand on, thin enough to blast through
+    const minW = 88;         // wide enough to stand & walk on
+    // Keep an air gap between a slab's underside and the ground it floats over.
+    const minAirGap = 26;
+
+    // Candidate slabs. Concentrated in the field interior and staggered across
+    // tiers so they overlap vertically (cover / line-of-sight blockers).
+    const lanes = [
+      { t: 0, frac: 0.50, w: 176 }, // central low platform (the hub)
+      { t: 1, frac: 0.37, w: 134 }, // mid, left-of-center
+      { t: 1, frac: 0.63, w: 134 }, // mid, right-of-center
+      { t: 2, frac: 0.50, w: 120 }, // upper crow's nest, centered
+      { t: 0, frac: 0.28, w: 112 }, // low ledge, left
+      { t: 0, frac: 0.72, w: 112 }, // low ledge, right
+      { t: 2, frac: 0.34, w: 100 }, // upper, left
+      { t: 2, frac: 0.66, w: 100 }, // upper, right
+    ];
+
+    const candidates = lanes.map((lane) => {
+      // Small deterministic jitter so themes differ but placement stays sensible.
+      const jitter = (rng() - 0.5) * 36;
+      const wj = Math.max(minW, Math.round(lane.w + (rng() - 0.5) * 24));
+      let xc = Math.round(W * lane.frac + jitter);
+      xc = Math.max(Math.round(wj / 2) + 8, Math.min(W - Math.round(wj / 2) - 8, xc));
+      const pierRoll = rng();  // draw here so rng stream is stable regardless of placement
+      return { tierTop: tierTops[lane.t], xc, w: wj, pierRoll };
+    });
+
+    let placed = 0;
+    const placedRects = [];
+    for (const c of candidates) {
+      if (placed >= floors) break;
+      const x0 = Math.round(c.xc - c.w / 2);
+      const x1 = Math.round(c.xc + c.w / 2);
+
+      // Guard ONLY the corner spawns — keep their sky open.
+      let blocksCorner = false;
+      for (const sx of cornerXs) {
+        if (x1 + cornerGuard >= sx && sx >= x0 - cornerGuard) { blocksCorner = true; break; }
+      }
+      if (blocksCorner) continue;
+
+      // Guarantee (1): underside must clear the ridgeline across the whole slab so
+      // it stays a floating floor (never seals a column). Find the highest ground
+      // (smallest y) under the footprint and require an air gap below the slab.
+      let minGroundY = H;
+      for (let x = Math.max(0, x0); x <= Math.min(W - 1, x1); x++) {
+        if (heights[x] < minGroundY) minGroundY = heights[x];
+      }
+      if (c.tierTop + thickness + minAirGap > minGroundY) continue;
+
+      // Avoid fusing two slabs on the SAME tier into one wide shelf.
+      let dup = false;
+      for (const r of placedRects) {
+        if (r.tierTop === c.tierTop && x1 > r.x0 - 16 && x0 < r.x1 + 16) { dup = true; break; }
+      }
+      if (dup) continue;
+
+      // Solid slab (painted onto the canvas -> becomes solid mask via _syncMask).
+      ctx.fillStyle = land;
+      ctx.fillRect(x0, c.tierTop, c.w, thickness);
+
+      // Optional support pier: a narrow leg under the slab center for visual weight
+      // and a chokepoint. It must STOP short of the ground (never seal a column) and
+      // never plant onto a corner-spawn column.
+      const pierX = c.xc | 0;
+      const overCorner = cornerXs.some((sx) => Math.abs(sx - pierX) <= cornerGuard);
+      if (c.pierRoll < 0.55 && !overCorner) {
+        const pierW = 24;
+        const groundHere = heights[Math.min(W - 1, Math.max(0, pierX))];
+        const pierBottom = groundHere - minAirGap; // leave the air gap intact
+        if (pierBottom > c.tierTop + thickness + 12) {
+          ctx.fillStyle = land2;
+          ctx.fillRect(Math.round(pierX - pierW / 2), c.tierTop + thickness, pierW, pierBottom - (c.tierTop + thickness));
+        }
+      }
+
+      placedRects.push({ tierTop: c.tierTop, x0, x1 });
+      placed++;
+    }
+  }
+
+  // Recompute spawn x-positions for a level the same way buildLevel() does, so the
+  // floor placer can keep those drop corridors open. Falls back to defaults if the
+  // level was passed without counts.
+  _spawnXs(level) {
+    const W = this.W;
+    const pc = level.playerCount ?? 3;
+    const ec = level.enemyCount ?? 3;
+    const spread = (count, lo, hi) => {
+      if (count <= 1) return [Math.round((lo + hi) / 2)];
+      const step = (hi - lo) / (count - 1);
+      return Array.from({ length: count }, (_, k) => Math.round(lo + k * step));
+    };
+    return [
+      ...spread(pc, 60, Math.round(W * 0.4)),
+      ...spread(ec, Math.round(W * 0.6), W - 60),
+    ];
   }
 
   // Read canvas alpha into mask.cells.
