@@ -59,14 +59,31 @@ const cleared = await page.evaluate(() => ({ state: window.__game?.state }));
 // reload -> the save must persist (real localStorage in Chrome)
 await page.reload({ waitUntil: 'networkidle0' });
 const save = await page.evaluate(() => { try { return JSON.parse(localStorage.getItem('jungle-warrior-save')); } catch { return null; } });
-await page.click('#btn-start'); await sleep(250); // show the select grid (L1 should now have ⭐)
+// M4: jump straight to the final level + its multi-phase boss, verify it engages in-browser.
+const l5 = await page.evaluate(() => {
+  const g = window.__game;
+  g.startLevel(4); g._startPlaying();
+  g.player.weapon = 'laser';
+  g.player.x = g.level.bossX - 60;
+  return { lvl: g.level.id, bossType: g.level.bossType };
+});
+await page.keyboard.down('ArrowRight'); await sleep(600); await page.keyboard.up('ArrowRight');
+await page.keyboard.down('z'); await sleep(4000); await page.keyboard.up('z');
+const l5boss = await page.evaluate(() => {
+  const g = window.__game;
+  return {
+    lvl: g.level?.id, bossType: g.boss?.typeId, bossSpawned: !!g.boss,
+    bossHurt: g.boss ? g.boss.hp < g.boss.maxHp : false,
+    phases: g.boss ? g.boss.cfg.phases.length : 0,
+  };
+});
 await page.screenshot({ path: 'tests/_smoke.png' });
 await browser.close();
 
 if (errors.length) { console.error('SMOKE FAIL — page errors:\n' + errors.join('\n')); process.exit(1); }
-const l1cleared = save?.perLevel?.['1']?.cleared === true;
-const l2unlocked = (save?.unlockedMax || 0) >= 2;
-if (!(cleared.state === 'clear' && l1cleared && l2unlocked)) {
-  console.error('SMOKE FAIL', { state: cleared.state, l1cleared, l2unlocked, save }); process.exit(1);
+const l1ok = cleared.state === 'clear' && save?.perLevel?.['1']?.cleared === true && (save?.unlockedMax || 0) >= 2;
+const l5ok = l5.lvl === 'L5' && l5boss.bossType === 'gomera' && l5boss.bossSpawned && l5boss.bossHurt && l5boss.phases === 3;
+if (!(l1ok && l5ok)) {
+  console.error('SMOKE FAIL', { l1ok, l5ok, cleared, unlockedMax: save?.unlockedMax, l5, l5boss }); process.exit(1);
 }
-console.log(`SMOKE PASS — L1 cleared (⭐${save.perLevel['1'].bestStars}), persisted after reload (unlockedMax=${save.unlockedMax})`);
+console.log(`SMOKE PASS — L1 cleared+persisted (unlockedMax=${save.unlockedMax}); L5 boss=${l5boss.bossType} (${l5boss.phases} phases) engaged hp<max`);
