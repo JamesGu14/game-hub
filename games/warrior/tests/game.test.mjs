@@ -3,8 +3,10 @@ import assert from 'node:assert/strict';
 import { Game } from '../src/game.js';
 import { Input } from '../src/input.js';
 import { TILE } from '../src/config.js';
+import * as Save from '../src/save.js';
 
 function freshGame() {
+  Save.reset();
   const g = new Game();
   g.startLevel(0);   // skip the title; go straight into L1
   g._startPlaying(); // ready -> playing
@@ -91,4 +93,44 @@ test('a kill starts a combo and a second quick kill raises the multiplier', () =
   g.registerKill(100);
   assert.equal(g.combo.count, 2);
   assert.ok(g.combo.mult >= 2);
+});
+
+test('clearing a level records progress + stars (clear screen) and unlocks next', () => {
+  const g = freshGame();
+  g._elapsed = 40; // a fast run
+  g._levelClear();
+  assert.equal(g.state, 'clear');
+  assert.equal(Save.isUnlocked(2), true);
+  assert.ok(Save.levelInfo(1).bestStars >= 1);
+  // confirm from the clear screen returns to select
+  g.confirm();
+  assert.equal(g.state, 'select');
+});
+
+test('selecting a locked level is refused; an unlocked one starts', () => {
+  Save.reset();
+  const g = new Game();
+  g.goSelect();
+  assert.equal(g.selectLevel(0), true);   // L1 (id 1) unlocked
+  const g2 = new Game(); g2.goSelect();
+  assert.equal(g2.selectLevel(1), false);  // L2 (id 2) locked
+});
+
+test('classic Game Over after lives run out; continue replays keeping unlocks', () => {
+  Save.reset();
+  const g = new Game(); g.setMode('classic'); g.startLevel(0); g._startPlaying();
+  g.lives = 1;
+  g.player.startDeath(g._world); g.player.y = g.level.height + 200;
+  for (let i = 0; i < 30; i++) g.update(1 / 60);
+  assert.equal(g.state, 'gameover');
+  g.continueRun();
+  assert.equal(g.state, 'ready');
+});
+
+test('konami unlock grants 30 lives in classic and sets the saved flag', () => {
+  Save.reset();
+  const g = new Game(); g.setMode('classic');
+  g.onKonami();
+  assert.equal(g.lives, 30);
+  assert.equal(Save.getKonami(), true);
 });

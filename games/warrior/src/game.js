@@ -10,16 +10,20 @@ import { Player, Runner, Jumper, Bullet, Pickup, Falcon, Boss } from './entities
 import { aabb } from './physics.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
+import * as Save from './save.js';
 
 const clamp = (v, lo, hi) => (v < lo ? lo : v > hi ? hi : v);
 
 export class Game {
   constructor() {
     this.state = 'title';
-    this.mode = MODES.casual;
+    this.mode = MODES[Save.getMode()] || MODES.casual;
     this.score = 0;
     this.lives = this.mode.lives;
     this.deaths = 0;
+    this._elapsed = 0;   // seconds in the current level (for ⭐)
+    this.lastStars = 0;
+    this.konami = false;
     this.levelIndex = 0;
     this.level = null;
     this.player = null;
@@ -67,13 +71,18 @@ export class Game {
   }
 
   // ---- lifecycle ----
-  setMode(id) { this.mode = MODES[id] || MODES.casual; this.lives = this.mode.lives; }
+  setMode(id) {
+    this.mode = MODES[id] || MODES.casual;
+    this.lives = this.mode.lives;
+    Save.setMode(this.mode.id);
+  }
 
   startLevel(i) {
     this.levelIndex = i;
     this.level = parseLevel(LEVELS[i]);
     this.score = this.score || 0;
     this.deaths = 0;
+    this._elapsed = 0;
     this._spawnEntities();
     this.state = 'ready';
     this.readyTimer = 1.2;
@@ -106,11 +115,39 @@ export class Game {
 
   confirm() {
     switch (this.state) {
-      case 'title': this.startLevel(0); break;
+      case 'title': this.goSelect(); break;
+      case 'select': this.selectLevel(this.levelIndex); break;
       case 'ready': this._startPlaying(); break;
-      case 'clear': this.state = 'title'; break;
+      case 'clear': this.goSelect(); break;
+      case 'gameover': this.continueRun(); break;
       default: break;
     }
+  }
+
+  goTitle() { this.state = 'title'; }
+  goSelect() { this.state = 'select'; }
+
+  // Start a level by 0-based index if its 1-based id is unlocked. Returns success.
+  selectLevel(i) {
+    const id = i + 1;
+    if (i < 0 || i >= LEVELS.length) return false;
+    if (!Save.isUnlocked(id)) return false;
+    this.startLevel(i);
+    return true;
+  }
+
+  // Konami easter egg (spec §6.2): classic → 30 lives, casual → cool fx; persist the flag.
+  onKonami() {
+    this.konami = true;
+    Save.setKonami(true);
+    if (this.mode.lives !== Infinity) this.lives = 30;
+    Sound.play('clear');
+  }
+
+  // Classic Game Over → replay the current level, refill lives, keep unlocks.
+  continueRun() {
+    this.lives = this.mode.lives;
+    this.startLevel(this.levelIndex);
   }
 
   // ---- spawn safety (spec §13 M1): find the ground SURFACE near (sx,sy) ----
@@ -155,6 +192,7 @@ export class Game {
 
     const lv = this.level;
     const p = this.player;
+    this._elapsed += dt;
 
     p.update(dt, this._world);
 
@@ -246,6 +284,10 @@ export class Game {
 
   _levelClear() {
     this.score += SCORE.levelClear;
+    const id = this.levelIndex + 1;
+    const stars = Save.rateStars({ time: this._elapsed, deaths: this.deaths, mode: this.mode.id });
+    this.lastStars = stars;
+    Save.markCleared(id, { time: Math.round(this._elapsed), score: this.score, stars });
     this.state = 'clear';
     Sound.play('clear');
   }
