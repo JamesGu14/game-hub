@@ -318,62 +318,195 @@ function drawEmoji(ch, px) {
 // ---- portraits (对话头像,逻辑尺寸 ~32px,blit 时放大;卡通不吓人) -------------
 function drawKingHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
-  x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);                 // 脸
-  x.fillStyle = '#ffd23f'; r(x, 6, 6, 20, 5);                    // 皇冠底
-  x.beginPath(); x.moveTo(6, 6); x.lineTo(9, 1); x.lineTo(12, 6);
-  x.lineTo(16, 1); x.lineTo(20, 6); x.lineTo(23, 1); x.lineTo(26, 6); x.closePath(); x.fill();
-  x.fillStyle = '#e8362b'; r(x, 14, 7, 4, 3);                    // 宝石
-  x.fillStyle = '#23314a'; E(x, 12, 18, 1.4, 1.8); E(x, 20, 18, 1.4, 1.8); // 眼
-  x.fillStyle = '#f4f4f4'; x.beginPath(); x.moveTo(8, 22); x.lineTo(24, 22);
-  x.lineTo(20, 31); x.lineTo(12, 31); x.closePath(); x.fill();   // 胡子
-  x.fillStyle = '#f4f4f4'; E(x, 13, 23, 3, 1.4); E(x, 19, 23, 3, 1.4);
+  // 耳朵
+  x.fillStyle = '#fcc08a'; E(x, 6.5, 19, 1.8, 2.2); E(x, 25.5, 19, 1.8, 2.2);
+  x.fillStyle = '#e8a06a'; E(x, 6.5, 19, 0.8, 1.1); E(x, 25.5, 19, 0.8, 1.1);
+  // 脸 + 下巴阴影
+  x.fillStyle = '#fcc08a'; E(x, 16, 18.5, 9, 8.8);
+  x.fillStyle = '#f7b07a'; E(x, 16, 24, 7, 3);
+  // 皇冠底座 + 高光
+  x.fillStyle = '#f0b800'; r(x, 5.5, 8.2, 21, 3.2);
+  x.fillStyle = '#ffe066'; r(x, 5.5, 8.2, 21, 1);
+  // 皇冠尖
+  x.fillStyle = '#ffd23f';
+  x.beginPath();
+  x.moveTo(5.5, 9); x.lineTo(7.5, 2.5); x.lineTo(10.5, 8); x.lineTo(13.5, 1.5);
+  x.lineTo(16, 7); x.lineTo(18.5, 1.5); x.lineTo(21.5, 8); x.lineTo(24.5, 2.5);
+  x.lineTo(26.5, 9); x.closePath(); x.fill();
+  // 尖上宝石
+  x.fillStyle = '#e8362b'; E(x, 7.5, 4.2, 1, 1.1);
+  x.fillStyle = '#2f8fe0'; E(x, 13.5, 3.4, 1, 1.1);
+  x.fillStyle = '#3fa845'; E(x, 18.5, 3.4, 1, 1.1);
+  x.fillStyle = '#e8362b'; E(x, 24.5, 4.2, 1, 1.1);
+  // 底座中央宝石 + 高光
+  x.fillStyle = '#e8362b'; E(x, 16, 9.8, 1.6, 1.6);
+  x.fillStyle = '#ff9b8a'; E(x, 15.5, 9.4, 0.5, 0.5);
+  // 白眉
+  x.fillStyle = '#eeeeee'; r(x, 9.5, 14.2, 4, 1.1); r(x, 18.5, 14.2, 4, 1.1);
+  // 眼
+  x.fillStyle = '#fff'; E(x, 12, 16.2, 2, 2.3); E(x, 20, 16.2, 2, 2.3);
+  x.fillStyle = '#3a5a8a'; E(x, 12.3, 16.5, 1, 1.3); E(x, 19.7, 16.5, 1, 1.3);
+  x.fillStyle = '#1b1e26'; E(x, 12.3, 16.6, 0.5, 0.7); E(x, 19.7, 16.6, 0.5, 0.7);
+  x.fillStyle = '#fff'; E(x, 11.8, 15.8, 0.5, 0.5); E(x, 19.2, 15.8, 0.5, 0.5);
+  // 鼻
+  x.fillStyle = '#f3a86a'; E(x, 16, 19.5, 1.7, 1.5);
+  // 腮红
+  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.5; E(x, 9.5, 20.5, 1.8, 1.2); E(x, 22.5, 20.5, 1.8, 1.2); x.globalAlpha = 1;
+  // 大胡子(白)
+  x.fillStyle = '#f7f7f7';
+  x.beginPath(); x.moveTo(8, 21.5);
+  x.quadraticCurveTo(8.5, 31, 16, 31.5); x.quadraticCurveTo(23.5, 31, 24, 21.5);
+  x.quadraticCurveTo(20, 25, 16, 24.3); x.quadraticCurveTo(12, 25, 8, 21.5); x.fill();
+  // 八字胡
+  x.fillStyle = '#ffffff'; E(x, 13, 21.3, 3, 1.5); E(x, 19, 21.3, 3, 1.5);
+  // 胡须纹理
+  x.strokeStyle = '#d8d8d8'; x.lineWidth = 0.35;
+  x.beginPath(); x.moveTo(12, 25.5); x.lineTo(12.5, 30.5); x.moveTo(16, 25.5); x.lineTo(16, 31);
+  x.moveTo(20, 25.5); x.lineTo(19.5, 30.5); x.stroke();
   return o;
 }
 function drawMarioHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
-  x.fillStyle = '#fcc08a'; E(x, 16, 19, 9, 8.5);
-  x.fillStyle = '#e8362b'; x.beginPath(); x.ellipse(16, 11, 11, 8, 0, Math.PI, 0); x.fill(); r(x, 5, 10, 22, 3);
-  x.fillStyle = '#fff'; E(x, 16, 9, 3, 3); x.fillStyle = '#e8362b'; E(x, 16, 9, 1.2, 1.2);
-  x.fillStyle = '#23314a'; E(x, 12, 18, 1.4, 2); E(x, 20, 18, 1.4, 2);
-  x.fillStyle = '#f3a86a'; E(x, 16, 21, 2.2, 2);                 // 鼻
-  x.fillStyle = '#5a3413'; E(x, 12, 23, 3, 1.6); E(x, 20, 23, 3, 1.6); r(x, 14, 22, 4, 1.4); // 胡子
+  // 耳朵
+  x.fillStyle = '#fcc08a'; E(x, 6, 19.5, 1.9, 2.3); E(x, 26, 19.5, 1.9, 2.3);
+  x.fillStyle = '#e8a06a'; E(x, 6, 19.5, 0.8, 1.1); E(x, 26, 19.5, 0.8, 1.1);
+  // 脸 + 下巴阴影
+  x.fillStyle = '#fcc08a'; E(x, 16, 19.5, 9, 8.6);
+  x.fillStyle = '#f7b07a'; E(x, 16, 24.5, 6.5, 2.6);
+  // 鬓角
+  x.fillStyle = '#5a3413'; E(x, 7.6, 19, 1.6, 3.2); E(x, 24.4, 19, 1.6, 3.2);
+  // 帽顶 + 阴影带
+  x.fillStyle = '#e8362b'; x.beginPath(); x.ellipse(16, 12, 11, 8.5, 0, Math.PI, 0); x.fill();
+  x.fillStyle = '#c0241b'; r(x, 5, 11.4, 22, 1.6);
+  // 帽檐
+  x.fillStyle = '#d42b20'; x.beginPath(); x.ellipse(15.5, 13.4, 12.5, 2.6, 0, Math.PI, 0); x.fill();
+  x.fillStyle = '#ff6d5c'; E(x, 11, 8, 3, 1.6);
+  // 帽徽 M
+  x.fillStyle = '#fff'; E(x, 16, 8.8, 3, 3);
+  x.fillStyle = '#e8362b'; x.font = 'bold 5px system-ui, sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText('M', 16, 9);
+  // 眉
+  x.fillStyle = '#5a3413'; r(x, 10, 14.4, 3.4, 1); r(x, 18.6, 14.4, 3.4, 1);
+  // 眼
+  x.fillStyle = '#fff'; E(x, 12.2, 16.6, 1.9, 2.4); E(x, 19.8, 16.6, 1.9, 2.4);
+  x.fillStyle = '#3a5a8a'; E(x, 12.6, 16.9, 0.95, 1.4); E(x, 19.4, 16.9, 0.95, 1.4);
+  x.fillStyle = '#1b1e26'; E(x, 12.6, 17, 0.5, 0.8); E(x, 19.4, 17, 0.5, 0.8);
+  x.fillStyle = '#fff'; E(x, 12.1, 16.1, 0.5, 0.5); E(x, 18.9, 16.1, 0.5, 0.5);
+  // 鼻
+  x.fillStyle = '#f3a86a'; E(x, 16, 19.8, 2.4, 2.1);
+  x.fillStyle = '#ffb380'; E(x, 15.2, 19.3, 0.7, 0.6);
+  // 腮红
+  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.55; E(x, 10, 21, 1.7, 1.2); E(x, 22, 21, 1.7, 1.2); x.globalAlpha = 1;
+  // 八字胡
+  x.fillStyle = '#5a3413';
+  x.beginPath(); x.moveTo(11, 21.6);
+  x.quadraticCurveTo(13, 20.9, 16, 21.6); x.quadraticCurveTo(19, 20.9, 21, 21.6);
+  x.quadraticCurveTo(19.5, 24, 16, 23); x.quadraticCurveTo(12.5, 24, 11, 21.6); x.fill();
+  // 嘴
+  x.strokeStyle = '#a23b2b'; x.lineWidth = 0.5; x.beginPath(); x.arc(16, 23.6, 1.6, 0.2, Math.PI - 0.2); x.stroke();
   return o;
 }
 function drawBowserHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
-  x.fillStyle = '#5aa83f'; E(x, 17, 19, 11, 9);                  // 绿头
-  x.fillStyle = '#e0c060'; E(x, 17, 24, 7, 4);                   // 口鼻
-  x.fillStyle = '#f4f0e0';                                       // 角
-  x.beginPath(); x.moveTo(7, 10); x.lineTo(10, 3); x.lineTo(12, 11); x.fill();
-  x.beginPath(); x.moveTo(27, 10); x.lineTo(24, 3); x.lineTo(22, 11); x.fill();
-  x.fillStyle = '#e87a1a'; r(x, 11, 6, 12, 4);                   // 橙发
-  x.fillStyle = '#fff'; E(x, 13, 16, 2.4, 2.6); E(x, 21, 16, 2.4, 2.6);
-  x.fillStyle = '#23314a'; E(x, 13.5, 16.5, 1.1, 1.4); E(x, 20.5, 16.5, 1.1, 1.4);
-  x.fillStyle = '#fff'; r(x, 13, 26, 2, 2); r(x, 19, 26, 2, 2);  // 小牙(友好)
+  // 橙色鬃毛
+  x.fillStyle = '#e87a1a';
+  E(x, 8, 8.5, 2.4, 2.4); E(x, 12, 6.5, 2.6, 2.6); E(x, 16, 5.6, 2.8, 2.8); E(x, 20, 6.5, 2.6, 2.6); E(x, 24, 8.5, 2.4, 2.4);
+  x.fillStyle = '#c75e0e'; E(x, 10, 7.5, 1.3, 1.3); E(x, 16, 6.4, 1.4, 1.4); E(x, 22, 7.5, 1.3, 1.3);
+  // 角(带阴影)
+  x.fillStyle = '#f4f0e0';
+  x.beginPath(); x.moveTo(6.5, 11.5); x.lineTo(8.5, 3.5); x.lineTo(11, 11.5); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(25.5, 11.5); x.lineTo(23.5, 3.5); x.lineTo(21, 11.5); x.closePath(); x.fill();
+  x.fillStyle = '#d8d2bc'; x.beginPath(); x.moveTo(8.5, 3.5); x.lineTo(9.7, 7.5); x.lineTo(11, 11.5); x.lineTo(9.6, 11.5); x.closePath(); x.fill();
+  // 头 + 下半阴影
+  x.fillStyle = '#6abf45'; E(x, 16, 18, 11, 9.5);
+  x.fillStyle = '#5aa83f'; E(x, 16, 22.5, 9.5, 5.5);
+  // 眉骨
+  x.fillStyle = '#4f9636'; r(x, 8, 13.5, 16, 2.2);
+  // 眉(凶萌)
+  x.fillStyle = '#3f7a2c';
+  x.beginPath(); x.moveTo(9, 13.8); x.lineTo(14, 15.4); x.lineTo(14, 16.4); x.lineTo(9, 15.4); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(23, 13.8); x.lineTo(18, 15.4); x.lineTo(18, 16.4); x.lineTo(23, 15.4); x.closePath(); x.fill();
+  // 口鼻 + 鼻孔
+  x.fillStyle = '#e8cf86'; E(x, 16, 23, 7.5, 4.5);
+  x.fillStyle = '#d8bc6e'; E(x, 16, 25, 6, 2.4);
+  x.fillStyle = '#7a5a2a'; E(x, 13.5, 22, 0.7, 0.5); E(x, 18.5, 22, 0.7, 0.5);
+  // 眼
+  x.fillStyle = '#fff'; E(x, 12.5, 17, 2.4, 2.7); E(x, 19.5, 17, 2.4, 2.7);
+  x.fillStyle = '#e8a020'; E(x, 12.8, 17.2, 1.3, 1.7); E(x, 19.2, 17.2, 1.3, 1.7);
+  x.fillStyle = '#1b1e26'; E(x, 12.9, 17.4, 0.7, 1.1); E(x, 19.1, 17.4, 0.7, 1.1);
+  x.fillStyle = '#fff'; E(x, 12.3, 16.5, 0.5, 0.5); E(x, 18.9, 16.5, 0.5, 0.5);
+  // 嘴 + 獠牙
+  x.fillStyle = '#7a3b16'; x.beginPath(); x.ellipse(16, 26, 4.5, 1.7, 0, 0, Math.PI); x.fill();
+  x.fillStyle = '#fff';
+  x.beginPath(); x.moveTo(12.6, 25.6); x.lineTo(13.8, 25.6); x.lineTo(13.1, 27.8); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(19.4, 25.6); x.lineTo(18.2, 25.6); x.lineTo(18.9, 27.8); x.closePath(); x.fill();
   return o;
 }
 function drawHeraldHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
-  x.fillStyle = '#fcc08a'; E(x, 16, 19, 8.5, 8);
-  x.fillStyle = '#2fa85a'; x.beginPath(); x.ellipse(16, 10, 10, 5, 0, Math.PI, 0); x.fill(); r(x, 6, 9, 20, 2);
-  x.fillStyle = '#ffd23f'; x.beginPath(); x.moveTo(24, 9); x.lineTo(30, 4); x.lineTo(26, 11); x.fill(); // 羽毛
-  x.fillStyle = '#23314a'; E(x, 12, 19, 1.3, 1.7); E(x, 20, 19, 1.3, 1.7);
-  x.strokeStyle = '#a23b2b'; x.lineWidth = 1.2; x.beginPath(); x.arc(16, 22, 3, 0.2, Math.PI - 0.2); x.stroke();
+  // 耳朵
+  x.fillStyle = '#fcc08a'; E(x, 7, 20, 1.7, 2.1); E(x, 25, 20, 1.7, 2.1);
+  // 脸 + 下巴阴影
+  x.fillStyle = '#fcc08a'; E(x, 16, 20, 8.5, 8.2);
+  x.fillStyle = '#f7b07a'; E(x, 16, 25, 6, 2.4);
+  // 头发(棕)
+  x.fillStyle = '#7a4a22'; x.beginPath(); x.ellipse(16, 13.5, 9.3, 5, 0, Math.PI, 0); x.fill();
+  r(x, 7.2, 13, 3.5, 3); r(x, 21.3, 13, 3.5, 3);
+  // 帽(绿)+ 帽带 + 高光
+  x.fillStyle = '#2fa85a'; x.beginPath(); x.ellipse(16, 11.5, 9.5, 6, 0, Math.PI, 0); x.fill();
+  x.fillStyle = '#237a42'; r(x, 6.5, 11, 19, 1.7);
+  x.fillStyle = '#3fce72'; E(x, 12, 8, 2.6, 1.4);
+  // 羽毛
+  x.fillStyle = '#ffd23f'; x.beginPath(); x.moveTo(23, 9.5); x.quadraticCurveTo(30, 3.5, 31, 8.5); x.quadraticCurveTo(27, 8.5, 24, 11.5); x.fill();
+  x.strokeStyle = '#e0a800'; x.lineWidth = 0.35; x.beginPath(); x.moveTo(24.5, 10.5); x.lineTo(29.5, 6.5); x.stroke();
+  // 眉
+  x.fillStyle = '#7a4a22'; r(x, 10.5, 16, 3, 0.9); r(x, 18.5, 16, 3, 0.9);
+  // 眼
+  x.fillStyle = '#fff'; E(x, 12.5, 18, 1.7, 2.1); E(x, 19.5, 18, 1.7, 2.1);
+  x.fillStyle = '#5a7a3a'; E(x, 12.7, 18.2, 0.9, 1.2); E(x, 19.3, 18.2, 0.9, 1.2);
+  x.fillStyle = '#1b1e26'; E(x, 12.7, 18.3, 0.5, 0.7); E(x, 19.3, 18.3, 0.5, 0.7);
+  x.fillStyle = '#fff'; E(x, 12.2, 17.6, 0.4, 0.4); E(x, 18.9, 17.6, 0.4, 0.4);
+  // 鼻
+  x.fillStyle = '#f3a86a'; E(x, 16, 20.6, 1.4, 1.3);
+  // 腮红
+  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.5; E(x, 10.5, 21.8, 1.5, 1); E(x, 21.5, 21.8, 1.5, 1); x.globalAlpha = 1;
+  // 笑
+  x.strokeStyle = '#a23b2b'; x.lineWidth = 0.6; x.beginPath(); x.arc(16, 22.4, 3, 0.25, Math.PI - 0.25); x.stroke();
   return o;
 }
 
 function drawPrincessHead() {
   const o = mk(128, 128), x = o.cx; x.scale(4, 4);
-  x.fillStyle = '#e9c46a'; E(x, 16, 17, 11, 10);            // 金发
-  x.fillStyle = '#fcc08a'; E(x, 16, 19, 8, 7.5);            // 脸
-  x.fillStyle = '#ffd23f';                                  // 皇冠
-  x.beginPath(); x.moveTo(9, 7); x.lineTo(11, 2); x.lineTo(13, 7); x.lineTo(16, 1);
-  x.lineTo(19, 7); x.lineTo(21, 2); x.lineTo(23, 7); x.closePath(); x.fill();
-  r(x, 9, 6, 14, 2);
-  x.fillStyle = '#ff5d8f'; r(x, 15, 2, 2, 2);               // 宝石
-  x.fillStyle = '#23314a'; E(x, 12.5, 18, 1.3, 1.7); E(x, 19.5, 18, 1.3, 1.7); // 眼
-  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.7; E(x, 10, 21, 1.6, 1.1); E(x, 22, 21, 1.6, 1.1); x.globalAlpha = 1;
-  x.strokeStyle = '#d4548c'; x.lineWidth = 1.2; x.beginPath(); x.arc(16, 21, 2.5, 0.2, Math.PI - 0.2); x.stroke();
+  // 头发(金,带侧发与高光)
+  x.fillStyle = '#f0c44e'; E(x, 16, 17.5, 11.5, 11);
+  x.fillStyle = '#e0b03a'; E(x, 6.8, 22, 2.6, 4.2); E(x, 25.2, 22, 2.6, 4.2);
+  x.fillStyle = '#ffe07a'; E(x, 11.5, 11, 4, 2.2);
+  // 脸
+  x.fillStyle = '#fcc08a'; E(x, 16, 19.8, 7.8, 7.6);
+  // 皇冠
+  x.fillStyle = '#ffd23f';
+  x.beginPath(); x.moveTo(9.5, 8.5); x.lineTo(11.5, 3.5); x.lineTo(13.5, 8); x.lineTo(16, 2.5);
+  x.lineTo(18.5, 8); x.lineTo(20.5, 3.5); x.lineTo(22.5, 8.5); x.closePath(); x.fill();
+  x.fillStyle = '#f0b800'; r(x, 9.5, 8, 13, 1.6);
+  x.fillStyle = '#ff5d8f'; E(x, 16, 4.5, 1.1, 1.1);
+  x.fillStyle = '#5fb8e0'; E(x, 11.5, 5.5, 0.8, 0.8); E(x, 20.5, 5.5, 0.8, 0.8);
+  // 眉
+  x.fillStyle = '#caa03a'; r(x, 10.8, 15.8, 2.8, 0.7); r(x, 18.4, 15.8, 2.8, 0.7);
+  // 眼(大,带睫毛与高光)
+  x.fillStyle = '#fff'; E(x, 12.5, 18.2, 1.9, 2.4); E(x, 19.5, 18.2, 1.9, 2.4);
+  x.fillStyle = '#4a86c0'; E(x, 12.7, 18.4, 1.1, 1.5); E(x, 19.3, 18.4, 1.1, 1.5);
+  x.fillStyle = '#1b1e26'; E(x, 12.7, 18.6, 0.6, 0.9); E(x, 19.3, 18.6, 0.6, 0.9);
+  x.fillStyle = '#fff'; E(x, 12.2, 17.6, 0.5, 0.5); E(x, 18.9, 17.6, 0.5, 0.5);
+  x.strokeStyle = '#5a3a1a'; x.lineWidth = 0.4;
+  x.beginPath(); x.moveTo(10.6, 16.8); x.lineTo(11.4, 17.4); x.moveTo(21.4, 16.8); x.lineTo(20.6, 17.4); x.stroke();
+  // 鼻
+  x.fillStyle = '#f3a86a'; E(x, 16, 20.6, 0.8, 0.7);
+  // 腮红
+  x.fillStyle = '#ff9bb0'; x.globalAlpha = 0.6; E(x, 11, 21.8, 1.7, 1.2); E(x, 21, 21.8, 1.7, 1.2); x.globalAlpha = 1;
+  // 嘴唇
+  x.fillStyle = '#e85d8f'; x.beginPath(); x.moveTo(14.5, 22.8); x.quadraticCurveTo(16, 24, 17.5, 22.8); x.quadraticCurveTo(16, 23.2, 14.5, 22.8); x.fill();
+  // 耳环
+  x.fillStyle = '#5fb8e0'; E(x, 8.4, 23, 0.7, 0.9); E(x, 23.6, 23, 0.7, 0.9);
   return o;
 }
 
