@@ -19,12 +19,13 @@ export const PLAYER = {
 };
 
 export const FORGIVE = { coyote: 0.10, jumpBuffer: 0.12 };
+export const HIT_INVULN = 0.7; // brief i-frames after taking a hit (HP system, spec §3.4 overridden for kid)
 
 // Difficulty modes. M1 starts in casual; classic fields are present so later
 // milestones (M3) can switch without reshaping data.
 export const MODES = {
-  casual:  { id: 'casual',  label: '休闲', sub: '无限复活·儿童友好', lives: Infinity, enemyMul: 0.85, invuln: 2.0, loseWeaponOnDeath: false },
-  classic: { id: 'classic', label: '经典', sub: '3 命·经典还原',     lives: 3,        enemyMul: 1.0,  invuln: 1.5, loseWeaponOnDeath: true  },
+  casual:  { id: 'casual',  label: '休闲', sub: '无限复活·儿童友好', lives: Infinity, hp: 5, enemyMul: 0.85, invuln: 2.0, loseWeaponOnDeath: false },
+  classic: { id: 'classic', label: '经典', sub: '3 命·经典还原',     lives: 3,        hp: 3, enemyMul: 1.0,  invuln: 1.5, loseWeaponOnDeath: true  },
 };
 
 // Tile legend: char -> tile-type NAME. parseLevel converts the char grid to a NAME

@@ -55,6 +55,7 @@ const SFX = {
   pickup() { [659, 988, 1319].forEach((f, i) => tone(f, 0.1, 'triangle', 0.1, i * 0.05)); },
   barrier() { tone(330, 0.18, 'sine', 0.1); tone(495, 0.22, 'sine', 0.08, 0.06); },
   combo() { tone(1319, 0.05, 'square', 0.07); },
+  hurt() { slide(440, 180, 0.18, 'sawtooth', 0.1); },
 };
 
 export const Sound = {

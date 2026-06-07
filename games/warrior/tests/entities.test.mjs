@@ -89,6 +89,25 @@ test('player death + respawn restores control in place with i-frames', () => {
   assert.ok(p.invuln > 0);
 });
 
+test('the player has HP and dies only after maxHp hits', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.maxHp = 5; p.hp = 5;
+  for (let i = 0; i < 4; i++) { p.invuln = 0; assert.equal(p.takeDamage(w), false, `hit ${i + 1} is non-fatal`); }
+  assert.equal(p.hp, 1);
+  p.invuln = 0;
+  assert.equal(p.takeDamage(w), true, 'the 5th hit kills');
+  assert.ok(p.dying > 0);
+});
+
+test('respawn refills HP to max', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.maxHp = 5; p.hp = 1;
+  p.respawn(2 * TILE, 5 * TILE - 30, 2);
+  assert.equal(p.hp, 5);
+});
+
 test('holding down on the ground makes the player prone with a shorter hitbox', () => {
   const w = flatWorld();
   const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;

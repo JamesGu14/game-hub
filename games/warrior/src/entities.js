@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS, BOSSES, RAPID, RAPID_COOLDOWN_MUL, ENEMY_RANGED } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, HIT_INVULN, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER, FALCON, PICKUP, PICKUPS, BOSSES, RAPID, RAPID_COOLDOWN_MUL, ENEMY_RANGED } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -27,6 +27,7 @@ export class Player {
     this.prone = false;
     this.barrier = 0;
     this.rapid = 0; // R stacks
+    this.maxHp = 5; this.hp = 5; // HP system (game sets from mode.hp)
   }
 
   update(dt, world) {
@@ -101,11 +102,15 @@ export class Player {
   giveRapid() { this.rapid = Math.min(RAPID.maxStacks, this.rapid + 1); }
   isInvulnerable() { return this.invuln > 0 || this.barrier > 0 || this.dying > 0; }
 
-  // One hit = down (spec §3.4). Returns true if this hit started a death.
+  // HP system: a hit costs 1 HP + grants brief i-frames; only a hit at 0 HP kills.
+  // (Overrides spec §3.4 one-hit-down — kid-friendly, per playtest.) Returns true on death.
   takeDamage(world) {
     if (this.isInvulnerable()) return false;
-    this.startDeath(world);
-    return true;
+    this.hp -= 1;
+    if (this.hp <= 0) { this.startDeath(world); return true; }
+    this.invuln = HIT_INVULN;
+    world.playSound('hurt');
+    return false;
   }
 
   startDeath(world) {
@@ -117,6 +122,7 @@ export class Player {
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
     this.dying = 0; this.dead = false; this.onGround = false;
     this.invuln = invuln;
+    this.hp = this.maxHp;
   }
 
   frame() {

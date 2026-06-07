@@ -256,9 +256,17 @@ export class Renderer {
       ctx.fillText(`🔫${wl}${r}`, 178, cy);
       ctx.font = 'bold 15px system-ui, sans-serif';
     }
+    const p = game.player;
+    if (p) {
+      const segW = 13, segH = 12, gap = 2;
+      const x0 = FIELD.W - 58 - p.maxHp * (segW + gap);
+      for (let i = 0; i < p.maxHp; i++) {
+        ctx.fillStyle = i < p.hp ? '#ff5a5f' : 'rgba(255,255,255,0.22)';
+        ctx.fillRect(x0 + i * (segW + gap), cy - segH / 2, segW, segH);
+      }
+    }
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
-    const livesTxt = game.mode.lives === Infinity ? '复活 ∞' : `❤️ ${game.lives}`;
-    ctx.fillText(livesTxt, FIELD.W - 56, cy);
+    ctx.fillText(game.mode.lives === Infinity ? '∞' : `×${game.lives}`, FIELD.W - 56, cy);
     ctx.textAlign = 'center';
     ctx.fillText(`${game.level ? game.level.name : ''}`, FIELD.W / 2, cy);
   }

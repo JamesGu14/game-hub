@@ -98,6 +98,8 @@ export class Game {
     const sp = this._safeSpawn(lv.spawn.x, lv.spawn.y);
     this.player = new Player(sp.x, sp.y);
     this.player.weapon = DEFAULT_WEAPON;
+    this.player.maxHp = this.mode.hp || 5;
+    this.player.hp = this.player.maxHp;
     this.enemies = lv.enemies.map((e) => this._makeEnemy(e.type, e.x, e.y));
     this.bullets = [];
     this.particles = [];

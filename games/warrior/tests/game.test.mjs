@@ -135,12 +135,13 @@ test('konami unlock grants 30 lives in classic and sets the saved flag', () => {
   assert.equal(Save.getKonami(), true);
 });
 
-test('a hostile enemy bullet damages the player (casual respawn, no crash)', () => {
+test('a hostile enemy bullet costs the player 1 HP (no crash, still playing)', () => {
   const g = freshGame();
   const p = g.player; p.invuln = 0; p.barrier = 0;
+  const hp0 = p.hp;
   g._world.spawnEnemyBullet({ x: p.x + 2, y: p.y + 4, vx: 0, vy: 0, dmg: 1, life: 2 });
-  g.update(1 / 60); // overlaps the player -> should register the hit
-  assert.ok(p.dying > 0 || g.deaths > 0, 'hostile bullet started the death/respawn');
-  for (let i = 0; i < 150; i++) g.update(1 / 60);
-  assert.equal(g.state, 'playing'); // casual: respawned, still playing
+  g.update(1 / 60); // overlaps the player -> registers the hit
+  assert.ok(p.hp < hp0 || p.dying > 0, 'hostile bullet cost HP');
+  for (let i = 0; i < 60; i++) g.update(1 / 60);
+  assert.equal(g.state, 'playing');
 });
