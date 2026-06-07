@@ -1,0 +1,89 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { TILE, MODES } from '../src/config.js';
+import { Player, Runner, Jumper, Bullet } from '../src/entities.js';
+
+// floor at row 5 across the width; everything above is empty
+function flatWorld(extra = {}) {
+  const cols = 30, rows = 8;
+  const grid = Array.from({ length: rows }, (_, r) =>
+    Array.from({ length: cols }, () => (r === 5 ? 'ground' : null)));
+  const sounds = [];
+  const world = {
+    grid,
+    enemies: [], bullets: [], particles: [],
+    mode: MODES.casual,
+    player: null,
+    input: { intent: { moveX: 0, aimUp: false, aimDown: false, jumpHeld: false, fireHeld: false } },
+    scored: 0,
+    addScore(n) { this.scored += n; },
+    spawnBullets(specs) { for (const s of specs) this.bullets.push(new Bullet(s)); },
+    playSound(id) { sounds.push(id); },
+    shake() {}, addFloatText() {}, spawnParticles() {},
+    _sounds: sounds,
+    ...extra,
+  };
+  return world;
+}
+
+test('player walks right when intent.moveX = 1 and faces right', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  w.input.intent.moveX = 1;
+  for (let i = 0; i < 30; i++) p.update(1 / 60, w);
+  assert.ok(p.x > 2 * TILE, 'moved right');
+  assert.equal(p.faceRight, true);
+});
+
+test('holding fire spawns a bullet traveling in the aim direction', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.faceRight = true;
+  w.input.intent.fireHeld = true;
+  p.update(1 / 60, w);
+  assert.equal(w.bullets.length, 1);
+  assert.ok(w.bullets[0].vx > 0, 'bullet moves right');
+  assert.ok(w._sounds.includes('shoot'));
+});
+
+test('fire respects cooldown (no second bullet next frame)', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  w.input.intent.fireHeld = true;
+  p.update(1 / 60, w);
+  p.update(1 / 60, w);
+  assert.equal(w.bullets.length, 1);
+});
+
+test('a bullet kills a Runner and awards score', () => {
+  const w = flatWorld();
+  const e = new Runner(10 * TILE, 4 * TILE); w.enemies.push(e); // spawn ABOVE the floor row
+  const b = new Bullet({ x: e.x - 5, y: e.y + 4, vx: 600, vy: 0, dmg: 1, pierce: false, life: 1 });
+  w.bullets.push(b);
+  for (let i = 0; i < 5 && !e.dead; i++) b.update(1 / 60, w);
+  assert.equal(e.dead, true);
+  assert.equal(b.dead, true);     // non-pierce bullet dies on hit
+  assert.equal(w.scored, e.score);
+});
+
+test('a Runner turns around at a wall', () => {
+  const w = flatWorld();
+  // wall at col 12 from row 0..5
+  for (let r = 0; r <= 5; r++) w.grid[r][12] = 'block';
+  const e = new Runner(11 * TILE, 4 * TILE); w.enemies.push(e); // spawn ABOVE the floor row
+  e.vx = Math.abs(e.vx); // force it to walk right into the wall
+  let turned = false;
+  for (let i = 0; i < 120; i++) { e.update(1 / 60, w); if (e.vx < 0) { turned = true; break; } }
+  assert.equal(turned, true);
+});
+
+test('player death + respawn restores control in place with i-frames', () => {
+  const w = flatWorld();
+  const p = new Player(4 * TILE, 5 * TILE - 30); w.player = p;
+  p.startDeath(w);
+  assert.ok(p.dying > 0);
+  p.respawn(4 * TILE, 5 * TILE - 30, MODES.casual.invuln);
+  assert.equal(p.dying, 0);
+  assert.equal(p.dead, false);
+  assert.ok(p.invuln > 0);
+});
