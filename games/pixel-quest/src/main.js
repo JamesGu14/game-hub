@@ -21,6 +21,7 @@ const overlays = {
   levelclear: el('overlay-levelclear'),
   gameover: el('overlay-gameover'),
   win: el('overlay-win'),
+  dialogue: el('overlay-dialogue'),
 };
 
 function showOverlay(name) {
@@ -57,6 +58,8 @@ el('btn-retry').addEventListener('click', () => game.continueRun());
 el('btn-go-menu').addEventListener('click', () => (game.state = 'menu'));
 el('btn-win-retry').addEventListener('click', () => game.startGame(game.mode.id));
 el('btn-win-menu').addEventListener('click', () => (game.state = 'menu'));
+// 对话:点击弹窗任意处(含 ▶ 区域,事件冒泡)推进一句。只挂在容器上,避免重复推进。
+el('overlay-dialogue').addEventListener('click', () => game.advanceDialogue());
 
 // Mute toggle (top-right).
 const muteBtn = el('btn-mute');
@@ -137,6 +140,7 @@ function handleConfirm() {
     case 'story': game.beginAfterStory(); break;
     case 'ready': game.confirm(); break;
     case 'paused': game.togglePause(); break;
+    case 'dialogue': game.advanceDialogue(); break;
     case 'levelclear':
     case 'gameover':
     case 'win': game.confirm(); break;
@@ -145,10 +149,32 @@ function handleConfirm() {
 
 // ---- Overlay text sync ----------------------------------------------------
 let lastState = null;
+let _lastDlgNode = null; // 对话当前节点的脏标记(state 不变但 index 变时需刷新)
 function syncOverlays() {
   const s = game.state;
   const overlayName = (s === 'playing' || s === 'ready') ? null : (s in overlays ? s : null);
   showOverlay(overlayName);
+
+  // 对话节点刷新:state 一直是 'dialogue' 但 index 会变,不能走 lastState 短路。
+  if (s === 'dialogue') {
+    const node = game.currentDialogueNode();
+    if (node !== _lastDlgNode) {
+      _lastDlgNode = node;
+      if (node) {
+        el('dlg-speaker').textContent = node.speaker;
+        el('dlg-text').textContent = node.text;
+        const cv = Sprites.portrait(node.portrait);
+        const pc = el('dlg-portrait');
+        const px = pc.getContext('2d');
+        px.imageSmoothingEnabled = false;
+        px.clearRect(0, 0, pc.width, pc.height);
+        // 头像按原始像素尺寸居中绘制(画布 40×40,CSS 放大到 96 pixelated)
+        px.drawImage(cv, Math.floor((pc.width - cv.width) / 2), Math.floor((pc.height - cv.height) / 2));
+      }
+    }
+  } else if (_lastDlgNode !== null) {
+    _lastDlgNode = null;
+  }
 
   // Touch controls visible only during gameplay.
   const tc = el('touch-controls');
