@@ -97,7 +97,7 @@ const lvl4 = {
     'X                                                                                                                      X',
     'X                      o o                                  o o                          o o                          X',
     'X                  ===                       ===   c                        ===                     ==                 X',
-    'X    @   g                  k          g                  g       k          g           k          g          F   A   X',
+    'X    @   g                  k          g                  g       k          g           k          g          F       X',
     'X############   ###############   ############   ###########   ###########   ############   ############   ###########XX',
     'X############   ###############   ############   ###########   ###########   ############   ############   ###########XX',
     'X############   ###############   ############   ###########   ###########   ############   ############   ###########XX',
@@ -232,7 +232,116 @@ const lvlNight = {
   ],
 };
 
-export const LEVELS = [lvl1, lvl2, lvl3, lvlLava, lvlSnow, lvlDesert, lvlForest, lvlBeach, lvlNight, lvl4];
+// ---------------------------------------------------------------------------
+// World 3 (3-1 毒沼泽 … 3-5 终焉魔城) — the endgame world. 3-1..3-4 end at a flag;
+// the grand finale 3-5 is castle-only (no flag), so reaching the castle fires the
+// victory cutscene + win. Authored by parallel agents, all verifier-checked.
+const lvlSwamp = {
+  id: '3-1', name: '毒沼泽', theme: 'swamp', time: 360,
+  rows: [
+    '                                                                                                                    ',
+    '                                                                                                                    ',
+    '                                                                                                                    ',
+    '                                                                                                                    ',
+    '                                                                                                                    ',
+    '        ?               b ?             M                      ooo                       ooo                        ',
+    '             o     o           o             o     o            o                         o        o                ',
+    '                                                                                                                    ',
+    '                  ===                             ===          ===                       ===                  F     ',
+    '    @   g               g g         k                   c               k g                             g   k       ',
+    '############   ###   #########   ###########   ###   #######         #########   #####         ###   ###############',
+    '############   ###   #########   ###########   ###   #######         #########   #####         ###   ###############',
+    '############   ###   #########   ###########   ###   #######         #########   #####         ###   ###############',
+    '############   ###   #########   ###########   ###   #######         #########   #####         ###   ###############',
+  ],
+};
+
+const lvlCrystal = {
+  id: '3-2', name: '水晶矿洞', theme: 'crystal', time: 360,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X           X               X                     X                   X                   X                 X      X',
+    'X           X               X                     X                   X                   X                 X      X',
+    'X                                                                                                                  X',
+    'X                                                                 *                                                X',
+    'X        M              ?                            ?                                        ?                    X',
+    'X       o o                                                      ooo                                               X',
+    'X                      ooo                          ooo         =====                        ooo                   X',
+    'X                     =====            XX          =====                                    =====        ooo  F    X',
+    'X   @  g     k                     g XX    k       c     g             g        XXX k            g                 X',
+    'X###############   ###########   ############   ###########   ###########   ##########   ##########   #############X',
+    'X###############   ###########   ############   ###########   ###########   ##########   ##########   #############X',
+    'X###############   ###########   ############   ###########   ###########   ##########   ##########   #############X',
+    'X###############   ###########   ############   ###########   ###########   ##########   ##########   #############X',
+  ],
+};
+
+const lvlStorm = {
+  id: '3-3', name: '雷暴天际', theme: 'storm', time: 360,
+  rows: [
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '                                                                                                                      ',
+    '         ?                        *                                                      ??                           ',
+    '                ooo    ooo  ooo           ooo   ooo  ooo             ooo   ooo  ooo                 ooo    ooo        ',
+    '                       ===  ===                 ===  ===                   ===  === ===             ===    ===        ',
+    '                       ===  ===                 ===  ===                   ===  === ===                          F    ',
+    '    @   gg                         kg                        cgk                          g       k     g             ',
+    '############   ######           ######   #####             ######   #####              ######   ######################',
+    '############   ######           ######   #####             ######   #####              ######   ######################',
+    '############   ######           ######   #####             ######   #####              ######   ######################',
+    '############   ######           ######   #####             ######   #####              ######   ######################',
+  ],
+};
+
+const lvlSteel = {
+  id: '3-4', name: '钢铁要塞', theme: 'steel', time: 370,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X    M                  *          ??                                    BB                        ?                   X',
+    'X   ooo     o     o           oooo          o       o   o            oooo      o               o         oooo          X',
+    'X                      XX     ====[]            X                    ====         XX []                                X',
+    'X       []            XXXX        []           XX  === ===               []       XX []              []  ====    F     X',
+    'X  @   g[]g           XkgX        []gk         Xg         kg    c        []k g    Xgk[]           gk []                X',
+    'X#######[]#   ###   #######   ####[]##  ###   #####       ##   ###   ####[]###   ####[]##  ###   ####[]################X',
+    'X#######[]#   ###   #######   ####[]##  ###   #####       ##   ###   ####[]###   ####[]##  ###   ####[]################X',
+    'X#######[]#   ###   #######   ####[]##  ###   #####       ##   ###   ####[]###   ####[]##  ###   ####[]################X',
+    'X#######[]#   ###   #######   ####[]##  ###   #####       ##   ###   ####[]###   ####[]##  ###   ####[]################X',
+  ],
+};
+
+// 3-5 终焉魔城 — GRAND FINALE. Castle-only (the agent's flag 'F' was swapped to the
+// castle 'A' so reaching it triggers _winGame → the kneel/crown/confetti cutscene).
+const lvlAbyss = {
+  id: '3-5', name: '终焉魔城', theme: 'abyss', time: 400,
+  rows: [
+    'XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                                                                                                      X',
+    'X                                 ?     ?                                   *                                          X',
+    'X     M                            o  o  o                                            ??             oooo              X',
+    'X       oooo                          XXXX          o    o  o            ooooo                o  o                     X',
+    'X                                  XX XXXX XX                                                                 XX       X',
+    'X   @    gg       k        gk    X XX XXXX XX  g   ===  === ==  kc  gg     k       gk     k  === ==   gg     XXX A  g  X',
+    'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
+    'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
+    'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
+    'X############   ######   #########################             #######   #####   ###########        #####   ###########X',
+  ],
+};
+
+export const LEVELS = [
+  lvl1, lvl2, lvl3, lvlLava, lvlSnow, lvlDesert, lvlForest, lvlBeach, lvlNight, lvl4,
+  lvlSwamp, lvlCrystal, lvlStorm, lvlSteel, lvlAbyss,
+];
 
 // ---------------------------------------------------------------------------
 // Parse a level definition into a usable world description.
