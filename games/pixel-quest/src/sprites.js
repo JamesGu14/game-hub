@@ -389,4 +389,8 @@ export const Sprites = {
   // theme colors are injected by render.js so tile() can stay pure
   _themes: {},
   setThemes(themes) { Sprites._themes = themes; cache.clear(); },
+  // Drop every cached sprite canvas so they rebuild on next use. Called by the
+  // renderer to self-heal after a draw error (e.g. an offscreen canvas blanked /
+  // evicted under iOS Safari memory pressure) and when returning to a backgrounded tab.
+  clearCache() { cache.clear(); },
 };

@@ -24,7 +24,10 @@ export class Renderer {
   resize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
-    this.dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // Cap DPR at 1.5: pixel art is nearest-neighbour upscaled, so 1.5 looks crisp
+    // while cutting the canvas backing store ~44% vs 2.0 — less fillrate (smoother)
+    // and less canvas memory (a likely factor in the iPad black-screen).
+    this.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
     this.canvas.width = Math.floor(w * this.dpr);
     this.canvas.height = Math.floor(h * this.dpr);
     this.canvas.style.width = w + 'px';
@@ -32,58 +35,82 @@ export class Renderer {
     this.scale = Math.min(w / FIELD.W, h / FIELD.H);
     this.offsetX = (w - FIELD.W * this.scale) / 2;
     this.offsetY = (h - FIELD.H * this.scale) / 2;
+    this._skyKey = null; // force the cached sky gradient to rebuild at the new size
   }
 
   render(game) {
     const ctx = this.ctx;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    try {
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Enter field-space.
-    ctx.setTransform(
-      this.scale * this.dpr, 0, 0, this.scale * this.dpr,
-      this.offsetX * this.dpr, this.offsetY * this.dpr,
-    );
-    ctx.imageSmoothingEnabled = false;
+      // Enter field-space.
+      ctx.setTransform(
+        this.scale * this.dpr, 0, 0, this.scale * this.dpr,
+        this.offsetX * this.dpr, this.offsetY * this.dpr,
+      );
+      ctx.imageSmoothingEnabled = false;
 
-    const theme = THEMES[game.level ? game.level.theme : 'overworld'];
+      // Fall back to a known theme if a level ever names one we don't have, so a bad
+      // theme key can't make `theme` undefined and throw inside _sky/_parallax.
+      const theme = (game.level && THEMES[game.level.theme]) || THEMES.overworld;
 
-    // Letterbox "bleed": how far the field extends past 0..FIELD in field units, so
-    // the sky/clouds/hills can fill the whole window instead of leaving black bars.
-    const bleedX = this.offsetX / (this.scale || 1);
-    const bleedY = this.offsetY / (this.scale || 1);
+      // Letterbox "bleed": how far the field extends past 0..FIELD in field units, so
+      // the sky/clouds/hills can fill the whole window instead of leaving black bars.
+      const bleedX = this.offsetX / (this.scale || 1);
+      const bleedY = this.offsetY / (this.scale || 1);
 
-    if (!game.level) {
+      if (!game.level) {
+        this._sky(ctx, theme, bleedX, bleedY);
+        return;
+      }
+
+      const cam = game.camera;
       this._sky(ctx, theme, bleedX, bleedY);
-      return;
+      this._parallax(ctx, theme, cam.x, bleedX, bleedY);
+
+      // Clip gameplay to the field. The try/finally GUARANTEES the matching
+      // restore() even if a draw throws — otherwise one bad frame leaks the clip +
+      // translate onto every following frame, which is exactly the "screen goes
+      // black, only clouds/buttons remain" bug (HUD draws after restore, so it
+      // vanished too). Now the stack is always balanced.
+      ctx.save();
+      try {
+        ctx.beginPath();
+        ctx.rect(0, 0, FIELD.W, FIELD.H);
+        ctx.clip();
+        ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
+        this._tiles(ctx, game, theme, cam);
+        this._flagAndCastle(ctx, game);
+        this._coins(ctx, game);
+        this._powerups(ctx, game);
+        this._enemies(ctx, game);
+        this._fireballs(ctx, game);
+        this._player(ctx, game);
+        if (game.state === 'ending') this._ending(ctx, game);
+        this._particles(ctx, game);
+        this._floatTexts(ctx, game);
+      } finally {
+        ctx.restore();
+      }
+
+      this._hud(ctx, game);
+      if (game.state === 'ready') this._readyBanner(ctx, game);
+    } catch (err) {
+      // Self-heal: under iOS Safari memory pressure an offscreen sprite canvas can
+      // be evicted/blanked, or getContext can fail, throwing mid-frame. Reset the
+      // transform and drop the sprite + sky caches so the next frame rebuilds them
+      // cleanly instead of the screen staying black until reload. Bounded logging
+      // surfaces the real cause if it keeps happening.
+      if ((this._renderErrs = (this._renderErrs || 0) + 1) <= 8) {
+        console.error('[render] frame error — clearing caches to recover:', err);
+      }
+      try { ctx.setTransform(1, 0, 0, 1, 0, 0); } catch (_) { /* ignore */ }
+      this._skyKey = null;
+      Sprites.clearCache();
     }
-
-    const cam = game.camera;
-    this._sky(ctx, theme, bleedX, bleedY);
-    this._parallax(ctx, theme, cam.x, bleedX, bleedY);
-
-    // Clip gameplay to the field so tiles/entities never spill into the sky margins.
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, FIELD.W, FIELD.H);
-    ctx.clip();
-    ctx.translate(-Math.round(cam.x), -Math.round(cam.y));
-    this._tiles(ctx, game, theme, cam);
-    this._flagAndCastle(ctx, game);
-    this._coins(ctx, game);
-    this._powerups(ctx, game);
-    this._enemies(ctx, game);
-    this._fireballs(ctx, game);
-    this._player(ctx, game);
-    if (game.state === 'ending') this._ending(ctx, game);
-    this._particles(ctx, game);
-    this._floatTexts(ctx, game);
-    ctx.restore();
-
-    this._hud(ctx, game);
-    if (game.state === 'ready') this._readyBanner(ctx, game);
   }
 
   _sky(ctx, theme, bleedX, bleedY) {

@@ -67,6 +67,26 @@ body {
   background: rgba(232, 54, 43, 0.85);
 }
 
+#btn-fullscreen {
+  position: fixed;
+  top: 12px;
+  right: 62px; /* sit just left of the mute button */
+  z-index: 9999;
+  width: 42px;
+  height: 42px;
+  border-radius: 999px;
+  background: rgba(30, 20, 45, 0.72);
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  color: #fff;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+#btn-fullscreen:hover {
+  background: rgba(232, 54, 43, 0.85);
+}
+
 /* ---- Overlays ----------------------------------------------------------- */
 .overlay {
   position: fixed;

@@ -5,6 +5,7 @@ import { Game } from './game.js';
 import { Renderer } from './render.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
+import { Sprites } from './sprites.js';
 
 const canvas = document.getElementById('game');
 const renderer = new Renderer(canvas);
@@ -62,6 +63,46 @@ const muteBtn = el('btn-mute');
 muteBtn.addEventListener('click', () => {
   const m = Sound.toggleMuted();
   muteBtn.textContent = m ? '🔇' : '🔊';
+});
+
+// Fullscreen toggle (top-right, left of mute). iPhone Safari doesn't support
+// element fullscreen, so hide the button where the API is unavailable.
+const fsBtn = el('btn-fullscreen');
+function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || null; }
+function fsSupported() {
+  const d = document.documentElement;
+  return !!(d.requestFullscreen || d.webkitRequestFullscreen || canvas.webkitRequestFullscreen);
+}
+function toggleFullscreen() {
+  try {
+    if (fsElement()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    } else {
+      const d = document.documentElement;
+      (d.requestFullscreen || d.webkitRequestFullscreen).call(d);
+    }
+  } catch (_) { /* ignore */ }
+}
+if (fsBtn) {
+  if (!fsSupported()) {
+    fsBtn.style.display = 'none';
+  } else {
+    fsBtn.addEventListener('click', toggleFullscreen);
+    const syncFs = () => {
+      const on = !!fsElement();
+      fsBtn.textContent = on ? '🗗' : '⛶';
+      fsBtn.title = on ? '退出全屏' : '全屏';
+      renderer.resize(); // canvas must match the new viewport size
+    };
+    document.addEventListener('fullscreenchange', syncFs);
+    document.addEventListener('webkitfullscreenchange', syncFs);
+  }
+}
+
+// When returning to a backgrounded tab, iOS may have blanked our cached sprite
+// canvases — rebuild them so we never come back to an empty/black scene.
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) { Sprites.clearCache(); renderer.resize(); }
 });
 
 // ---- Discrete actions (keyboard / gamepad / touch) ------------------------
@@ -143,17 +184,22 @@ let last = performance.now();
 function frame(now) {
   const dt = Math.min((now - last) / 1000, 0.045);
   last = now;
-  Input.poll();
-  const t0 = performance.now();
-  game.update(dt);
-  renderer.render(game);
-  const cost = performance.now() - t0;
-  // Dev aid: warn on long frames so we can locate jank by level/state instead of
-  // guessing. Normally silent. (Safe to remove once perf is settled.)
-  if (cost > 24) {
-    console.warn(`[perf] long frame ${cost.toFixed(1)}ms · lvl ${game.currentLevelId && game.currentLevelId()} · state=${game.state} · coins=${game.coinsArr && game.coinsArr.length} enemies=${game.enemies && game.enemies.length} particles=${game.particles && game.particles.length} fireballs=${game.fireballs && game.fireballs.length}`);
+  try {
+    Input.poll();
+    const t0 = performance.now();
+    game.update(dt);
+    renderer.render(game);
+    const cost = performance.now() - t0;
+    // Dev aid: warn on long frames so we can locate jank by level/state instead of
+    // guessing. Normally silent. (Safe to remove once perf is settled.)
+    if (cost > 24) {
+      console.warn(`[perf] long frame ${cost.toFixed(1)}ms · lvl ${game.currentLevelId && game.currentLevelId()} · state=${game.state} · coins=${game.coinsArr && game.coinsArr.length} enemies=${game.enemies && game.enemies.length} particles=${game.particles && game.particles.length} fireballs=${game.fireballs && game.fireballs.length}`);
+    }
+    syncOverlays();
+  } catch (err) {
+    // Never let one bad frame kill the rAF loop (that would freeze the game).
+    if ((frame._errs = (frame._errs || 0) + 1) <= 8) console.error('[loop] frame error:', err);
   }
-  syncOverlays();
-  requestAnimationFrame(frame);
+  requestAnimationFrame(frame); // always reschedule, even after an error
 }
 requestAnimationFrame(frame);
