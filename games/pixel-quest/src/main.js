@@ -140,7 +140,7 @@ function handleConfirm() {
     case 'story': game.beginAfterStory(); break;
     case 'ready': game.confirm(); break;
     case 'paused': game.togglePause(); break;
-    case 'dialogue': game.advanceDialogue(); break;
+    case 'dialogue': game.confirm(); break;
     case 'levelclear':
     case 'gameover':
     case 'win': game.confirm(); break;
