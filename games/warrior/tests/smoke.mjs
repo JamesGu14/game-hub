@@ -49,9 +49,9 @@ await page.evaluate(() => {
   if (g && g.player && g.level && g.level.bossX != null) { g.player.weapon = 'laser'; g.player.x = g.level.bossX - 60; }
 });
 await page.keyboard.down('ArrowRight');
-await sleep(600);
+await sleep(1000);                 // cross bossX -> boss intro (freeze + camera pan)
 await page.keyboard.up('ArrowRight');
-await sleep(4500);
+await sleep(6500);                 // wait out the ~3.6s reveal, then laser melts the boss
 await page.keyboard.up('z');
 
 const cleared = await page.evaluate(() => ({ state: window.__game?.state }));
@@ -67,8 +67,10 @@ const l5 = await page.evaluate(() => {
   g.player.x = g.level.bossX - 60;
   return { lvl: g.level.id, bossType: g.level.bossType };
 });
-await page.keyboard.down('ArrowRight'); await sleep(600); await page.keyboard.up('ArrowRight');
-await page.keyboard.down('z'); await sleep(4000); await page.keyboard.up('z');
+await page.keyboard.down('ArrowRight'); await sleep(1000); await page.keyboard.up('ArrowRight');
+await sleep(1400); // capture the boss-reveal hold
+await page.screenshot({ path: 'tests/_smoke_intro.png' });
+await page.keyboard.down('z'); await sleep(7000); await page.keyboard.up('z');
 const l5boss = await page.evaluate(() => {
   const g = window.__game;
   return {
