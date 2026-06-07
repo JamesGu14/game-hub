@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -24,6 +24,7 @@ export class Player {
     this.invuln = 0;
     this.dead = false;
     this.dying = 0;
+    this.prone = false;
   }
 
   update(dt, world) {
@@ -59,6 +60,15 @@ export class Player {
       world.playSound('jump');
     }
     if (!intent.jumpHeld && this.vy < 0) this.vy *= PLAYER.jumpCutoff; // variable height
+
+    // Prone: on the ground, holding down shrinks the hitbox (still a horizontal shot).
+    const wantProne = intent.aimDown && this.onGround;
+    if (wantProne !== this.prone) {
+      const feet = this.y + this.h;
+      this.prone = wantProne;
+      this.h = wantProne ? PRONE.h : PLAYER.h;
+      this.y = feet - this.h; // keep feet planted
+    }
 
     // Aim + auto-fire while held
     this.aim = resolveAim(intent, this.onGround, this.faceRight);

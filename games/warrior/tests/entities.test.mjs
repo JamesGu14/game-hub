@@ -87,3 +87,33 @@ test('player death + respawn restores control in place with i-frames', () => {
   assert.equal(p.dead, false);
   assert.ok(p.invuln > 0);
 });
+
+test('holding down on the ground makes the player prone with a shorter hitbox', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  for (let i = 0; i < 5; i++) p.update(1 / 60, w); // settle on ground
+  const fullH = p.h;
+  w.input.intent.aimDown = true;
+  p.update(1 / 60, w);
+  assert.equal(p.prone, true);
+  assert.ok(p.h < fullH, 'hitbox shrank while prone');
+});
+
+test('releasing down restores standing height', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  for (let i = 0; i < 5; i++) p.update(1 / 60, w);
+  const standH = p.h;
+  w.input.intent.aimDown = true; p.update(1 / 60, w);
+  w.input.intent.aimDown = false; p.update(1 / 60, w);
+  assert.equal(p.prone, false);
+  assert.equal(p.h, standH);
+});
+
+test('prone is only on the ground (down in the air does not prone)', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 1 * TILE); w.player = p; // airborne
+  w.input.intent.aimDown = true;
+  p.update(1 / 60, w);
+  assert.equal(p.prone, false);
+});
