@@ -66,7 +66,10 @@ export class Renderer {
         ctx.translate(-Math.round(cam.x) + sx, -Math.round(cam.y));
         this._tiles(ctx, game);
         this._goal(ctx, game);
+        this._pickups(ctx, game);
         this._enemies(ctx, game);
+        this._falcons(ctx, game);
+        this._boss(ctx, game);
         this._bullets(ctx, game);
         this._player(ctx, game);
         this._particles(ctx, game);
@@ -76,6 +79,8 @@ export class Renderer {
       }
 
       this._hud(ctx, game);
+      if (game.boss && !game.boss.dead) this._bossBar(ctx, game);
+      if (game.combo && game.combo.count >= 2) this._comboHud(ctx, game);
       if (game.state === 'ready') this._banner(ctx, `${game.level.name}`, '准备出发！按 跳 / ✕ 开始');
       if (game.state === 'clear') this._banner(ctx, '关卡通关！🎉', '按 跳 / ✕ 返回');
     } catch (err) {
@@ -151,15 +156,53 @@ export class Renderer {
     }
   }
 
+  _pickups(ctx, game) {
+    for (const pk of game.pickups) {
+      if (pk.dead || !pk.visible()) continue;
+      const cv = Sprites.pickupLetter(pk.letter);
+      Sprites.blit(ctx, cv, pk.x, pk.y, pk.w / cv.width);
+    }
+  }
+
+  _falcons(ctx, game) {
+    for (const f of game.falcons) {
+      if (f.dead) continue;
+      const cv = Sprites.falcon(Math.floor(f.anim * 8) % 2);
+      Sprites.blit(ctx, cv, f.x, f.y, f.w / cv.width);
+    }
+  }
+
+  _boss(ctx, game) {
+    const b = game.boss; if (!b) return;
+    let alpha = 1;
+    if (b.dead) alpha = Math.max(0, b.dying / 1.2);                       // fade on death
+    else if (b.telegraph > 0 && Math.floor(b.telegraph * 20) % 2 === 0) alpha = 0.6; // flash slam telegraph
+    const cv = Sprites.boss(b.typeId, Math.floor(b.anim * 4) % 2);
+    ctx.save(); ctx.globalAlpha = alpha;
+    Sprites.blit(ctx, cv, b.x, b.y, b.w / cv.width);
+    ctx.restore();
+  }
+
   _player(ctx, game) {
     const p = game.player; if (!p) return;
     let alpha = 1;
     if (p.invuln > 0 && Math.floor(p.invuln * 16) % 2 === 0) alpha = 0.35;
-    const cv = Sprites.hero(poseKeyFromAim(p.aim), p.faceRight, p.frame());
+    const cv = p.prone ? Sprites.heroProne(p.faceRight)
+      : Sprites.hero(poseKeyFromAim(p.aim), p.faceRight, p.frame());
     const sc = p.w / cv.width;
     ctx.save(); ctx.globalAlpha = alpha;
     Sprites.blit(ctx, cv, p.x, p.y + p.h - cv.height * sc, sc);
     ctx.restore();
+    // Barrier aura (pulsing ring)
+    if (p.barrier > 0) {
+      ctx.save();
+      ctx.strokeStyle = '#c46bff'; ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.5 + 0.3 * Math.sin(p.barrier * 12);
+      ctx.beginPath();
+      ctx.arc(p.x + p.w / 2, p.y + p.h / 2, Math.max(p.w, p.h) * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   _particles(ctx, game) {
@@ -188,6 +231,13 @@ export class Renderer {
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'left'; ctx.font = 'bold 15px system-ui, sans-serif';
     ctx.fillStyle = '#ffe066'; ctx.fillText(`⭐ ${game.score}`, 92, cy);
+    if (game.player) {
+      const w = game.player.weapon;
+      const wl = w === 'rifle' ? '步枪' : w.charAt(0).toUpperCase();
+      ctx.fillStyle = '#8be0ff'; ctx.font = '13px system-ui, sans-serif';
+      ctx.fillText(`🔫${wl}`, 178, cy);
+      ctx.font = 'bold 15px system-ui, sans-serif';
+    }
     ctx.textAlign = 'right'; ctx.fillStyle = '#fff';
     const livesTxt = game.mode.lives === Infinity ? '复活 ∞' : `❤️ ${game.lives}`;
     ctx.fillText(livesTxt, FIELD.W - 56, cy);
@@ -202,5 +252,26 @@ export class Renderer {
     ctx.fillText(title, FIELD.W / 2, FIELD.H / 2 - 8);
     ctx.font = '16px system-ui, sans-serif'; ctx.fillStyle = '#ffe066';
     ctx.fillText(sub, FIELD.W / 2, FIELD.H / 2 + 22);
+  }
+
+  _bossBar(ctx, game) {
+    const b = game.boss;
+    const w = FIELD.W - 80, h = 14, x = 40, y = FIELD.H - 30;
+    ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(x - 4, y - 4, w + 8, h + 22);
+    ctx.fillStyle = '#3a0c0c'; ctx.fillRect(x, y, w, h);
+    const frac = Math.max(0, b.hp / b.maxHp);
+    ctx.fillStyle = frac > 0.5 ? '#e23b2b' : '#ff7a2b';
+    ctx.fillRect(x, y, w * frac, h);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px system-ui, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillText(`${b.cfg.name}  ${b.cfg.enName}`, FIELD.W / 2, y + h + 2);
+  }
+
+  _comboHud(ctx, game) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.font = 'bold 20px system-ui, sans-serif';
+    ctx.fillStyle = '#ffe066'; ctx.strokeStyle = '#7a4a00'; ctx.lineWidth = 3;
+    const t = `连击 x${game.combo.mult}`;
+    ctx.strokeText(t, FIELD.W / 2, 44); ctx.fillText(t, FIELD.W / 2, 44);
   }
 }

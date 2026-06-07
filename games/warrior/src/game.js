@@ -256,6 +256,7 @@ export class Game {
     this.combo.timer = COMBO.window;
     this.combo.mult = Math.min(COMBO.maxMult, this.combo.count);
     const gain = Math.round(baseScore * this.combo.mult);
+    if (this.combo.mult > 1) Sound.play('combo');
     this._world.addFloatText(
       this.combo.mult > 1 ? `+${gain} x${this.combo.mult}` : `+${gain}`,
       this.player.x, this.player.y - 12, '#ffe066');

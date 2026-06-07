@@ -105,4 +105,48 @@ export const Sprites = {
       px(c, 7, 2, 5, 8, '#ff5a3c');        // flag
     });
   },
+
+  // ---- M2 art ----
+  heroProne(faceRight) {
+    return make(`heroProne:${faceRight ? 'R' : 'L'}`, 18, 10, (c) => {
+      if (!faceRight) { c.translate(18, 0); c.scale(-1, 1); }
+      const skin = '#f1c27d', suit = '#3f6b2f', suitD = '#2f5022', gun = '#2b2b2b';
+      px(c, 2, 4, 11, 5, suit); px(c, 2, 4, 11, 2, suitD); // prone body
+      px(c, 1, 1, 5, 4, skin);                              // head forward
+      px(c, 12, 5, 6, 3, gun);                              // gun forward
+    });
+  },
+
+  boss(typeId, frame) {
+    return make(`boss:${typeId}:${frame}`, 48, 56, (c) => {
+      px(c, 2, 6, 44, 50, '#5a5f6b');           // fortress body
+      px(c, 2, 6, 44, 6, '#3a3f4a');
+      for (let i = 0; i < 4; i++) { px(c, 6 + i * 11, 12, 3, 3, '#2a2e36'); px(c, 6 + i * 11, 48, 3, 3, '#2a2e36'); }
+      px(c, 14, 22, 20, 14, '#1a1d24');         // brow socket
+      px(c, 18, 25, 12, 8, frame % 2 ? '#ff5a3c' : '#ffd23f'); // glowing core (weakpoint)
+      px(c, 21, 27, 6, 4, '#fff3b0');
+      px(c, 6, 52, 8, 4, '#3a3f4a'); px(c, 34, 52, 8, 4, '#3a3f4a'); // feet
+    });
+  },
+
+  falcon(frame) {
+    return make(`falcon:${frame}`, 20, 12, (c) => {
+      const body = '#d83a2a', wing = frame % 2 ? '#b52b1e' : '#f04a36';
+      px(c, 6, 4, 9, 5, body);
+      px(c, 14, 5, 4, 3, '#ffcc33');          // beak
+      px(c, 2, frame % 2 ? 2 : 6, 7, 3, wing); // flapping wing
+      px(c, 8, 9, 4, 2, '#7d2b22');           // talons
+    });
+  },
+
+  pickupLetter(letter) {
+    const colors = { M: '#ffd23f', S: '#5fd97a', L: '#4f9bff', B: '#c46bff' };
+    return make(`pk:${letter}`, 20, 20, (c) => {
+      px(c, 1, 1, 18, 18, '#10140c');
+      px(c, 2, 2, 16, 16, colors[letter] || '#ffffff');
+      c.fillStyle = '#10140c';
+      c.font = 'bold 14px monospace'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText(letter, 10, 11);
+    });
+  },
 };

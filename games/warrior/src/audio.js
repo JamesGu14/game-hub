@@ -52,6 +52,9 @@ const SFX = {
   die() { [392, 330, 262, 196].forEach((f, i) => tone(f, 0.2, 'sawtooth', 0.1, i * 0.14)); },
   clear() { [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.16, 'triangle', 0.12, i * 0.11)); },
   ui() { tone(523, 0.05, 'triangle', 0.07); },
+  pickup() { [659, 988, 1319].forEach((f, i) => tone(f, 0.1, 'triangle', 0.1, i * 0.05)); },
+  barrier() { tone(330, 0.18, 'sine', 0.1); tone(495, 0.22, 'sine', 0.08, 0.06); },
+  combo() { tone(1319, 0.05, 'square', 0.07); },
 };
 
 export const Sound = {
