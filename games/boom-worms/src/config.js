@@ -35,4 +35,4 @@ export const CRATE_WEAPONS = ['airstrike', 'holy', 'dynamite', 'shotgun'];
 
 export const CRATE = { dropChance: 0.45, healAmount: 30, w: 26, h: 26 };
 export const SCORE = { levelClear: 1000, win: 5000 };
-export const STORAGE_KEY = 'boom-worms-progress';
+export const STORAGE_KEY = 'boom-worms-progress-v2'; // bumped for the 15-level reset (spec §11.1)

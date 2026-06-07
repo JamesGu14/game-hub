@@ -130,7 +130,7 @@ export class Terrain {
     this._syncMask();
 
     // --- Visual topping: grass / candy-frost stripe on solid tops (visual only) ---
-    this._paintTopping(palette);
+    this._paintTopping(palette, level.theme);
   }
 
   // Build stacked solid terraces ("floors") for late, complex levels.
@@ -282,12 +282,12 @@ export class Terrain {
   }
 
   // Paint a decorative stripe along solid tops (visual only, does not change alpha mask).
-  _paintTopping(palette) {
+  _paintTopping(palette, theme) {
     const { ctx, W, H } = this;
     // Save, set composite to source-atop so paint only covers existing solid pixels
     // but we want to draw ABOVE solid and leave alpha unchanged.
     // Strategy: draw a 1-px wide top-stripe per column in a contrasting color.
-    const topColor = _toppingColor(palette);
+    const topColor = _toppingColor(palette, theme);
     ctx.save();
     ctx.globalCompositeOperation = 'source-atop';
     ctx.fillStyle = topColor;
@@ -395,23 +395,23 @@ function noise1D(rng, period) {
   };
 }
 
-function _toppingColor(palette) {
-  // Pick a bright accent for the terrain top stripe based on theme
+function _toppingColor(palette, theme) {
+  // Bright accent stripe painted on solid tops — one entry per level theme (spec §4).
   const map = {
-    grass: '#7ec850',
-    candy: '#ff9fce',
-    beach: '#f5d479',
-    jungle: '#39b54a',
-    sky: '#e8f4ff',
-    rainbow: '#c678dd',
+    grass: '#7ec850', candy: '#ff9fce', beach: '#f5d479', jungle: '#39b54a',
+    sky: '#e8f4ff', rainbow: '#c678dd',
+    cave: '#8a78a0', volcano: '#ff7a3c', ice: '#dff2fb', desert: '#f0c878',
+    swamp: '#9ada4a', factory: '#aab0c0', ruins: '#c9a878', night: '#7a7ac0',
+    finale: '#ff5a6a',
   };
-  // Try to detect theme from palette sky color heuristic, fall back to land
-  if (palette.land === '#ffffff') return '#d0eaff';      // sky theme
-  if (palette.land === '#e8c97a') return '#f5d479';      // beach
-  if (palette.land === '#ff69b4') return '#ffb3d9';      // candy
-  if (palette.land === '#1a7a1a') return '#39b54a';      // jungle
-  if (palette.land === '#9b59b6') return '#c678dd';      // rainbow
-  return '#7ec850';                                       // grass default
+  if (theme && map[theme]) return map[theme];
+  // Legacy fallback: detect by land color (kept so a theme-less call still works).
+  if (palette.land === '#ffffff') return '#d0eaff';
+  if (palette.land === '#e8c97a') return '#f5d479';
+  if (palette.land === '#ff69b4') return '#ffb3d9';
+  if (palette.land === '#1a7a1a') return '#39b54a';
+  if (palette.land === '#9b59b6') return '#c678dd';
+  return '#7ec850';
 }
 
 function _hexToRgb(hex) {
