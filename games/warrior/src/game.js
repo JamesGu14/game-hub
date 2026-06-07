@@ -170,10 +170,14 @@ export class Game {
 
   _playerEnemyCollisions() {
     const p = this.player;
-    if (p.dying > 0 || p.invuln > 0) return;
+    if (p.dying > 0) return;
     for (const e of this.enemies) {
       if (e.dead) continue;
-      if (aabb(p, e)) { p.takeDamage(this._world); break; }
+      if (!aabb(p, e)) continue;
+      if (p.barrier > 0) { if (e.hit) e.hit(999, this._world); continue; } // barrier: instakill
+      if (p.isInvulnerable()) continue;
+      p.takeDamage(this._world);
+      break;
     }
   }
 
