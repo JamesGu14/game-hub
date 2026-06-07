@@ -26,3 +26,18 @@ test('checkOutcome: winner team id when one side wiped, else null, -1 draw', () 
   assert.equal(checkOutcome(teams([true], [true])), null);
   assert.equal(checkOutcome(teams([false], [false])), -1);
 });
+
+test('checkOutcome stays backward-compatible with the single-arg call', () => {
+  // 现有调用点（game.js _updateResolve）只传 teams；默认参数必须保持旧行为。
+  assert.equal(checkOutcome(teams([false, false], [true])), 1);
+  assert.equal(checkOutcome(teams([true], [false])), 0);
+  assert.equal(checkOutcome(teams([true], [true])), null);
+  assert.equal(checkOutcome(teams([false], [false])), -1);
+});
+
+test('checkOutcome accepts the explicit eliminate objective + state (3-arg, §11.7)', () => {
+  const obj = { type: 'eliminate' };
+  assert.equal(checkOutcome(teams([true], [false]), obj, { turnCount: 3 }), 0);
+  assert.equal(checkOutcome(teams([false], [false]), obj, {}), -1);
+  assert.equal(checkOutcome(teams([true], [true]), obj), null);
+});
