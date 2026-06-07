@@ -117,3 +117,21 @@ test('prone is only on the ground (down in the air does not prone)', () => {
   p.update(1 / 60, w);
   assert.equal(p.prone, false);
 });
+
+test('barrier grants timed invulnerability', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.giveBarrier();
+  assert.ok(p.barrier > 0);
+  assert.equal(p.isInvulnerable(), true);
+  assert.equal(p.takeDamage(w), false, 'barrier blocks damage');
+});
+
+test('barrier expires after its duration', () => {
+  const w = flatWorld();
+  const p = new Player(2 * TILE, 5 * TILE - 30); w.player = p;
+  p.giveBarrier();
+  for (let i = 0; i < 6 * 60; i++) p.update(1 / 60, w); // 6s > 5s
+  assert.equal(p.barrier <= 0, true);
+  assert.equal(p.isInvulnerable(), false);
+});

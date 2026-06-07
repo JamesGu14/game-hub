@@ -2,7 +2,7 @@
 // `world` is the facade from game.js. Physics via collideTiles/aabb. Player aiming
 // uses resolveAim; firing uses the pure weapons.fire() and world.spawnBullets.
 
-import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE } from './config.js';
+import { TILE, GRAVITY, PLAYER, FORGIVE, ENEMY, DEFAULT_WEAPON, SOLID, PRONE, BARRIER } from './config.js';
 import { collideTiles, aabb, groundAhead } from './physics.js';
 import { resolveAim } from './input.js';
 import { fire, cooldownFor } from './weapons.js';
@@ -25,6 +25,7 @@ export class Player {
     this.dead = false;
     this.dying = 0;
     this.prone = false;
+    this.barrier = 0;
   }
 
   update(dt, world) {
@@ -78,6 +79,7 @@ export class Player {
     collideTiles(this, world.grid, dt);
 
     if (this.invuln > 0) this.invuln -= dt;
+    if (this.barrier > 0) this.barrier -= dt;
   }
 
   _muzzle() {
@@ -94,9 +96,12 @@ export class Player {
     world.playSound('shoot');
   }
 
+  giveBarrier() { this.barrier = BARRIER.time; }
+  isInvulnerable() { return this.invuln > 0 || this.barrier > 0 || this.dying > 0; }
+
   // One hit = down (spec §3.4). Returns true if this hit started a death.
   takeDamage(world) {
-    if (this.invuln > 0 || this.dying > 0) return false;
+    if (this.isInvulnerable()) return false;
     this.startDeath(world);
     return true;
   }
