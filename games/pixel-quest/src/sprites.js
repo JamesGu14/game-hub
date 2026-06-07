@@ -444,11 +444,15 @@ function drawPowerup(kind) {
 // each frame. Per-frame fillText of a colour emoji is a real cost (glyph layout +
 // rasterization) and churns garbage — caching removes it from the hot path.
 function drawEmoji(ch, px) {
-  const o = mk(px, px), x = o.cx;
+  // 画布比字号大一圈:彩色 emoji 字形常略高于字号,画布刚好等于字号会把顶部裁掉一截。
+  // 加内边距让字形完整;_coins/_powerups 按 cv 尺寸居中,显示位置/大小不变。
+  const pad = Math.ceil(px * 0.3);
+  const s = px + pad * 2;
+  const o = mk(s, s), x = o.cx;
   x.textAlign = 'center';
   x.textBaseline = 'middle';
   x.font = `${px}px "Apple Color Emoji","Segoe UI Emoji",serif`;
-  x.fillText(ch, px / 2, px / 2);
+  x.fillText(ch, s / 2, s / 2);
   return o;
 }
 
