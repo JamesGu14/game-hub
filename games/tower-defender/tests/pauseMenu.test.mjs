@@ -10,9 +10,9 @@ for (const b of pauseLayout(view)) {
   assert.equal(hitPause(view, b.x + b.w / 2, b.y + b.h / 2), b.id, `点 ${b.id} → ${b.id}`);
 }
 
-// 四个预期 id 都在
+// 五个预期 id 都在（[P6] 加静音项）
 const ids = pauseLayout(view).map((b) => b.id);
-for (const id of ['resume', 'restart', 'select', 'hub']) {
+for (const id of ['resume', 'restart', 'select', 'mute', 'hub']) {
   assert.ok(ids.includes(id), `应含按钮 ${id}`);
 }
 

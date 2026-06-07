@@ -7,6 +7,7 @@ const ITEMS = [
   { id: 'resume', label: '继续', variant: 'jade' },
   { id: 'restart', label: '重开本关', variant: 'gold' },
   { id: 'select', label: '选关', variant: 'wood' },
+  { id: 'mute', label: '🔊 音效', variant: 'wood' },   // [P6] 静音切换（label 随 muted 动态）
   { id: 'hub', label: '← 返回游戏中心', variant: 'ghost' },
 ];
 
@@ -32,8 +33,8 @@ export function hitPause(view, sx, sy) {
   return null;
 }
 
-// state 可选：传入则显示「第 N 关 · 关名」副标题。
-export function drawPause(ctx, view, state) {
+// state 可选：传入则显示「第 N 关 · 关名」副标题。muted：静音项 label 动态显示。
+export function drawPause(ctx, view, state, muted = false) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = 'rgba(8,6,4,.62)'; ctx.fillRect(0, 0, view.w, view.h);   // 压暗
 
@@ -44,5 +45,9 @@ export function drawPause(ctx, view, state) {
     ctx.fillStyle = PAL.dim; ctx.font = FONT.body(13); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(`第 ${state.level.id} 关 · ${state.level.name}`, view.w / 2, P.y + 62);
   }
-  for (const b of pauseLayout(view)) button(ctx, b, { label: b.label, variant: b.variant });
+  for (const b of pauseLayout(view)) {
+    // [P6] 静音项 label 随状态切换；其余照常。
+    const label = b.id === 'mute' ? (muted ? '🔇 已静音' : '🔊 音效开') : b.label;
+    button(ctx, b, { label, variant: b.variant });
+  }
 }

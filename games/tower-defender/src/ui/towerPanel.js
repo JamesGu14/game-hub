@@ -2,8 +2,9 @@
 // layout/hit 为单一来源（draw 共用）。点面板内（非按钮）也消费点击，防穿透建塔。
 import { BAL } from '../data/balance.js';
 import { GENERALS } from '../data/generals.js';
+import { assets } from '../core/assets.js';
 import { upgradeCost, sellRefund } from '../systems/economySystem.js';
-import { panel, button, FONT, PAL } from './theme.js';
+import { panel, button, roundRect, FONT, PAL } from './theme.js';
 
 const PW = 168, PH = 82, BTN_H = 28, GAP = 7;
 const TOP_GUARD = 56;        // 上界避开木匾 HUD（HUD_H 50 + 余量）
@@ -40,11 +41,24 @@ export function drawTowerPanel(ctx, view, state, tower) {
   panel(ctx, L.x, L.y, L.w, L.h, { variant: 'parch', r: 10 });
 
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  // 将名 + 等级（深字楷体 + 将色点）
-  ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(L.x + 16, L.y + 17, 5, 0, Math.PI * 2); ctx.fill();
-  ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1; ctx.stroke();
-  ctx.fillStyle = PAL.ink; ctx.font = FONT.head(16);
-  ctx.fillText(`${g.name}  L${tower.level}`, L.x + 28, L.y + 17);
+  // 将名 + 等级（深字楷体）。[P6] 有立绘 → 头像缩略（缺则将色点）
+  const portrait = assets.images['gen_' + tower.generalId];
+  if (portrait) {
+    const ps = 28, pxL = L.x + 10, pyT = L.y + 4;
+    roundRect(ctx, pxL, pyT, ps, ps, 6); ctx.fillStyle = g.color; ctx.fill();
+    ctx.save(); roundRect(ctx, pxL, pyT, ps, ps, 6); ctx.clip();
+    const ih = ps * (portrait.height / portrait.width || 1.35);
+    ctx.drawImage(portrait, pxL, pyT - ih * 0.04, ps, ih);
+    ctx.restore();
+    roundRect(ctx, pxL, pyT, ps, ps, 6); ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.stroke();
+    ctx.fillStyle = PAL.ink; ctx.font = FONT.head(16); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+    ctx.fillText(`${g.name}  L${tower.level}`, pxL + ps + 8, L.y + 17);
+  } else {
+    ctx.fillStyle = g.color; ctx.beginPath(); ctx.arc(L.x + 16, L.y + 17, 5, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = 'rgba(0,0,0,.4)'; ctx.lineWidth = 1; ctx.stroke();
+    ctx.fillStyle = PAL.ink; ctx.font = FONT.head(16);
+    ctx.fillText(`${g.name}  L${tower.level}`, L.x + 28, L.y + 17);
+  }
 
   // 招牌技行
   if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature) {

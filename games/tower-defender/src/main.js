@@ -2,6 +2,7 @@
 import { BAL } from './data/balance.js';
 import { LEVELS } from './data/levels.js';
 import { preload } from './core/assets.js';
+import * as audio from './core/audio.js';
 import { newGameState } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
@@ -9,6 +10,7 @@ import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex } 
 import { tryBuild, tryUpgrade, sellTower } from './systems/economySystem.js';
 import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
+import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, HUD_H } from './render/hud.js';
 import { spawnFloat } from './render/fx.js';
 import { drawBuildBar, hitBuildBar } from './ui/buildBar.js';
@@ -34,6 +36,8 @@ let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
 let selected = 'huang';
 let selectedTower = null;
 let hover = null;
+let lastProjCount = 0;   // [P6] 弹道数量增量 → 开火音效探测
+let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
 
 function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
@@ -45,11 +49,13 @@ function enterLevel(n) {
   if (n < 0 || n >= LEVELS.length) return false;
   Object.assign(state, newGameState(LEVELS[n]));
   recorded = false; selected = 'huang'; selectedTower = null;
+  lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
   resize(); screen = 'playing';
+  audio.startBgm();                                  // [P6] 轻量 BGM（ctx 未建则静默）
   return true;
 }
 function startLevel(n) { return isUnlocked(save, n + 1) ? enterLevel(n) : false; }
-function toSelect() { screen = 'select'; selectedTower = null; }
+function toSelect() { screen = 'select'; selectedTower = null; audio.stopBgm(); }
 
 const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
 
@@ -97,10 +103,23 @@ function render(s) {
     }
   }
 
-  for (const e of s.enemies) drawEnemy(ctx, e, s.time);
-  for (const t of s.towers) drawTower(ctx, t, s.time);
+  // [P6] y-sort：塔+敌按脚底 py 升序绘制（远→近遮挡）；弹道/特效仍最后。
+  for (const ent of sortByY([...s.towers, ...s.enemies])) {
+    if (ent.generalId != null) drawTower(ctx, ent, s.time);
+    else drawEnemy(ctx, ent, s.time);
+  }
   for (const p of s.projectiles) drawProjectile(ctx, p);
   for (const f of s.fx) drawFx(ctx, f);
+
+  // [P6] 音效探测（render 侧，不碰 core/sim）：开火=弹道增量；相位切换=号角/胜/败。
+  if (s.projectiles.length > lastProjCount) audio.sfx('fire');
+  lastProjCount = s.projectiles.length;
+  if (s.phase !== sfxPhase) {
+    if (s.phase === 'combat' && sfxPhase === 'prep') audio.sfx('horn');
+    else if (s.phase === 'won') { audio.sfx('victory'); audio.stopBgm(); }
+    else if (s.phase === 'lost') { audio.sfx('defeat'); audio.stopBgm(); }
+    sfxPhase = s.phase;
+  }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   vignette(ctx, view.w, view.h);
@@ -120,10 +139,11 @@ function render(s) {
   }
 
   // [P5] 暂停菜单（playing 且非结算时叠加渲染）
-  if (s.paused && s.phase !== 'won' && s.phase !== 'lost') drawPause(ctx, view, s);
+  if (s.paused && s.phase !== 'won' && s.phase !== 'lost') drawPause(ctx, view, s, save.settings.muted);
 }
 
 function onPointerDown(ev) {
+  audio.init();                       // [P6] 首次手势解锁 AudioContext（幂等）
   const sx = ev.clientX, sy = ev.clientY;
 
   // [P4] 选关屏
@@ -152,16 +172,17 @@ function onPointerDown(ev) {
     if (act === 'resume') state.paused = false;
     else if (act === 'restart') enterLevel(curIndex());
     else if (act === 'select') { state.paused = false; toSelect(); }
+    else if (act === 'mute') { save.settings.muted = !save.settings.muted; audio.setMuted(save.settings.muted); browserWrite(save); audio.sfx('ui'); }
     else if (act === 'hub') window.location.href = '../../index.html';
     return;
   }
   const pick = hitBuildBar(view, sx, sy);
-  if (pick) { selected = pick; selectedTower = null; return; }
+  if (pick) { selected = pick; selectedTower = null; audio.sfx('ui'); return; }
   if (selectedTower && state.towers.includes(selectedTower)) {
     const act = hitTowerPanel(view, selectedTower, sx, sy);
-    if (act === 'upgrade') { tryUpgrade(state, selectedTower); return; }
-    if (act === 'sell') { sellTower(state, selectedTower); selectedTower = null; return; }
-    if (act === 'mode') { cycleTowerMode(selectedTower); return; }
+    if (act === 'upgrade') { if (tryUpgrade(state, selectedTower)) audio.sfx('upgrade'); return; }
+    if (act === 'sell') { sellTower(state, selectedTower); audio.sfx('sell'); selectedTower = null; return; }
+    if (act === 'mode') { cycleTowerMode(selectedTower); audio.sfx('ui'); return; }
     if (act === 'panel') return;
   }
   if (state.phase === 'prep' && inBtn(EARLY_BTN(), sx, sy)) { state.earlyRequested = true; return; }
@@ -170,12 +191,13 @@ function onPointerDown(ev) {
   if (t) { selectedTower = t; return; }
   selectedTower = null;
   const slot = slotAt(cell);
-  if (slot) tryBuild(state, slot, selected);
+  if (slot && tryBuild(state, slot, selected)) audio.sfx('build');
 }
 
 function onPointerMove(ev) { hover = screenToCell(ev.clientX, ev.clientY); }
 
 function onKey(ev) {
+  audio.init();                                           // [P6] 键盘也算手势，解锁音频
   if (screen !== 'playing') return;                       // 选关/结算屏忽略游戏热键
   if (state.phase === 'won' || state.phase === 'lost') {
     if (ev.key === 'Escape') toSelect();
@@ -193,6 +215,7 @@ function onKey(ev) {
 async function boot() {
   await preload();
   save = browserLoad();
+  audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
   state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)]);   // 预建有效 state(供 resize/loop)
   resize();
   screen = 'select';
@@ -215,7 +238,8 @@ async function boot() {
     early() { if (state.phase === 'prep') state.earlyRequested = true; },
     setSpeed(n) { state.speed = n; },
   };
-  bus.on('enemyKilled', ({ enemy }) => spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold));
+  bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
+  bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
 
   window.addEventListener('resize', resize);
   canvas.addEventListener('pointerdown', onPointerDown);

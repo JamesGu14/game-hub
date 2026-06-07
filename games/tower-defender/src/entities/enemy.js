@@ -23,6 +23,7 @@ export function createEnemy(type, pathId, path, scale = 1, opts = {}) {
     tag: def.tag || null,                          // 'tengjia'/'heavy'（克制键）
     heal: def.heal || null,                        // 方士治疗光环 {range,perSec}
     isBoss: !!def.isBoss,
+    bossId: opts.bossId || null,                   // [P6] 名将 id（mulu/wutugu…）→ boss sprite 映射；缺则 null
     bossSkills,                                    // [P3] ['summon','stunTower'] | null
     skillTimers: bossSkills
       ? Object.fromEntries(bossSkills.map((k) => [k, k === 'summon' ? BAL.BOSS_SUMMON_CD : BAL.BOSS_STUN_CD]))

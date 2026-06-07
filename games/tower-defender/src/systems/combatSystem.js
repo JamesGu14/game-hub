@@ -27,5 +27,7 @@ export function combatSystem(state, dt) {
 
     runAttack(state, tower, g, target, now, rng);
     tower.cooldown = stats.interval;
+    tower.lastFireAt = now;                        // [P6] 出手时间戳（纯表现：entityRenderer 出手前冲/提亮补间）
+    tower.aimX = target.px; tower.aimY = target.py; // [P6] 出手朝向（前冲方向）
   }
 }

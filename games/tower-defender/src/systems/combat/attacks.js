@@ -15,6 +15,7 @@ const CELL = BAL.CELL;
 function hitOnce(state, tower, g, enemy, rng) {
   const { dmg } = calcDamage(tower, g, enemy, rng);
   enemy.hp -= dmg;
+  enemy.lastHitAt = state.time;                   // [P6] 受击时间戳（纯表现：entityRenderer 受击闪白）
   spawnTracer(state, tower, enemy, g.color);
   if (enemy.hp <= 0) return killEnemy(state, enemy);
   return false;
