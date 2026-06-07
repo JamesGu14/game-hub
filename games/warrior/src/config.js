@@ -14,7 +14,7 @@ export const MAX_FALL = 980;
 // Single movement speed (no walk/run split — fewer keys, more faithful, kid-friendly).
 export const PLAYER = {
   w: 22, h: 30, proneH: 18, // proneH used from M2
-  accel: 1700, airAccel: 1200, maxSpeed: 205, friction: 1500,
+  accel: 1700, airAccel: 1200, maxSpeed: 143, friction: 1500,
   jumpVel: 760, jumpCutoff: 0.45,
 };
 

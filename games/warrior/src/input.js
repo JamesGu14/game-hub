@@ -41,9 +41,9 @@ export const Input = {
         case 'ArrowRight': case 'd': case 'D': this._k.right = down; e.preventDefault(); break;
         case 'ArrowUp': case 'w': case 'W': this._k.up = down; e.preventDefault(); break;
         case 'ArrowDown': case 's': case 'S': this._k.down = down; e.preventDefault(); break;
-        case 'x': case 'X': case 'k': case 'K':
+        case 'x': case 'X': case 'k': case 'K': case ' ': // X / K / Space = jump
           this._k.jump = down; if (down && !e.repeat) this._emit('confirm'); e.preventDefault(); break;
-        case 'z': case 'Z': case ' ':
+        case 'z': case 'Z': // Z = fire
           this._k.fire = down; e.preventDefault(); break;
         case 'c': case 'C': case 'l': case 'L':
           if (down && !e.repeat) this._emit('switch'); e.preventDefault(); break;
