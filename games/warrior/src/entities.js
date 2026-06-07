@@ -352,7 +352,7 @@ export class Boss {
         if (p) {
           const dx = (p.x + p.w / 2) - (this.x + this.w / 2);
           const dy = (p.y + p.h / 2) - (this.y + this.h / 2);
-          const d = Math.hypot(dx, dy) || 1; const spd = 250;
+          const d = Math.hypot(dx, dy) || 1; const spd = 125;
           world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h * 0.4, vx: dx / d * spd, vy: dy / d * spd, dmg: 1, life: 3 });
         }
       }

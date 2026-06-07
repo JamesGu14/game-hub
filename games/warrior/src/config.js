@@ -14,7 +14,7 @@ export const MAX_FALL = 980;
 // Single movement speed (no walk/run split — fewer keys, more faithful, kid-friendly).
 export const PLAYER = {
   w: 22, h: 30, proneH: 18, // proneH used from M2
-  accel: 1700, airAccel: 1200, maxSpeed: 143, friction: 1500,
+  accel: 1500, airAccel: 1100, maxSpeed: 105, friction: 1500,
   jumpVel: 760, jumpCutoff: 0.45,
 };
 
@@ -87,9 +87,9 @@ export const SHAKE = { kill: 3, bigKill: 5, bossDie: 8 };
 export const RAPID = { maxStacks: 3 };  // R cap (spec §13 H4)
 export const FIRE = { gravity: 900 };   // fireball parabola
 export const ENEMY_RANGED = {
-  gunner: { w: 24, h: 28, hp: 2, score: 150, fireCd: 1.6, bulletSpeed: 280, bulletDmg: 1 },
-  turret: { w: 30, h: 26, hp: 3, score: 200, fireCd: 2.0, burst: 3, spreadAngle: 0.35, bulletSpeed: 260, bulletDmg: 1 },
-  flyer:  { w: 26, h: 20, hp: 1, score: 180, speed: 90, amp: 60, freq: 2.2, fireCd: 2.4, bulletSpeed: 240, bulletDmg: 1 },
+  gunner: { w: 24, h: 28, hp: 2, score: 150, fireCd: 1.6, bulletSpeed: 140, bulletDmg: 1 },
+  turret: { w: 30, h: 26, hp: 3, score: 200, fireCd: 2.0, burst: 3, spreadAngle: 0.35, bulletSpeed: 130, bulletDmg: 1 },
+  flyer:  { w: 26, h: 20, hp: 1, score: 180, speed: 90, amp: 60, freq: 2.2, fireCd: 2.4, bulletSpeed: 120, bulletDmg: 1 },
 };
 
 // L1 BOSS 震地要塞·铁壁 Iron Gate Destroyer — the §13 H9 template for all bosses.
