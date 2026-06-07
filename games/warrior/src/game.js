@@ -6,7 +6,7 @@
 
 import { FIELD, TILE, MODES, SCORE, SOLID, DEFAULT_WEAPON, PLAYER, COMBO, BOSSES } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
-import { Player, Runner, Jumper, Bullet, Pickup, Falcon, Boss } from './entities.js';
+import { Player, Runner, Jumper, Bullet, Pickup, Falcon, Boss, Gunner, Turret, Flyer } from './entities.js';
 import { aabb } from './physics.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
@@ -113,7 +113,13 @@ export class Game {
   }
 
   _makeEnemy(type, x, y) {
-    return type === 'jumper' ? new Jumper(x, y) : new Runner(x, y);
+    switch (type) {
+      case 'jumper': return new Jumper(x, y);
+      case 'gunner': return new Gunner(x, y);
+      case 'turret': return new Turret(x, y);
+      case 'flyer': return new Flyer(x, y);
+      default: return new Runner(x, y);
+    }
   }
   spawnEnemy(type, x, y) { this.enemies.push(this._makeEnemy(type, x, y)); }
 

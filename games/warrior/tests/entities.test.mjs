@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { TILE, MODES, WEAPONS } from '../src/config.js';
-import { Player, Runner, Jumper, Bullet } from '../src/entities.js';
+import { Player, Runner, Jumper, Bullet, Gunner, Turret, Flyer } from '../src/entities.js';
 
 // floor at row 5 across the width; everything above is empty
 function flatWorld(extra = {}) {
@@ -20,7 +20,7 @@ function flatWorld(extra = {}) {
     killScore(base) { this.scored += base; return base; },
     spawnBullets(specs) { for (const s of specs) this.bullets.push(new Bullet(s)); },
     playSound(id) { sounds.push(id); },
-    shake() {}, addFloatText() {}, spawnParticles() {},
+    shake() {}, addFloatText() {}, spawnParticles() {}, spawnEnemyBullet() {},
     _sounds: sounds,
     ...extra,
   };
@@ -160,4 +160,32 @@ test('a fireball bullet arcs downward under gravity', () => {
   const b = new Bullet({ x: 2 * TILE, y: 1 * TILE, vx: 300, vy: 0, dmg: 2, life: 1, gravity: 900 });
   for (let i = 0; i < 20; i++) b.update(1 / 60, w);
   assert.ok(b.vy > 0, 'gravity pulled the fireball down');
+});
+
+test('a Gunner fires an aimed enemy bullet toward the player on its cooldown', () => {
+  const shots = [];
+  const w = flatWorld({ spawnEnemyBullet: (s) => shots.push(s) });
+  w.player = new Player(12 * TILE, 4 * TILE);
+  const g = new Gunner(3 * TILE, 4 * TILE); w.enemies.push(g);
+  for (let i = 0; i < 3 * 60; i++) g.update(1 / 60, w);
+  assert.ok(shots.length >= 1, 'gunner fired');
+  assert.ok(shots[0].vx > 0, 'aimed toward the player on the right');
+});
+
+test('a Turret fires a burst', () => {
+  const shots = [];
+  const w = flatWorld({ spawnEnemyBullet: (s) => shots.push(s) });
+  w.player = new Player(12 * TILE, 4 * TILE);
+  const t = new Turret(3 * TILE, 4 * TILE); w.enemies.push(t);
+  for (let i = 0; i < 3 * 60; i++) t.update(1 / 60, w);
+  assert.ok(shots.length >= 3, 'turret fired a burst');
+});
+
+test('a Flyer oscillates vertically and can be killed', () => {
+  const w = flatWorld();
+  const f = new Flyer(5 * TILE, 2 * TILE); const y0 = f.y;
+  let moved = false;
+  for (let i = 0; i < 90; i++) { f.update(1 / 60, w); if (Math.abs(f.y - y0) > 5) moved = true; }
+  assert.ok(moved, 'flyer moves on a sine wave');
+  f.hit(99, w); assert.equal(f.dead, true);
 });

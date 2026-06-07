@@ -339,3 +339,109 @@ export class Boss {
     if (this.slamTimer <= 0) { this.slamTimer = ph.slamCd; this.telegraph = 0.5; }
   }
 }
+
+// ---------------------------------------------------------------------------
+// Ranged enemies (spec §4.1) — they fire HOSTILE enemy bullets at the player.
+function aimAt(from, to) {
+  const dx = (to.x + (to.w || 0) / 2) - (from.x + from.w / 2);
+  const dy = (to.y + (to.h || 0) / 2) - (from.y + from.h / 2);
+  const d = Math.hypot(dx, dy) || 1;
+  return { x: dx / d, y: dy / d };
+}
+
+function rangedHit(self, dmg, world, color) {
+  self.hp -= dmg;
+  if (self.hp <= 0) {
+    self.dead = true;
+    world.killScore(self.score);
+    world.spawnParticles(self.x + self.w / 2, self.y + self.h / 2, { count: 12, color, speed: 200 });
+    world.playSound('hit');
+  }
+}
+
+// Gunner 蹲守兵: stationary, fires one aimed bullet on its cooldown.
+export class Gunner {
+  constructor(x, y) {
+    const c = ENEMY_RANGED.gunner; this.cfg = c;
+    this.w = c.w; this.h = c.h;
+    this.x = x + (TILE - c.w) / 2; this.y = y + (TILE - c.h);
+    this.vx = 0; this.vy = 0; this.onGround = false;
+    this.hp = c.hp; this.score = c.score; this.dead = false;
+    this.fireCd = c.fireCd; this.anim = 0;
+  }
+  hit(dmg, world) { rangedHit(this, dmg, world, '#ffcc33'); }
+  update(dt, world) {
+    if (this.dead) return;
+    this.anim += dt;
+    collideTiles(this, world.grid, dt);
+    this.fireCd -= dt * (world.fireRateMul || 1);
+    if (this.fireCd <= 0) {
+      this.fireCd = this.cfg.fireCd;
+      const p = world.player; if (!p) return;
+      const a = aimAt(this, p);
+      world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h * 0.4, vx: a.x * this.cfg.bulletSpeed, vy: a.y * this.cfg.bulletSpeed, dmg: this.cfg.bulletDmg, life: 2.5 });
+      world.playSound('shoot');
+    }
+  }
+  frame() { return Math.floor(this.anim * 4) % 2; }
+}
+
+// Turret 炮台: fixed, fires a fan/burst of bullets on its cooldown.
+export class Turret {
+  constructor(x, y) {
+    const c = ENEMY_RANGED.turret; this.cfg = c;
+    this.w = c.w; this.h = c.h;
+    this.x = x + (TILE - c.w) / 2; this.y = y + (TILE - c.h);
+    this.vx = 0; this.vy = 0; this.onGround = false;
+    this.hp = c.hp; this.score = c.score; this.dead = false;
+    this.fireCd = c.fireCd; this.anim = 0;
+  }
+  hit(dmg, world) { rangedHit(this, dmg, world, '#ffcc33'); }
+  update(dt, world) {
+    if (this.dead) return;
+    this.anim += dt;
+    collideTiles(this, world.grid, dt);
+    this.fireCd -= dt * (world.fireRateMul || 1);
+    if (this.fireCd <= 0) {
+      this.fireCd = this.cfg.fireCd;
+      const p = world.player; if (!p) return;
+      const a = aimAt(this, p);
+      const base = Math.atan2(a.y, a.x);
+      const n = this.cfg.burst, half = this.cfg.spreadAngle * (n - 1) / 2;
+      for (let i = 0; i < n; i++) {
+        const ang = base - half + this.cfg.spreadAngle * i;
+        world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h * 0.4, vx: Math.cos(ang) * this.cfg.bulletSpeed, vy: Math.sin(ang) * this.cfg.bulletSpeed, dmg: this.cfg.bulletDmg, life: 2.5 });
+      }
+      world.playSound('shoot');
+    }
+  }
+  frame() { return Math.floor(this.anim * 3) % 2; }
+}
+
+// Flyer 飞兵: airborne sine-wave drift toward the player; periodically fires.
+export class Flyer {
+  constructor(x, y) {
+    const c = ENEMY_RANGED.flyer; this.cfg = c;
+    this.w = c.w; this.h = c.h;
+    this.x = x; this.baseY = y; this.y = y;
+    this.vx = 0; this.vy = 0; this.onGround = false;
+    this.hp = c.hp; this.score = c.score; this.dead = false;
+    this.t = 0; this.fireCd = c.fireCd; this.dir = -1;
+  }
+  hit(dmg, world) { rangedHit(this, dmg, world, '#9fe6ff'); }
+  update(dt, world) {
+    if (this.dead) return;
+    this.t += dt;
+    const p = world.player;
+    if (p) this.dir = (p.x + p.w / 2) < (this.x + this.w / 2) ? -1 : 1;
+    this.x += this.dir * this.cfg.speed * (world.levelMul || 1) * dt;
+    this.y = this.baseY + Math.sin(this.t * this.cfg.freq) * this.cfg.amp;
+    this.fireCd -= dt * (world.fireRateMul || 1);
+    if (this.fireCd <= 0 && p) {
+      this.fireCd = this.cfg.fireCd;
+      const a = aimAt(this, p);
+      world.spawnEnemyBullet({ x: this.x + this.w / 2 - 5, y: this.y + this.h, vx: a.x * this.cfg.bulletSpeed, vy: a.y * this.cfg.bulletSpeed, dmg: this.cfg.bulletDmg, life: 2.5 });
+    }
+  }
+  frame() { return Math.floor(this.t * 8) % 2; }
+}
