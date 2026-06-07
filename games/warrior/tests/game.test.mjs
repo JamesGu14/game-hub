@@ -56,9 +56,39 @@ test('casual death respawns the player and keeps playing (infinite lives)', () =
   assert.ok(g.player.y < g.level.height, 'player is back on the field');
 });
 
-test('reaching the goal clears the level', () => {
+test('reaching the goal clears the level (no-boss path)', () => {
   const g = freshGame();
+  g.level.bossX = null; // exercise the plain goal path
   g.player.x = g.level.goalX + 5;
   g.update(1 / 60);
   assert.equal(g.state, 'clear');
+});
+
+test('reaching bossX spawns the boss instead of clearing', () => {
+  const g = freshGame();
+  g.level.bossX = g.player.x + 40;
+  g.level.goalX = 1e9; // ensure goal does not pre-empt
+  g.player.x = g.level.bossX + 5;
+  g.update(1 / 60);
+  assert.ok(g.boss, 'boss spawned');
+  assert.equal(g.state, 'playing');
+});
+
+test('clearing requires the boss to die', () => {
+  const g = freshGame();
+  g.level.bossX = g.player.x; g.level.goalX = 1e9;
+  g.update(1 / 60);              // spawns boss
+  assert.equal(g.state, 'playing');
+  g.boss.hit(1e9, g._world);     // kill it
+  for (let i = 0; i < 180 && g.state !== 'clear'; i++) g.update(1 / 60);
+  assert.equal(g.state, 'clear');
+});
+
+test('a kill starts a combo and a second quick kill raises the multiplier', () => {
+  const g = freshGame();
+  g.registerKill(100);
+  assert.equal(g.combo.count, 1);
+  g.registerKill(100);
+  assert.equal(g.combo.count, 2);
+  assert.ok(g.combo.mult >= 2);
 });

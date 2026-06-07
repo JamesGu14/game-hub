@@ -4,9 +4,9 @@
 // M1 starts in casual mode (infinite in-place respawns). Mode switch / select screen /
 // save / BOSS arrive in later milestones.
 
-import { FIELD, TILE, MODES, SCORE, SOLID, DEFAULT_WEAPON, PLAYER } from './config.js';
+import { FIELD, TILE, MODES, SCORE, SOLID, DEFAULT_WEAPON, PLAYER, COMBO, BOSSES } from './config.js';
 import { LEVELS, parseLevel } from './levels.js';
-import { Player, Runner, Jumper, Bullet } from './entities.js';
+import { Player, Runner, Jumper, Bullet, Pickup, Falcon, Boss } from './entities.js';
 import { aabb } from './physics.js';
 import { Input } from './input.js';
 import { Sound } from './audio.js';
@@ -31,6 +31,11 @@ export class Game {
     this.shake = 0;
     this.readyTimer = 0;
     this._t = 0; // wall clock for shake phase
+    this.pickups = [];
+    this.falcons = [];
+    this._falconDefs = [];
+    this.boss = null;
+    this.combo = { count: 0, mult: 1, timer: 0 };
     this._world = this._makeWorld();
   }
 
@@ -45,9 +50,14 @@ export class Game {
       get particles() { return game.particles; },
       get camera() { return game.camera; },
       get mode() { return game.mode; },
+      get pickups() { return game.pickups; },
+      get falcons() { return game.falcons; },
+      get boss() { return game.boss; },
       input: Input,
       addScore(n) { game.score += n; },
+      killScore(base) { game.score += game.registerKill(base); },
       spawnEnemy(type, x, y) { game.spawnEnemy(type, x, y); },
+      spawnPickup(letter, x, y) { game.pickups.push(new Pickup(letter, x, y)); },
       spawnBullets(specs) { for (const s of specs) game.bullets.push(new Bullet(s)); },
       playSound(id) { Sound.play(id); },
       shake(intensity) { game.shake = Math.max(game.shake, intensity); },
@@ -78,6 +88,11 @@ export class Game {
     this.bullets = [];
     this.particles = [];
     this.floatTexts = [];
+    this.pickups = [];
+    this.falcons = [];
+    this._falconDefs = (lv.falcons || []).map((f) => ({ ...f, fired: false }));
+    this.boss = null;
+    this.combo = { count: 0, mult: 1, timer: 0 };
     this.camera.x = clamp(this.player.x - FIELD.W / 2, 0, Math.max(0, lv.width - FIELD.W));
     this.camera.y = clamp(this.player.y - FIELD.H / 2, 0, Math.max(0, lv.height - FIELD.H));
   }
@@ -160,10 +175,46 @@ export class Game {
 
     this._playerEnemyCollisions();
 
+    // Falcons + pickups (capsule loop)
+    this._updateFalcons(dt);
+    for (const pk of this.pickups) { if (!pk.dead) pk.update(dt, this._world); }
+    for (const b of this.bullets) {
+      if (b.dead) continue;
+      for (const f of this.falcons) {
+        if (!f.dead && aabb(b, f)) { f.hitByBullet(this._world); if (!b.pierce) b.dead = true; }
+      }
+    }
+    for (const pk of this.pickups) { if (!pk.dead && aabb(p, pk)) pk.apply(p, this._world); }
+
+    // Boss: spawns at bossX, takes bullet/contact damage, gates the level clear.
+    if (!this.boss && lv.bossX != null && p.x + p.w > lv.bossX) this._spawnBoss();
+    if (this.boss) {
+      if (!this.boss.dead) this.boss.update(dt, this._world);
+      for (const b of this.bullets) {
+        if (!b.dead && !this.boss.dead && aabb(b, this.boss)) { this.boss.hit(b.dmg, this._world); if (!b.pierce) b.dead = true; }
+      }
+      if (!this.boss.dead && this.boss.cfg.touchDamage && aabb(p, this.boss)) {
+        if (p.barrier > 0) this.boss.hit(999, this._world);
+        else if (!p.isInvulnerable()) p.takeDamage(this._world);
+      }
+      if (this.boss.dead) {
+        this.boss.dying -= dt;
+        if (this.boss.dying <= 0) { this._levelClear(); return; }
+      }
+    }
+
+    // Combo decay
+    if (this.combo.timer > 0) {
+      this.combo.timer -= dt;
+      if (this.combo.timer <= 0) { this.combo.count = 0; this.combo.mult = 1; }
+    }
+
     this.bullets = this.bullets.filter((b) => !b.dead);
     this.enemies = this.enemies.filter((e) => !e.dead);
+    this.pickups = this.pickups.filter((pk) => !pk.dead);
 
-    if (p.x + p.w > lv.goalX) { this._levelClear(); return; }
+    // No-boss levels clear by reaching the goal flag (boss levels clear on boss death).
+    if (this.boss == null && lv.bossX == null && p.x + p.w > lv.goalX) { this._levelClear(); return; }
 
     this._updateCamera();
   }
@@ -197,6 +248,42 @@ export class Game {
     this.score += SCORE.levelClear;
     this.state = 'clear';
     Sound.play('clear');
+  }
+
+  // Combo: stacks kills within COMBO.window, multiplies score, floats text. Returns gain.
+  registerKill(baseScore) {
+    if (this.combo.timer > 0) this.combo.count += 1; else this.combo.count = 1;
+    this.combo.timer = COMBO.window;
+    this.combo.mult = Math.min(COMBO.maxMult, this.combo.count);
+    const gain = Math.round(baseScore * this.combo.mult);
+    this._world.addFloatText(
+      this.combo.mult > 1 ? `+${gain} x${this.combo.mult}` : `+${gain}`,
+      this.player.x, this.player.y - 12, '#ffe066');
+    return gain;
+  }
+
+  // Trigger + fly falcons; cull off the left edge.
+  _updateFalcons(dt) {
+    const camRight = this.camera.x + FIELD.W;
+    for (const def of this._falconDefs) {
+      if (!def.fired && camRight > def.atX) {
+        def.fired = true;
+        const path = (def.path || []).map((pt) => ({ x: pt.x * TILE, y: pt.y * TILE }));
+        const start = path[0] || { x: camRight + 40, y: 3 * TILE };
+        this.falcons.push(new Falcon(def.drop, start.x, start.y, path));
+      }
+    }
+    for (const f of this.falcons) { if (!f.dead) f.update(dt, this._world); }
+    this.falcons = this.falcons.filter((f) => !f.dead && f.x > this.camera.x - 80);
+  }
+
+  _spawnBoss() {
+    const lv = this.level;
+    const cfg = BOSSES[lv.bossType || 'ironGate'] || BOSSES.ironGate;
+    const surf = this._surfaceRow(Math.floor((lv.bossX + 2 * TILE) / TILE));
+    const gy = (surf != null ? surf : lv.rows - 4);
+    this.boss = new Boss(lv.bossType || 'ironGate', lv.bossX + TILE, gy * TILE - cfg.h);
+    Sound.play('hit');
   }
 
   _updateCamera() {

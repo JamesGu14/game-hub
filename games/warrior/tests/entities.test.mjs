@@ -17,6 +17,7 @@ function flatWorld(extra = {}) {
     input: { intent: { moveX: 0, aimUp: false, aimDown: false, jumpHeld: false, fireHeld: false } },
     scored: 0,
     addScore(n) { this.scored += n; },
+    killScore(base) { this.scored += base; return base; },
     spawnBullets(specs) { for (const s of specs) this.bullets.push(new Bullet(s)); },
     playSound(id) { sounds.push(id); },
     shake() {}, addFloatText() {}, spawnParticles() {},

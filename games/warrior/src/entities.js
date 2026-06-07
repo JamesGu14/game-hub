@@ -139,7 +139,7 @@ class GroundEnemy {
     this.hp -= dmg;
     if (this.hp <= 0) {
       this.dead = true;
-      world.addScore(this.score);
+      world.killScore(this.score); // routes through combo + float-text
       world.spawnParticles(this.x + this.w / 2, this.y + this.h / 2, { count: 12, color: '#ffcc33', speed: 200 });
       world.playSound('hit');
     }
