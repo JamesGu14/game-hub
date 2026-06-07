@@ -24,6 +24,11 @@ const lvl1 = {
     '###########   ##############   ###########   ##############   #############   #####################   ######',
     '###########   ##############   ###########   ##############   #############   #####################   ######',
   ],
+  falcons: [
+    { drop: 'S', atX: 18 * 32, path: [[40, 3], [30, 4], [22, 3]] },
+    { drop: 'B', atX: 52 * 32, path: [[72, 3], [60, 5], [50, 3]] },
+  ],
+  boss: { type: 'ironGate' },
 };
 
 export const LEVELS = [lvl1];
@@ -62,6 +67,12 @@ export function parseLevel(lvl) {
     grid.push(gridRow);
   }
 
+  const falcons = (lvl.falcons || []).map((f) => ({
+    drop: f.drop, atX: f.atX, path: (f.path || []).map(([x, y]) => ({ x, y })),
+  }));
+  const bossType = lvl.boss ? lvl.boss.type : null;
+  const bossX = lvl.boss ? goalX - 5 * TILE : null; // trigger the fight just before the flag
+
   return {
     id: lvl.id,
     name: lvl.name,
@@ -74,5 +85,8 @@ export function parseLevel(lvl) {
     spawn,
     goalX,
     enemies,
+    falcons,
+    bossX,
+    bossType,
   };
 }

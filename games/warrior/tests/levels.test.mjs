@@ -38,3 +38,20 @@ test('both grunt types are present', () => {
   assert.ok(types.has('runner'));
   assert.ok(types.has('jumper'));
 });
+
+test('L1 has falcon drops and a boss trigger before the goal', () => {
+  const lv = parseLevel(LEVELS[0]);
+  assert.ok(Array.isArray(lv.falcons) && lv.falcons.length >= 1, 'has falcon drops');
+  assert.ok(lv.falcons.some((f) => ['M', 'S', 'L', 'B'].includes(f.drop)));
+  assert.equal(typeof lv.bossX, 'number');
+  assert.ok(lv.bossX < lv.goalX, 'boss is before the goal flag');
+  assert.equal(lv.bossType, 'ironGate');
+});
+
+test('the boss arena column is solid ground (boss can stand)', () => {
+  const lv = parseLevel(LEVELS[0]);
+  const col = Math.floor((lv.bossX + 2 * TILE) / TILE);
+  let solid = false;
+  for (let r = 0; r < lv.rows; r++) if (lv.grid[r] && lv.grid[r][col] && SOLID.has(lv.grid[r][col])) { solid = true; break; }
+  assert.equal(solid, true, 'boss column has ground');
+});
