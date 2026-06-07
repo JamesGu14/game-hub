@@ -62,3 +62,14 @@ test('parseLevel exposes a difficulty triple', () => {
   assert.equal(typeof lv.difficulty.fireRateMul, 'number');
   assert.equal(typeof lv.difficulty.bossHpMul, 'number');
 });
+
+test('the campaign has 5 levels, each with a boss and non-decreasing difficulty', () => {
+  assert.equal(LEVELS.length, 5);
+  let prev = 0;
+  for (let i = 0; i < 5; i++) {
+    const lv = parseLevel(LEVELS[i]);
+    assert.ok(lv.bossType, `L${i + 1} has a boss`);
+    assert.ok(lv.difficulty.enemyMul >= prev, 'difficulty non-decreasing');
+    prev = lv.difficulty.enemyMul;
+  }
+});
