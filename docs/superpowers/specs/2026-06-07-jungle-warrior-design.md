@@ -297,3 +297,23 @@ STORAGE_KEY = 'jungle-warrior-save'
 12. BOSS 中英双语"中二"命名。✅
 13. 操作：键盘 + 触屏 + 手柄 三端；人数：单人（v1）。✅
 14. 补单测：input / collision / capsule（连同 physics/aim/weapons/damage/save/levels/boss）。✅
+
+---
+
+## 13. 实现细节：默认值与延后项（处置 `docs/opencode/oc_review.md` 的 H/M/L 补充）
+
+> 结论：H1–H9 与 M 系列绝大多数是**实现参数 / 接口契约**，非需求决策。统一**下沉到 writing-plans + `config.js`**，以 **reviewer 建议值 + pixel-quest 现成值为基线**，playtest 微调；本设计稿不逐一钉死数字。
+
+**延后到 config.js / 实现阶段（基线 = reviewer 建议 + pixel-quest）**：
+H1 角色/敌人尺寸与受击框；H2 跳跃物理（重力/初速/coyote/buffer/cutoff/maxFall，直接复用 pixel-quest）；H4 R 叠加（乘法·上限 3 层）；H5 无敌时长（休闲 2s / 经典 1.5s / 屏障 5s / 闪烁周期 0.12s）；H7 敌人 HP/速度/得分/激活（进相机视野 + 距离阈值时激活）；H9 BOSS phases/weakpoint（M2 先定 L1「震地要塞·铁壁」完整参数为模板，后续套用）；M1 复活搜点（自倒下点左右各搜 ≤3 TILE 找脚下 solid、头顶无 hazard 处，否则回出生点）；M2 视差（3 层 0.2/0.5/0.8x 循环平铺）；M3 连击（2.5s 窗口、倍率 ≤5、休闲死亡不打断/经典打断）；M4 屏震（4px、0.3s、指数衰减、BOSS 死亡与大爆炸触发）。
+
+**本稿即记的默认决策（无偏好，按默认走）**：
+- **H3 F 火球 = 抛物线**（受重力，近似原版旋转火球；不做螺旋）。
+- **H6 每关长度 ≈ 8 屏宽（像素计）**；红鹰 `atX` = 相机右边界到达该 x 时触发、从屏外侧飞入，`path` = `[{x,y}]` 折线匀速插值；被**玩家子弹**击中掉落 **1 个**闪烁字母（0.2s 周期）、**8s** 后消失。
+- **H8 ⭐ 评级**：每关设 `config.STARS.timeThreshold`；**休闲 = 仅按时间评星**（死亡不计），**经典 = 时间与死亡共同取最低档**。
+
+**采纳的 spec 修订**：
+- **M6** 存档去冗余：**删除 §6.1 的 `clearedLevels` 字段**，cleared 状态一律从 `perLevel[id].cleared` 推导（降低不一致风险）。
+- **M5** `world` 接口契约：在 writing-plans 架构小节正式定义——只读 `grid/player/enemies/bullets/particles/camera/mode`；可调 `addScore(n)/spawnEnemy(type,x,y)/playSound(id)/shake(intensity)/addFloatText(text,x,y)/spawnParticles(...)`。
+
+**L1–L5（按惯例，实现时定）**：左右同按 = 静止（后按优先）；地面下 = 卧倒、空中下 = 快速下落；改键支持点击设定、允许组合键；手柄用标准 Gamepad API mapping；版本迁移按"新增字段填默认值"；冒烟测试无 Chrome 则跳过（headless 优先）。
