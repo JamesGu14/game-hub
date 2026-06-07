@@ -53,8 +53,9 @@ export function drawTower(ctx, t, now = 0) {
   const stunned = now < (t.stunnedUntil || 0);
 
   if (img) {
-    const w = C * 1.5, h = w * aspect(img), footPad = C * 0.1;
-    shadow(ctx, t.px, t.py + footPad, w * 0.32, w * 0.12);
+    // [P6.1] 按**高度**归一：各将同高=同视觉大小（修诸葛偏大），略缩小减少邻格重叠。
+    const h = C * 1.42, w = h / aspect(img), footPad = C * 0.1;
+    shadow(ctx, t.px, t.py + footPad, w * 0.34, w * 0.13);
     ctx.save();
     ctx.translate(t.px + lx, t.py + bob + ly);
     if (tilt) ctx.rotate(tilt);

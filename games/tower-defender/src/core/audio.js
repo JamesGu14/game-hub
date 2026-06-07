@@ -93,21 +93,28 @@ export function sfx(name) {
   play();
 }
 
-// —— 轻量 BGM：缓慢分解和弦循环（程序生成，无音频文件）。muted 时排程仍在但不发声 ——
-const BGM_NOTES = [196, 262, 294, 392, 440, 392, 294, 262];   // G 五声·民谣感
+// —— 战争风格 BGM：行军战鼓 + 低音号角动机（程序生成，无音频文件）。muted 时不发声 ——
+const BGM_STEP_MS = 300;                                          // ~100 BPM 行军（每 2 步一拍）
+// 号角动机（16 步,0=休止）：A2→C3→D3→C3→A2 英雄小调,落在重拍。
+const BGM_HORN = [110, 0, 0, 0, 131, 0, 0, 0, 147, 0, 131, 0, 110, 0, 0, 0];
+function bgmTick() {
+  if (muted || !ctx) return;
+  const i = bgmStep % 16;
+  bgmStep++;
+  if (i % 2 === 0) tone({ type: 'sine', freq: 64, freq2: 38, dur: 0.13, gain: i % 8 === 0 ? 0.16 : 0.09 });  // 战鼓 boom（重拍加重）
+  if (i % 4 === 2) tone({ type: 'square', freq: 2000, dur: 0.02, gain: 0.022 });                              // 反拍军鼓 click
+  const f = BGM_HORN[i];
+  if (f) {                                                                                                    // 低音号角（双层厚铜管）
+    tone({ type: 'sawtooth', freq: f, dur: 0.62, gain: 0.06 });
+    tone({ type: 'sawtooth', freq: f * 1.5, dur: 0.5, gain: 0.03, begin: 0.02 });
+  }
+}
 export function startBgm() {
   if (bgmTimer) return;
   if (!ctx) init();
   if (!ctx) return;
-  const tick = () => {
-    if (muted || !ctx) return;
-    const f = BGM_NOTES[bgmStep % BGM_NOTES.length];
-    bgmStep++;
-    tone({ type: 'sine', freq: f, dur: 0.5, gain: 0.035 });
-    tone({ type: 'sine', freq: f * 1.5, dur: 0.4, gain: 0.018, begin: 0.06 });   // 五度泛音垫
-  };
   try {
-    bgmTimer = setInterval(tick, 620);
+    bgmTimer = setInterval(bgmTick, BGM_STEP_MS);
     if (bgmTimer && typeof bgmTimer.unref === 'function') bgmTimer.unref();   // Node：不阻塞进程退出（浏览器 id 无 unref，忽略）
   } catch { bgmTimer = null; }
 }
