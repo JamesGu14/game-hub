@@ -402,7 +402,58 @@ export class EnemyShot {
 // ---------------------------------------------------------------------------
 // 阶段 B 占位 stub —— 让 ENEMY_CTORS 查表与 named import 先跑通。
 // 行为/精灵/碰撞由 Task 2-6 各怪整类替换。合并前务必替换完毕。
-export class Flyer  { constructor(x, y) { this.w = 24; this.h = 22; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.flyerSpeed; this.vy = 0; this.dead = false; this.squish = 0; this.anim = 0; } update() {} }
+// ---------------------------------------------------------------------------
+// 飞翼怪 Flyer (字符 'v', 世界 5)。winged: 正弦悬停飞行,不受重力、不走 collideTiles,
+// 仅水平直接查 grid 撞墙折返。踩第一脚 loseWings() 退化为 Goomba 式地面巡逻;踩第二脚
+// stomp() squish 死。火球/星星/踢壳 kill() 直接死。掉血走 game._playerEnemyCollisions。
+export class Flyer {
+  constructor(x, y) {
+    this.w = 24; this.h = 22;
+    this.x = x + (TILE - this.w) / 2;
+    this.y = y + (TILE - this.h);
+    this.baseY = this.y;
+    this.vx = -ENEMY.flyerSpeed;
+    this.vy = 0;
+    this.onGround = false;
+    this.dead = false;
+    this.winged = true;
+    this.t = 0;
+    this.squish = 0;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    if (this.squish > 0) { this.squish -= dt; if (this.squish <= 0) this.dead = true; return; }
+    const mul = world.mode.enemyMul;
+    if (this.winged) {
+      const spd = ENEMY.flyerSpeed * mul;
+      this.vx = this.vx < 0 ? -spd : spd;
+      this.x += this.vx * dt;
+      this.t += dt * ENEMY.flyerFreq;
+      this.y = this.baseY + Math.sin(this.t * Math.PI * 2) * ENEMY.flyerAmp;
+      const grid = world.grid;
+      const midRow = Math.floor((this.y + this.h / 2) / TILE);
+      const aheadCol = Math.floor((this.vx > 0 ? this.x + this.w + 1 : this.x - 1) / TILE);
+      const row = grid[midRow];
+      const t = row && row[aheadCol];
+      if (t && SOLID.has(t)) this.vx = -this.vx;
+      this.anim += dt * 10;
+    } else {
+      const spd = ENEMY.flyerSpeed * mul;
+      this.vx = this.vx < 0 ? -spd : spd;
+      const info = collideTiles(this, world.grid, dt);
+      if (info.hitWall) this.vx = -this.vx;
+      if (this.onGround) {
+        const aheadX = this.vx > 0 ? this.x + this.w + 1 : this.x - 1;
+        if (!groundAhead(world.grid, aheadX, this.y + this.h)) this.vx = -this.vx;
+      }
+      this.anim += dt * 6;
+    }
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  loseWings() { this.winged = false; this.baseY = this.y; this.vy = 0; }
+  stomp(world) { this.squish = 0.4; this.vx = 0; world.sound.stomp(); }
+  kill(world) { this.dead = true; world.sound.kick(); }
+}
 export class Dasher { constructor(x, y) { this.w = 28; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.dasherPatrol; this.vy = 0; this.dead = false; this.squish = 0; this.anim = 0; } update() {} }
 export class Piranha{ constructor(x, y) { this.w = 26; this.h = 30; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.baseY = y; this.dead = false; this.state = 'hidden'; this.anim = 0; } update() {} }
 export class Spiked { constructor(x, y) { this.w = 26; this.h = 24; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = -ENEMY.spikedSpeed; this.vy = 0; this.dead = false; this.anim = 0; } update() {} }

@@ -251,6 +251,16 @@ export class Renderer {
       } else if (e instanceof Koopa) {
         if (e.state === 'walk') cv = Sprites.koopa('walk', e.frame());
         else cv = Sprites.koopa('shell', 0);
+      } else if (e instanceof Flyer) {
+        if (e.squish > 0) {
+          cv = Sprites.flyer('walk', 0);
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(cv, Math.round(e.x), Math.round(e.y + e.h * 0.6), e.w, e.h * 0.4);
+          ctx.restore();
+          continue;
+        }
+        cv = Sprites.flyer(e.winged ? 'fly' : 'walk', e.frame());
       }
       if (cv) {
         const sc = e.w / cv.width;

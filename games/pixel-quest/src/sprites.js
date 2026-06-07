@@ -148,6 +148,35 @@ function drawKoopaShell() {
   return o;
 }
 
+// 飞翼怪:紫红身体(区别 Goomba 棕),fly 态画上下扇动的白翅膀两帧;walk(退化)态无翅。
+function drawFlyer(state, frame) {
+  const o = mk(20, 17), x = o.cx;
+  if (state === 'fly') {
+    x.fillStyle = '#f2eaff';
+    if (frame === 1) {
+      x.beginPath(); x.moveTo(3, 8); x.lineTo(-1, 2); x.lineTo(5, 6); x.closePath(); x.fill();
+      x.beginPath(); x.moveTo(17, 8); x.lineTo(21, 2); x.lineTo(15, 6); x.closePath(); x.fill();
+    } else {
+      x.beginPath(); x.moveTo(3, 8); x.lineTo(-1, 13); x.lineTo(5, 10); x.closePath(); x.fill();
+      x.beginPath(); x.moveTo(17, 8); x.lineTo(21, 13); x.lineTo(15, 10); x.closePath(); x.fill();
+    }
+    x.fillStyle = '#d9c8f0';
+    x.fillRect(2, 7, 2, 2); x.fillRect(16, 7, 2, 2);
+  }
+  x.fillStyle = '#b03a6e'; x.beginPath(); x.ellipse(10, 9, 9, 7, 0, Math.PI, 0); x.fill();
+  r(x, 2, 9, 16, 5);
+  x.fillStyle = '#7a2548'; r(x, 2, 13, 16, 1.5);
+  x.fillStyle = '#d96b9a'; E(x, 10, 11, 6, 3.2);
+  x.fillStyle = '#4a1530'; r(x, 3, 7, 6, 1.6); r(x, 11, 7, 6, 1.6);
+  x.fillStyle = '#fff'; E(x, 7, 9.6, 2, 2.4); E(x, 13, 9.6, 2, 2.4);
+  x.fillStyle = '#1b1e26'; E(x, 7.4, 10, 1.1, 1.5); E(x, 12.6, 10, 1.1, 1.5);
+  x.fillStyle = '#5a1838'; r(x, 7, 13.6, 6, 1.2);
+  x.fillStyle = '#3a1024';
+  if (frame === 1) { E(x, 5, 16, 3, 1.8); E(x, 15, 16, 3, 1.8); }
+  else { E(x, 7, 16, 3, 1.8); E(x, 13, 16, 3, 1.8); }
+  return o;
+}
+
 // ---- princess / castle / flag --------------------------------------------
 function drawPrincess() {
   const o = mk(26, 34), x = o.cx;
@@ -528,6 +557,9 @@ export const Sprites = {
   koopa(state, frame) {
     if (state === 'shell') return cached('kp:shell', () => drawKoopaShell()).cv;
     return cached(`kp:walk:${frame & 1}`, () => drawKoopaWalk(frame & 1)).cv;
+  },
+  flyer(state, frame) {
+    return cached(`fly:${state}:${frame & 1}`, () => drawFlyer(state, frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {

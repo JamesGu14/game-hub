@@ -503,7 +503,15 @@ export class Game {
 
       const stomping = p.vy > 0 && (p.y + p.h) - e.y < 16;
 
-      if (e instanceof Goomba) {
+      if (e instanceof Flyer) {
+        if (e.squish > 0) continue;
+        if (stomping) {
+          if (e.winged) { e.loseWings(); p.vy = -360; this.score += SCORE.stomp; } // 第一脚:掉翅小弹
+          else { e.stomp(this._world); p.vy = -440; this.score += SCORE.stomp; }   // 第二脚:踩扁
+        } else {
+          this._hurtPlayer();
+        }
+      } else if (e instanceof Goomba) {
         if (e.squish > 0) continue;
         if (stomping) {
           e.stomp(this._world);
