@@ -561,6 +561,15 @@ export class Game {
       } else if (e instanceof Spiked) {
         // 带刺:任何接触(含踩)都反伤,不读 stomping。火球/踢壳/星星走 e.kill。
         this._hurtPlayer();
+      } else if (e instanceof Flamer) {
+        if (e.squish > 0) continue;
+        if (stomping) {
+          e.stomp(this._world);
+          p.vy = -440;
+          this.score += SCORE.stomp;
+        } else {
+          this._hurtPlayer();
+        }
       }
     }
   }

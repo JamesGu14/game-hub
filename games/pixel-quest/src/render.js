@@ -276,6 +276,16 @@ export class Renderer {
         cv = Sprites.piranha(e.frame());
       } else if (e instanceof Spiked) {
         cv = Sprites.spiked(e.frame());
+      } else if (e instanceof Flamer) {
+        if (e.squish > 0) {
+          cv = Sprites.flamer(0);
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(cv, Math.round(e.x), Math.round(e.y + e.h * 0.6), e.w, e.h * 0.4);
+          ctx.restore();
+          continue;
+        }
+        cv = Sprites.flamer(e.frame());
       }
       if (cv) {
         const sc = e.w / cv.width;

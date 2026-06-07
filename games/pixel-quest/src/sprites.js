@@ -258,6 +258,33 @@ function drawSpiked(frame) {
   return o;
 }
 
+// 炎魔 Flamer: 橙红熔岩身 + 双角 + 发光眼 + 头顶火苗(两帧摇曳)。
+function drawFlamer(frame) {
+  const o = mk(24, 26), x = o.cx;
+  const flick = frame === 1 ? 1 : 0;
+  x.fillStyle = '#ffd23f';
+  x.beginPath(); x.moveTo(12, 0 - flick); x.lineTo(8 + flick, 7); x.lineTo(16 - flick, 7); x.closePath(); x.fill();
+  x.fillStyle = '#ff7a1a';
+  x.beginPath(); x.moveTo(7, 8); x.lineTo(5 + flick, 4); x.lineTo(9, 8); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(17, 8); x.lineTo(19 - flick, 4); x.lineTo(15, 8); x.closePath(); x.fill();
+  x.fillStyle = '#4a1c0c';
+  x.beginPath(); x.moveTo(3, 11); x.lineTo(1, 6); x.lineTo(5, 10); x.closePath(); x.fill();
+  x.beginPath(); x.moveTo(21, 11); x.lineTo(23, 6); x.lineTo(19, 10); x.closePath(); x.fill();
+  x.fillStyle = '#c23a12'; E(x, 12, 16, 9, 8);
+  x.fillStyle = '#7a2208'; E(x, 12, 21, 8, 4);
+  x.fillStyle = '#ff7a1a'; r(x, 5, 14, 14, 2);
+  x.fillStyle = '#ffd23f'; r(x, 8, 18, 1.4, 4); r(x, 14, 17, 1.4, 5); r(x, 11, 20, 1.2, 3);
+  x.fillStyle = '#fff2a0'; E(x, 9, 14.5, 2.2, 2.4); E(x, 15, 14.5, 2.2, 2.4);
+  x.fillStyle = '#ff3b1a'; E(x, 9, 14.7, 1.1, 1.4); E(x, 15, 14.7, 1.1, 1.4);
+  x.fillStyle = '#1b1e26'; E(x, 9, 14.9, 0.5, 0.7); E(x, 15, 14.9, 0.5, 0.7);
+  x.fillStyle = '#3a1206'; r(x, 8, 21, 8, 1.6);
+  x.fillStyle = '#fff'; r(x, 9, 21, 1.2, 1.4); r(x, 14, 21, 1.2, 1.4);
+  x.fillStyle = '#4a1c0c';
+  if (frame === 1) { E(x, 7, 25, 3, 1.6); E(x, 17, 25, 3, 1.6); }
+  else { E(x, 9, 25, 3, 1.6); E(x, 15, 25, 3, 1.6); }
+  return o;
+}
+
 // ---- princess / castle / flag --------------------------------------------
 function drawPrincess() {
   const o = mk(26, 34), x = o.cx;
@@ -651,6 +678,9 @@ export const Sprites = {
   },
   spiked(frame) {
     return cached(`spk:${frame & 1}`, () => drawSpiked(frame & 1)).cv;
+  },
+  flamer(frame) {
+    return cached(`flm:${frame & 1}`, () => drawFlamer(frame & 1)).cv;
   },
   princess() { return cached('princess', () => drawPrincess()).cv; },
   portrait(key) {

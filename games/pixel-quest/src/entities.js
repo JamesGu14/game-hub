@@ -611,7 +611,49 @@ export class Spiked {
   // NO stomp(): 踩到走 _hurtPlayer。
   kill(world) { this.dead = true; world.sound.kick(); }
 }
-export class Flamer { constructor(x, y) { this.w = 26; this.h = 28; this.x = x + (TILE - this.w) / 2; this.y = y + (TILE - this.h); this.vx = 0; this.vy = 0; this.dead = false; this.throwTimer = ENEMY.flameThrowEvery; this.squish = 0; this.anim = 0; } update() {} }
+// ---------------------------------------------------------------------------
+// 炎魔 Flamer(世界9;字符 'm'):贴地站立、面朝玩家,每 flameThrowEvery 秒喷一发
+// EnemyShot(弧线敌方火球)。能被踩死(squish)或被 火球/踢壳/星星 杀。火球的玩家碰撞
+// 由 game.update 主循环处理(EnemyShot),不在此扣血——本体只负责喷。
+export class Flamer {
+  constructor(x, y) {
+    this.w = 26; this.h = 28;
+    this.x = x + (TILE - this.w) / 2;
+    this.y = y + (TILE - this.h);
+    this.vx = 0;
+    this.vy = 0;
+    this.onGround = false;
+    this.dead = false;
+    this.faceRight = false;
+    this.throwTimer = ENEMY.flameThrowEvery * (0.5 + Math.random() * 0.5); // 错峰首发
+    this.squish = 0;
+    this.anim = 0;
+  }
+  update(dt, world) {
+    if (this.squish > 0) { this.squish -= dt; if (this.squish <= 0) this.dead = true; return; }
+    this.vx = 0;
+    collideTiles(this, world.grid, dt);
+    this.anim += dt * 5;
+    const p = world.player;
+    if (p) {
+      const myMid = this.x + this.w / 2;
+      const pMid = p.x + p.w / 2;
+      this.faceRight = pMid >= myMid;
+    }
+    this.throwTimer -= dt;
+    if (this.throwTimer <= 0) {
+      this.throwTimer = ENEMY.flameThrowEvery;
+      const dir = this.faceRight ? 1 : -1;
+      const sx = this.x + (dir > 0 ? this.w : -14);
+      const sy = this.y + this.h * 0.3;
+      world.spawnEnemyShot(sx, sy, ENEMY.flameSpeed * dir, -120);
+      world.sound.fireball();
+    }
+  }
+  frame() { return Math.floor(this.anim) % 2; }
+  stomp(world) { this.squish = 0.4; this.vx = 0; world.sound.stomp(); }
+  kill(world) { this.dead = true; world.sound.kick(); }
+}
 
 // ---------------------------------------------------------------------------
 export class MovingPlatform {
