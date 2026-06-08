@@ -23,6 +23,13 @@ FILES = [
     'bosses/xiahoudun.png', 'bosses/zhangliao.png', 'bosses/caocao.png',
     'bosses/xiahouyuan.png', 'bosses/luxun.png', 'bosses/simayi.png',
     'enemies/heavy.png', 'enemies/flyer.png', 'enemies/shaman.png',
+    # [检查点A v2 第二批] 12 生成关主将 + 12 副将
+    'bosses/huaxiong.png', 'bosses/lvbu.png', 'bosses/menghuo.png', 'bosses/yanliang.png',
+    'bosses/wenchou.png', 'bosses/sunquan.png', 'bosses/ganning.png', 'bosses/zhangren.png',
+    'bosses/caoren.png', 'bosses/zhanghe.png', 'bosses/xuchu.png', 'bosses/zhuran.png',
+    'bosses/lidian.png', 'bosses/yuejin.png', 'bosses/yujin.png', 'bosses/caohong.png',
+    'bosses/caoxiu.png', 'bosses/niujin.png', 'bosses/zhoutai.png', 'bosses/jiangqin.png',
+    'bosses/dingfeng.png', 'bosses/xusheng.png', 'bosses/panzhang.png', 'bosses/handang.png',
 ]
 MIN_WHITE = 196    # 近白判定：min(r,g,b) ≥ 此值（角落 ~239、bg 渐变到 ~200 都算底）
 MAX_SAT = 32       # 低饱和判定：max-min ≤ 此值（彩色/深描边不算底）

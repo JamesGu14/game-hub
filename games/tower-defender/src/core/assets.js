@@ -32,6 +32,32 @@ export const MANIFEST = {
   boss_xiahouyuan: 'assets/sprites/bosses/xiahouyuan.png',
   boss_luxun: 'assets/sprites/bosses/luxun.png',
   boss_simayi: 'assets/sprites/bosses/simayi.png',
+  // —— [检查点A v2 第二批] 12 生成关主将 ——
+  boss_huaxiong: 'assets/sprites/bosses/huaxiong.png',
+  boss_lvbu: 'assets/sprites/bosses/lvbu.png',
+  boss_menghuo: 'assets/sprites/bosses/menghuo.png',
+  boss_yanliang: 'assets/sprites/bosses/yanliang.png',
+  boss_wenchou: 'assets/sprites/bosses/wenchou.png',
+  boss_sunquan: 'assets/sprites/bosses/sunquan.png',
+  boss_ganning: 'assets/sprites/bosses/ganning.png',
+  boss_zhangren: 'assets/sprites/bosses/zhangren.png',
+  boss_caoren: 'assets/sprites/bosses/caoren.png',
+  boss_zhanghe: 'assets/sprites/bosses/zhanghe.png',
+  boss_xuchu: 'assets/sprites/bosses/xuchu.png',
+  boss_zhuran: 'assets/sprites/bosses/zhuran.png',
+  // —— [检查点A v2 第二批] 12 副将 ——
+  boss_lidian: 'assets/sprites/bosses/lidian.png',
+  boss_yuejin: 'assets/sprites/bosses/yuejin.png',
+  boss_yujin: 'assets/sprites/bosses/yujin.png',
+  boss_caohong: 'assets/sprites/bosses/caohong.png',
+  boss_caoxiu: 'assets/sprites/bosses/caoxiu.png',
+  boss_niujin: 'assets/sprites/bosses/niujin.png',
+  boss_zhoutai: 'assets/sprites/bosses/zhoutai.png',
+  boss_jiangqin: 'assets/sprites/bosses/jiangqin.png',
+  boss_dingfeng: 'assets/sprites/bosses/dingfeng.png',
+  boss_xusheng: 'assets/sprites/bosses/xusheng.png',
+  boss_panzhang: 'assets/sprites/bosses/panzhang.png',
+  boss_handang: 'assets/sprites/bosses/handang.png',
 };
 
 // 默认浏览器加载器：返回 Promise<Image|null>；onload→图、onerror→null（缺图不 throw、不阻塞）。
