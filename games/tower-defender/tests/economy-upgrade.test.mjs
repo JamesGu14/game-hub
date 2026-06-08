@@ -2,21 +2,27 @@
 // 运行：node games/tower-defender/tests/economy-upgrade.test.mjs
 import assert from 'node:assert';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from '../src/systems/economySystem.js';
+import { BAL } from '../src/data/balance.js';
+import { GENERALS } from '../src/data/generals.js';
 
-// 升级造价 L2=70×1.0、L3=70×1.6；满级封顶；invested 累加
+// 升级造价 L2..L5（× 基础 cost）；满级=MAX_TOWER_LEVEL；invested 累加
 {
-  const s = { gold: 1000, towers: [] };
-  tryBuild(s, { x: 1, y: 1 }, 'huang');           // -70 → 930；L1，invested 70
+  const s = { gold: 100000, towers: [] };
+  tryBuild(s, { x: 1, y: 1 }, 'huang');           // -70；L1，invested 70
   const t = s.towers[0];
-  assert.equal(upgradeCost(t), 70, 'L2 造价 70');
-  assert.equal(tryUpgrade(s, t), true);
-  assert.equal(t.level, 2); assert.equal(s.gold, 860, '升 L2 -70');
-  assert.equal(t.totalInvested, 140, 'invested 70+70');
-  assert.equal(upgradeCost(t), 112, 'L3 造价 112');
-  assert.equal(tryUpgrade(s, t), true);
-  assert.equal(t.level, 3); assert.equal(s.gold, 748, '升 L3 -112');
-  assert.equal(t.totalInvested, 252);
-  assert.equal(tryUpgrade(s, t), false, 'L3 满级不可升');
+  const base = GENERALS.huang.cost;               // 70
+  const costAt = (lvl) => Math.round(base * { 1: BAL.UPGRADE_COST_L2, 2: BAL.UPGRADE_COST_L3, 3: BAL.UPGRADE_COST_L4, 4: BAL.UPGRADE_COST_L5 }[lvl]);
+  let invested = 70;
+  for (let lvl = 1; lvl < BAL.MAX_TOWER_LEVEL; lvl++) {
+    const c = costAt(lvl);
+    assert.equal(upgradeCost(t), c, `L${lvl + 1} 造价 ${c}`);
+    assert.equal(tryUpgrade(s, t), true, `升 L${lvl + 1}`);
+    assert.equal(t.level, lvl + 1);
+    invested += c;
+    assert.equal(t.totalInvested, invested, `invested 累加到 ${invested}`);
+  }
+  assert.equal(t.level, BAL.MAX_TOWER_LEVEL, `已到满级 L${BAL.MAX_TOWER_LEVEL}`);
+  assert.equal(tryUpgrade(s, t), false, '满级不可升');
   assert.equal(upgradeCost(t), Infinity, '满级造价 ∞');
 }
 

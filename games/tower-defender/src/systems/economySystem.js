@@ -24,12 +24,12 @@ export function tryBuild(state, slot, generalId) {
   return true;
 }
 
-// —— [P2] 升级（§17.1：L2=cost×1.0 · L3=cost×1.6）——
+// —— 升级造价（§17.1 L2/L3 + §5.3 L4/L5）。封顶仍由 MAX_TOWER_LEVEL 判定 ——
+const UP_COST_MULT = { 1: BAL.UPGRADE_COST_L2, 2: BAL.UPGRADE_COST_L3, 3: BAL.UPGRADE_COST_L4, 4: BAL.UPGRADE_COST_L5 };
 export function upgradeCost(tower) {
   if (tower.level >= BAL.MAX_TOWER_LEVEL) return Infinity;
   const base = GENERALS[tower.generalId].cost;
-  const mult = tower.level === 1 ? BAL.UPGRADE_COST_L2 : BAL.UPGRADE_COST_L3;
-  return Math.round(base * mult);
+  return Math.round(base * UP_COST_MULT[tower.level]);
 }
 
 export function canUpgrade(state, tower) {
