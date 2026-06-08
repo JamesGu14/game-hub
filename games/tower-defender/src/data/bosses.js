@@ -11,4 +11,17 @@ export const BOSSES = {
   zhanghe: { id: 'zhanghe', name: '张郃', hpMult: 1.0 },     // L7 曹魏（v2）
   xuchu: { id: 'xuchu', name: '许褚', hpMult: 1.1 },         // L7 曹魏·双BOSS（v2）
   simayi: { id: 'simayi', name: '司马懿', hpMult: 1.6, bossSkills: ['summon', 'stunTower'] }, // L8 终·双技（v2）
+  // —— 检查点A 扩充 12 条（覆盖 50 关战役主将；美术 v1 fallback 色块+名）——
+  huaxiong: { id: 'huaxiong', name: '华雄', hpMult: 1.0 },
+  lvbu: { id: 'lvbu', name: '吕布', hpMult: 1.4 },
+  yanliang: { id: 'yanliang', name: '颜良', hpMult: 1.0 },
+  wenchou: { id: 'wenchou', name: '文丑', hpMult: 1.0 },
+  caocao: { id: 'caocao', name: '曹操', hpMult: 1.3 },
+  xiahoudun: { id: 'xiahoudun', name: '夏侯惇', hpMult: 1.1 },
+  xiahouyuan: { id: 'xiahouyuan', name: '夏侯渊', hpMult: 1.1 },
+  caoren: { id: 'caoren', name: '曹仁', hpMult: 1.2 },
+  zhangren: { id: 'zhangren', name: '张任', hpMult: 1.0 },
+  menghuo: { id: 'menghuo', name: '孟获', hpMult: 1.1 },
+  sunquan: { id: 'sunquan', name: '孙权', hpMult: 1.2 },
+  zhuran: { id: 'zhuran', name: '朱然', hpMult: 1.0 },
 };
