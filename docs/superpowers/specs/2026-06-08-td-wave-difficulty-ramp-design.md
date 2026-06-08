@@ -53,7 +53,7 @@
 | `src/data/waveRamp.js` **(新)** | 纯函数 `waveRamp(waveIndex, waveCount) → { hpMult, dmgTakenMult }`，可独立单测 |
 | `src/systems/waveSystem.js` | `startWave()`（L46）算一次 ramp 存进 `activeSpawn`；出兵（L21）从 `sp.rampHp`/`sp.dmgTakenMult` 读出透传进 `createEnemy` opts（`rampHp` 与 boss `hpMult` 区分键，见下注）|
 | `src/systems/bossSystem.js` | 司马懿召唤的魏卒（L29）**直接继承 boss 身上已算好的 `dmgTakenMult` 与 rampHp**（boss 实例已带，不重算 `state.waveIndex`），保持与召唤者同波硬度 |
-| `src/entities/enemy.js` | `createEnemy` opts 接收 ramp 的 `rampHp`（与现有 boss `hpMult` 相乘并入 `hp`/`maxHp`）；新增实例字段 `dmgTakenMult`（默认 1）|
+| `src/entities/enemy.js` | `createEnemy` opts 接收 ramp 的 `rampHp`（与现有 boss `hpMult` 相乘并入 `hp`/`maxHp`）；**新增两个实例字段** `rampHp`（默认 1）与 `dmgTakenMult`（默认 1）——存成字段让 `bossSystem` 召唤时可从 `boss.rampHp`/`boss.dmgTakenMult` 直接读（采纳 review #P1·方案 A，与未来召唤/分裂类机制对称）|
 | `src/systems/combat/damageCalc.js` | 直伤返回再乘 `enemy.dmgTakenMult`（暴击早返回天然跳过，见下「已知 tradeoff」）|
 
 注：`createEnemy` 现有 `opts.hpMult` 是 boss 血量倍率。ramp 的 HP 倍率需与之**相乘**（boss 末波 = boss_hpMult × ramp_hpMult）。实现时用独立 opts 键 `opts.rampHp` 避免覆盖，工厂内 `hp = def.hp × scale × (opts.hpMult||1) × (opts.rampHp||1)`。
@@ -81,6 +81,7 @@
 - **新** `tests/waveRamp.test.mjs`：边界——首波 `hpMult=1.0`/`dmgTakenMult=1.0`；末波 `hpMult=2.0`/`dmgTakenMult=0.85`；t² 后置性（中点防御 ramp 明显弱于线性，如 `t=0.5` 时 `dmgTakenMult≈0.9625` 而非线性的 `0.925`）；`waveCount=1` 不除零（返回首波值 `{1.0, 1.0}`）。
 - **回归** `tests/levels-winnable.test.mjs`：ramp 后 50 关仍可通关——**主要风险位**。若 L50 被打崩 → 下调 `WAVE_HP_RAMP_MAX` 或在 winnable 模拟里提升塔配置后复跑。
 - **回归/补充** `tests/damageCalc.test.mjs`（已存在）：补 `dmgTakenMult` 生效、与 resist/暴击的叠加顺序（暴击跳过、非暴击吃满）；`tests/enemy*` 或工厂相关：`rampHp` 与 boss `hpMult` 相乘、`dmgTakenMult` 默认 1。
+- **回归** `tests/bossSystem.test.mjs`（已存在）：司马懿召唤的魏卒继承 `boss.rampHp`/`boss.dmgTakenMult`（末波 t=1 → 召出的兵也吃满 ramp）。
 - 门禁全绿后，浏览器实玩冒烟（手动开 hub 选 L1/L50 各打一把，确认末波体感变硬、HP 条变长、仍可通关）——沿用 [[tower-defender-game]] 检查点验收纪律。
 
 ## 验收
