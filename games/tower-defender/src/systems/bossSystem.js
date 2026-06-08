@@ -26,7 +26,8 @@ export function bossSystem(state, dt) {
 function summon(state, boss) {
   const path = state.level.paths[boss.pathId];
   for (let i = 0; i < BAL.BOSS_SUMMON_COUNT; i++) {
-    const m = createEnemy('footman', boss.pathId, path, state.level.scale, { faction: state.level.faction });
+    const m = createEnemy('footman', boss.pathId, path, state.level.scale,
+      { faction: state.level.faction, rampHp: boss.rampHp, dmgTakenMult: boss.dmgTakenMult });  // 继承召唤者同波硬度
     m.seg = boss.seg; m.t = boss.t; m.progress = boss.progress;
     m.gx = boss.gx; m.gy = boss.gy; m.px = boss.px; m.py = boss.py;
     state.enemies.push(m);

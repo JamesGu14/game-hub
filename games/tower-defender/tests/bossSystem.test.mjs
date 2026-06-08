@@ -40,4 +40,15 @@ function mkBoss() {
   assert.equal(e.hp, hp0, '被震塔停火(敌血不掉)');
 }
 
+// summon 继承 boss 的 wave ramp（rampHp/dmgTakenMult）
+{
+  const boss = mkBoss();
+  boss.rampHp = 2; boss.dmgTakenMult = 0.85;
+  const s = { phase: 'combat', time: 0, level, enemies: [boss], towers: [] };
+  for (let i = 0; i < 15.05 * 60; i++) { s.time += 1 / 60; bossSystem(s, 1 / 60); }
+  const minion = s.enemies.find((e) => e.type === 'footman');
+  assert.equal(minion.hp, 120, '召出魏卒继承 rampHp2 → 60×2=120');
+  assert.equal(minion.dmgTakenMult, 0.85, '召出魏卒继承 dmgTakenMult');
+}
+
 console.log('ok bossSystem');
