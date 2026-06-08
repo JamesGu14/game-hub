@@ -6,8 +6,8 @@ import * as audio from './core/audio.js';
 import { newGameState } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
-import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex } from './core/save.js';
-import { tryBuild, tryUpgrade, sellTower } from './systems/economySystem.js';
+import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
+import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
 import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
@@ -16,6 +16,9 @@ import { spawnFloat } from './render/fx.js';
 import { drawBuildBar, hitBuildBar } from './ui/buildBar.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
+import { hitStoryCard, drawStoryCard } from './ui/storyCard.js';
+import { CHAPTERS } from './data/campaign.js';
+import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
 import { GENERALS } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
@@ -31,7 +34,11 @@ const bannerEl = document.getElementById('banner');
 const view = { w: 0, h: 0, scale: 1, ox: 0, oy: 0 };
 let state = null;
 let save = null;
-let screen = 'select';        // [P4] 'select' | 'playing'
+let screen = 'select';        // [P4/检查点A] 'select' | 'story' | 'playing'
+let pendingLevel = -1;        // [检查点A] 故事屏待进关卡 index
+let pendingResume = null;     // [检查点A] 该关 resume 快照（有则故事屏给续玩选项）
+let storyReview = false;      // [检查点A] 「重看故事」复看模式（继续=回到当前对局，不重置）
+let selectChapter = 0;        // [检查点A] 选关当前章 index
 let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
 let selected = 'huang';
 let selectedTower = null;
@@ -54,8 +61,50 @@ function enterLevel(n) {
   audio.startBgm();                                  // [P6] 轻量 BGM（ctx 未建则静默）
   return true;
 }
-function startLevel(n) { return isUnlocked(save, n + 1) ? enterLevel(n) : false; }
+// [检查点A] 选关 → 故事屏（有续玩则带选项）；校验解锁。
+function startLevel(n) {
+  if (!isUnlocked(save, n + 1)) return false;
+  pendingLevel = n; storyReview = false;
+  const snap = browserLoadResume();
+  pendingResume = (snap && snap.levelId === LEVELS[n].id) ? snap : null;
+  screen = 'story'; audio.stopBgm();
+  return true;
+}
 function toSelect() { screen = 'select'; selectedTower = null; audio.stopBgm(); }
+
+function investedFor(generalId, level) {
+  let inv = GENERALS[generalId].cost;
+  const tmp = { generalId, level: 1 };
+  for (let L = 1; L < level; L++) { tmp.level = L; inv += upgradeCost(tmp); }
+  return inv;
+}
+
+// 续玩：从快照恢复到「所在波的备战起点」（v1 不重建半场出兵，稳健）。
+function applyResume(snap) {
+  const n = LEVELS.findIndex((l) => l.id === snap.levelId);
+  if (n < 0) return false;
+  enterLevel(n);
+  state.waveIndex = Math.max(0, Math.min(snap.waveIndex, state.level.waves.length - 1));
+  state.gold = snap.gold;
+  state.castleHp = Math.min(snap.castleHp, state.castleMaxHp);
+  state.phase = 'prep'; state.prepTimer = BAL.PREP_SECONDS;
+  state.enemies = []; state.activeSpawns = []; state.earlyRequested = false; state.allWavesEmitted = false;
+  state.towers = (snap.towers || []).map((ts) => {
+    const t = createTower(ts.generalId, ts.slot);
+    t.level = ts.level; t.mode = ts.mode; t.totalInvested = investedFor(ts.generalId, ts.level);
+    return t;
+  });
+  return true;
+}
+// 故事屏「继续/续上次/重头」路由。
+function fromStory(act) {
+  if (storyReview) { screen = 'playing'; storyReview = false; if (state.paused) state.paused = false; return; }
+  if (act === 'resume' && pendingResume) { applyResume(pendingResume); browserClearResume(); screen = 'playing'; audio.startBgm(); }   // 续玩成功即清档（防下次/刷新读到旧波）
+  else { browserClearResume(); enterLevel(pendingLevel); }   // continue / restart 都重头
+  pendingResume = null;
+}
+// [检查点A] 退出对局即清续玩（退到选关/大厅=放弃）。
+function leaveToSelect() { browserClearResume(); toSelect(); }
 
 const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
 
@@ -80,7 +129,8 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); return; }
+  if (screen === 'story') { drawStoryCard(ctx, view, LEVELS[pendingLevel], !!pendingResume); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   backdrop(ctx, view.w, view.h);
@@ -130,10 +180,10 @@ function render(s) {
 
   // [P4] 结算:胜利写档(一次)+ 结算面板
   if (s.phase === 'won' || s.phase === 'lost') {
-    if (s.phase === 'won' && !recorded) {
+    if (!recorded) {
+      browserClearResume();                       // [检查点A] 胜/负先清续玩（防写档异常残留脏档）
       recorded = true;
-      save = applyClear(save, s.level.id, s.stars);
-      browserWrite(save);
+      if (s.phase === 'won') { save = applyClear(save, s.level.id, s.stars); browserWrite(save); }
     }
     drawResult(ctx, view, s, LEVELS.length);
   }
@@ -148,8 +198,14 @@ function onPointerDown(ev) {
 
   // [P4] 选关屏
   if (screen === 'select') {
-    const i = hitLevelSelect(view, save, LEVELS.length, sx, sy);
-    if (i != null) startLevel(i);
+    const r = hitLevelSelect(view, save, LEVELS, selectChapter, sx, sy);
+    if (r && r.kind === 'level') startLevel(r.index);
+    else if (r && r.kind === 'chapter') selectChapter = Math.max(0, Math.min(CHAPTERS.length - 1, selectChapter + r.delta));
+    return;
+  }
+  if (screen === 'story') {
+    const act = hitStoryCard(view, !!pendingResume, sx, sy);
+    if (act) fromStory(act);
     return;
   }
   // [P4] 结算屏(胜/负):仅响应结算按钮,消费其余点击
@@ -157,7 +213,7 @@ function onPointerDown(ev) {
     const act = hitResult(view, state, LEVELS.length, sx, sy);
     if (act === 'next') startLevel(curIndex() + 1);
     else if (act === 'retry') enterLevel(curIndex());
-    else if (act === 'select') toSelect();
+    else if (act === 'select') leaveToSelect();
     return;
   }
 
@@ -170,10 +226,11 @@ function onPointerDown(ev) {
   if (state.paused) {
     const act = hitPause(view, sx, sy);
     if (act === 'resume') state.paused = false;
-    else if (act === 'restart') enterLevel(curIndex());
-    else if (act === 'select') { state.paused = false; toSelect(); }
+    else if (act === 'restart') { browserClearResume(); enterLevel(curIndex()); }
+    else if (act === 'story') { storyReview = true; pendingLevel = curIndex(); pendingResume = null; screen = 'story'; }
+    else if (act === 'select') { state.paused = false; leaveToSelect(); }
     else if (act === 'mute') { save.settings.muted = !save.settings.muted; audio.setMuted(save.settings.muted); browserWrite(save); audio.sfx('ui'); }
-    else if (act === 'hub') window.location.href = '../../index.html';
+    else if (act === 'hub') { browserClearResume(); window.location.href = '../../index.html'; }
     return;
   }
   const pick = hitBuildBar(view, sx, sy);
@@ -235,6 +292,11 @@ async function boot() {
     setGold(n) { state.gold = n; },
     loadLevel(n) { return enterLevel(n); },     // 调试:直接进任意关(不校验解锁)
     toSelect,
+    showStory(n) { return startLevel(n); },
+    getResume() { return browserLoadResume(); },
+    fromStory,
+    setChapter(i) { selectChapter = Math.max(0, Math.min(CHAPTERS.length - 1, i)); },
+    get pendingResume() { return pendingResume; },
     early() { if (state.phase === 'prep') state.earlyRequested = true; },
     setSpeed(n) { state.speed = n; },
   };
@@ -248,6 +310,14 @@ async function boot() {
 
   const loop = makeLoop(state, render, () => screen === 'playing');   // [P4] 仅游戏态推进模拟
   document.addEventListener('visibilitychange', loop.onVisible);
+  // [检查点A] 中断续玩：游戏中（非结算）切后台/关页 → 写快照。
+  function persistResume() {
+    if (screen === 'playing' && (state.phase === 'prep' || state.phase === 'combat')) {
+      browserWriteResume(resumeSnapshot(state));
+    }
+  }
+  document.addEventListener('visibilitychange', () => { if (document.hidden) persistResume(); });
+  window.addEventListener('beforeunload', persistResume);
   loop.start();
 }
 
