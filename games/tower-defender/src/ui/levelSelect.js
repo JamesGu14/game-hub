@@ -1,57 +1,72 @@
-// ui/levelSelect.js — [P4/P5] 选关界面（屏幕坐标 layout/hit/draw）= 游戏主页。
-// [P5] 三国皮肤：楷体大标题 + 势力旗色卡（theme.panel）+ 金星 + 朱印「封」锁 + 下一关金框 glow。
-// layout/hit 为单一来源（命中测试依赖），仅 draw 换 theme。
+// ui/levelSelect.js — [检查点A] 分章/分页选关（屏幕坐标 layout/hit/draw）= 游戏主页。
+// 一次显示一章（≤10 关，5×2 网格）+ 章头 + ◀上一章/下一章▶。layout/hit 单一来源。
 import { isUnlocked, nextPlayableIndex } from '../core/save.js';
 import { FACTIONS } from '../data/factions.js';
-import { backdrop, panel, title, seal, roundRect, FONT, PAL } from './theme.js';
+import { CHAPTERS } from '../data/campaign.js';
+import { backdrop, panel, title, seal, button, roundRect, FONT, PAL } from './theme.js';
 
-const COLS = 4;
+const COLS = 5;
+const NAV_W = 132, NAV_H = 44;
 
-export function levelSelectLayout(view, total) {
-  const cols = COLS, rows = Math.ceil(total / cols);
-  const cw = Math.max(140, Math.min(230, (view.w - 80) / cols - 16));
-  const ch = Math.max(96, Math.min(124, (view.h - 200) / rows - 16));
-  const gap = 18;
-  const gridW = cols * cw + (cols - 1) * gap;
-  const x0 = (view.w - gridW) / 2, y0 = 132;
-  const cards = [];
-  for (let i = 0; i < total; i++) {
-    const r = Math.floor(i / cols), c = i % cols;
-    cards.push({ index: i, x: x0 + c * (cw + gap), y: y0 + r * (ch + gap), w: cw, h: ch });
-  }
-  return cards;
+// 当前章关卡（全局 index 升序）
+function chapterLevels(levels, chapterIdx) {
+  const chId = CHAPTERS[chapterIdx]?.id;
+  const out = [];
+  for (let i = 0; i < levels.length; i++) if (levels[i].chapter === chId) out.push({ index: i, lv: levels[i] });
+  return out;
 }
 
-// 命中已解锁卡 → 0-based index；锁定/空白 → null。
-export function hitLevelSelect(view, save, total, sx, sy) {
-  for (const card of levelSelectLayout(view, total)) {
+export function levelSelectLayout(view, levels, chapterIdx) {
+  const list = chapterLevels(levels, chapterIdx);
+  const cols = COLS, rows = Math.max(1, Math.ceil(list.length / cols));
+  const cw = Math.max(150, Math.min(220, (view.w - 120) / cols - 16));
+  const ch = Math.max(92, Math.min(120, (view.h - 280) / rows - 16));
+  const gap = 18;
+  const gridW = cols * cw + (cols - 1) * gap;
+  const x0 = (view.w - gridW) / 2, y0 = 150;
+  const cards = list.map((it, k) => {
+    const r = Math.floor(k / cols), c = k % cols;
+    return { index: it.index, x: x0 + c * (cw + gap), y: y0 + r * (ch + gap), w: cw, h: ch };
+  });
+  const navY = view.h - 70;
+  const prev = chapterIdx > 0 ? { x: view.w / 2 - 160 - NAV_W, y: navY, w: NAV_W, h: NAV_H } : null;
+  const next = chapterIdx < CHAPTERS.length - 1 ? { x: view.w / 2 + 160, y: navY, w: NAV_W, h: NAV_H } : null;
+  return { cards, prev, next };
+}
+
+export function hitLevelSelect(view, save, levels, chapterIdx, sx, sy) {
+  const L = levelSelectLayout(view, levels, chapterIdx);
+  for (const card of L.cards) {
     if (sx >= card.x && sx <= card.x + card.w && sy >= card.y && sy <= card.y + card.h) {
-      return isUnlocked(save, card.index + 1) ? card.index : null;
+      return isUnlocked(save, card.index + 1) ? { kind: 'level', index: card.index } : null;
     }
   }
+  if (L.prev && sx >= L.prev.x && sx <= L.prev.x + L.prev.w && sy >= L.prev.y && sy <= L.prev.y + L.prev.h) return { kind: 'chapter', delta: -1 };
+  if (L.next && sx >= L.next.x && sx <= L.next.x + L.next.w && sy >= L.next.y && sy <= L.next.y + L.next.h) return { kind: 'chapter', delta: 1 };
   return null;
 }
 
-export function drawLevelSelect(ctx, view, save, levels) {
+export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   backdrop(ctx, view.w, view.h);
+  const chapter = CHAPTERS[chapterIdx];
 
-  // 标题 + 副标题
-  title(ctx, '成都保卫战', view.w / 2, 58, 52);
-  ctx.fillStyle = PAL.dim; ctx.font = FONT.body(15); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, 100);
+  title(ctx, '成都保卫战', view.w / 2, 50, 46);
+  ctx.fillStyle = PAL.gold; ctx.font = FONT.head(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`第 ${chapter.id} 章 · ${chapter.title}`, view.w / 2, 100);
+  ctx.fillStyle = PAL.dim; ctx.font = FONT.body(13);
+  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, 126);
 
   const nextIdx = nextPlayableIndex(save, levels.length);
-  for (const card of levelSelectLayout(view, levels.length)) {
+  const L = levelSelectLayout(view, levels, chapterIdx);
+  for (const card of L.cards) {
     const lv = levels[card.index];
     const unlocked = isUnlocked(save, card.index + 1);
     const stars = save.stars[card.index + 1] || 0;
     const fac = FACTIONS[lv.faction] || FACTIONS.nanman;
     const isNext = card.index === nextIdx && unlocked;
-
     panel(ctx, card.x, card.y, card.w, card.h, { variant: unlocked ? 'wood' : 'ink', r: 12, glow: isNext });
 
-    // 顶部势力旗色条
     ctx.save();
     if (!unlocked) ctx.globalAlpha = 0.45;
     roundRect(ctx, card.x + 12, card.y + 12, card.w - 24, 6, 3);
@@ -60,39 +75,35 @@ export function drawLevelSelect(ctx, view, save, levels) {
     ctx.fillStyle = fg; ctx.fill();
     ctx.restore();
 
-    // 文字块
     ctx.save();
     if (!unlocked) ctx.globalAlpha = 0.5;
     ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
-    ctx.fillStyle = unlocked ? PAL.gold : PAL.goldDim; ctx.font = FONT.body(13, 700);
-    ctx.fillText('第 ' + (card.index + 1) + ' 关', card.x + 16, card.y + 42);
-    ctx.fillStyle = unlocked ? PAL.cream : PAL.dim; ctx.font = FONT.head(20);
-    ctx.fillText(lv.name, card.x + 16, card.y + 71);
-    ctx.fillStyle = PAL.dim; ctx.font = FONT.body(12);
-    ctx.fillText(fac.name + '军', card.x + 16, card.y + 91);
+    ctx.fillStyle = unlocked ? PAL.gold : PAL.goldDim; ctx.font = FONT.body(12, 700);
+    ctx.fillText('第 ' + (card.index + 1) + ' 关', card.x + 14, card.y + 40);
+    ctx.fillStyle = unlocked ? PAL.cream : PAL.dim; ctx.font = FONT.head(17);
+    ctx.fillText(lv.name, card.x + 14, card.y + 66);
+    ctx.fillStyle = PAL.dim; ctx.font = FONT.body(11);
+    ctx.fillText(fac.name + '军', card.x + 14, card.y + 85);
     ctx.restore();
 
     if (!unlocked) {
-      // 朱印「封」锁
-      seal(ctx, card.x + card.w - 28, card.y + card.h - 28, 17, '封', { shape: 'square' });
+      seal(ctx, card.x + card.w - 26, card.y + card.h - 26, 15, '封', { shape: 'square' });
     } else {
-      // 三星（已得金亮 / 未得暗金）
-      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = FONT.body(16);
+      ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic'; ctx.font = FONT.body(15);
       for (let i = 0; i < 3; i++) {
         ctx.fillStyle = i < stars ? PAL.goldBright : 'rgba(212,175,55,.26)';
-        ctx.fillText('★', card.x + 16 + i * 19, card.y + card.h - 14);
+        ctx.fillText('★', card.x + 14 + i * 18, card.y + card.h - 13);
       }
-      // 下一关「续战」角标
       if (isNext) {
-        ctx.textAlign = 'right'; ctx.textBaseline = 'alphabetic';
-        ctx.fillStyle = PAL.goldBright; ctx.font = FONT.head(15);
-        ctx.fillText('▶ 续战', card.x + card.w - 14, card.y + card.h - 13);
+        ctx.textAlign = 'right'; ctx.fillStyle = PAL.goldBright; ctx.font = FONT.head(14);
+        ctx.fillText('▶ 续战', card.x + card.w - 12, card.y + card.h - 12);
       }
     }
   }
 
-  // 底部提示
-  ctx.fillStyle = 'rgba(167,176,192,.6)'; ctx.font = FONT.body(13);
-  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('点击已解锁关卡出征 · 通关得星解锁下一关', view.w / 2, view.h - 38);
+  // 章节导航
+  if (L.prev) button(ctx, L.prev, { label: '◀ 上一章', variant: 'wood' });
+  if (L.next) button(ctx, L.next, { label: '下一章 ▶', variant: 'wood' });
+  ctx.fillStyle = PAL.gold; ctx.font = FONT.head(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${chapter.id} / ${CHAPTERS.length}`, view.w / 2, view.h - 70 + NAV_H / 2);
 }
