@@ -55,12 +55,15 @@ export const GENERALS = {
   },
 };
 
-// 升级曲线（§17.1）：每级 dmg×1.6 · range+0.5格 · interval×0.9。L1=基准。
+// 升级曲线（§17.1 硬坡 + §5.3 软坡）：断点=SIGNATURE_LEVEL。
+// L1→SIGNATURE_LEVEL：dmg×1.6 · interval×0.9（原曲线不变）。
+// SIGNATURE_LEVEL→MAX：软坡 dmg×SOFT · interval×SOFT（防 L5 秒杀）。range 全程线性 +0.5/级。
 export function towerStats(g, level) {
-  const n = level - 1;
+  const HARD = Math.min(level, BAL.SIGNATURE_LEVEL) - 1;   // 硬坡指数 0..(SIGNATURE_LEVEL-1)
+  const SOFT = Math.max(0, level - BAL.SIGNATURE_LEVEL);   // 软坡指数 0..(MAX-SIGNATURE_LEVEL)
   return {
-    dmg: g.dmg * BAL.UPGRADE_DMG_MULT ** n,
-    range: g.range + BAL.UPGRADE_RANGE_ADD * n,
-    interval: g.interval * BAL.UPGRADE_INTERVAL_MULT ** n,
+    dmg: g.dmg * BAL.UPGRADE_DMG_MULT ** HARD * BAL.UPGRADE_DMG_MULT_SOFT ** SOFT,
+    range: g.range + BAL.UPGRADE_RANGE_ADD * (level - 1),
+    interval: g.interval * BAL.UPGRADE_INTERVAL_MULT ** HARD * BAL.UPGRADE_INTERVAL_MULT_SOFT ** SOFT,
   };
 }
