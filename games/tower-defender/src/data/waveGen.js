@@ -27,7 +27,7 @@ export function genWaves(template, params, seed) {
   for (let i = 0; i < waveCount; i++) {
     const last = i === waveCount - 1;
     const intensity = waveCount > 1 ? i / (waveCount - 1) : 0;   // 0→1
-    const diffK = 1 + difficulty * 0.18;                        // 章内难度抬升
+    const diffK = 1 + difficulty * 0.26;                        // 章内难度抬升（检查点A 实玩调高：满级塔后期偏易）
 
     // 同步开火路数：前松（1）→后紧（≤min(lanes,3)）
     const maxLanes = Math.min(lanes.length, 3);
@@ -38,8 +38,8 @@ export function genWaves(template, params, seed) {
     const unlocked = Math.max(1, Math.min(tiers.length, 1 + Math.floor(intensity * tiers.length)));
     const pool = tiers.slice(0, unlocked);
 
-    // 每路数量：前松（~5）→后紧（~16）× 难度
-    const baseCount = Math.round(lerp(5, 16, intensity) * diffK);
+    // 每路数量：前松（~5）→后紧（~22）× 难度（检查点A 实玩调高后紧上限：满级塔需更多兵喂）
+    const baseCount = Math.round(lerp(5, 22, intensity) * diffK);
     const spawnInterval = +lerp(1.2, 0.5, intensity).toFixed(2);
 
     const spawns = chosenLanes.map((lane, k) => {
