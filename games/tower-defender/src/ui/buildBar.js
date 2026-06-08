@@ -5,7 +5,7 @@ import { assets } from '../core/assets.js';
 import { panel, roundRect, FONT, PAL } from './theme.js';
 
 const ITEMS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge'];
-const BW = 74, BH = 60, GAP = 8;
+const BW = 74, BH = 70, GAP = 8;
 
 export function buildBarLayout(view) {
   const totalW = ITEMS.length * (BW + GAP) - GAP;
@@ -54,15 +54,16 @@ export function drawBuildBar(ctx, state, view, selected) {
       ctx.lineWidth = 2.5; ctx.strokeStyle = 'rgba(20,12,4,.7)'; ctx.strokeText(g.name[0], ax + aw / 2, ay + ah / 2 + 0.5);
       ctx.fillStyle = '#fff'; ctx.fillText(g.name[0], ax + aw / 2, ay + ah / 2 + 0.5);
     }
-    // 将名（楷体）
+    // 将名（楷体；显式居中 + 拉开与金价的间距，防重叠）
     ctx.fillStyle = sel ? PAL.goldBright : PAL.cream; ctx.font = FONT.head(13);
-    ctx.fillText(g.name, b.x + b.w / 2, b.y + 44);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(g.name, b.x + b.w / 2, b.y + 45);
     ctx.restore();
 
     // 金价（买不起标红）
     ctx.fillStyle = afford ? PAL.goldBright : PAL.warn; ctx.font = FONT.body(11, 700);
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText('💰' + g.cost, b.x + b.w / 2, b.y + b.h - 9);
+    ctx.fillText('💰' + g.cost, b.x + b.w / 2, b.y + b.h - 11);
 
     // 左上热键角标（对应 1-6）
     ctx.fillStyle = 'rgba(20,13,6,.78)';

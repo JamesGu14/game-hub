@@ -1,12 +1,12 @@
 // ui/towerPanel.js — [P5] 点将面板（屏幕坐标）：竹简底 + 升级/拆除/切目标。
 // layout/hit 为单一来源（draw 共用）。点面板内（非按钮）也消费点击，防穿透建塔。
 import { BAL } from '../data/balance.js';
-import { GENERALS } from '../data/generals.js';
+import { GENERALS, towerStats } from '../data/generals.js';
 import { assets } from '../core/assets.js';
 import { upgradeCost, sellRefund } from '../systems/economySystem.js';
 import { panel, button, roundRect, FONT, PAL } from './theme.js';
 
-const PW = 168, PH = 82, BTN_H = 28, GAP = 7;
+const PW = 168, PH = 104, BTN_H = 28, GAP = 7;
 const TOP_GUARD = 56;        // 上界避开木匾 HUD（HUD_H 50 + 余量）
 const MODES = ['first', 'last', 'strongest', 'weakest'];
 const MODE_GLYPH = { first: '最前', last: '最后', strongest: '最强', weakest: '最弱' };
@@ -60,13 +60,18 @@ export function drawTowerPanel(ctx, view, state, tower) {
     ctx.fillText(`${g.name}  L${tower.level}`, L.x + 28, L.y + 17);
   }
 
+  // 当前数值（攻击/射程/攻速；射程同时以场上光圈显示）
+  const st = towerStats(g, tower.level);
+  ctx.fillStyle = PAL.ink; ctx.font = FONT.body(10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+  ctx.fillText(`攻击 ${Math.round(st.dmg)}　射程 ${st.range.toFixed(1)}　攻速 ${(1 / st.interval).toFixed(1)}`, L.x + 12, L.y + 40);
+
   // 招牌技行
   if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature) {
     ctx.fillStyle = '#9a3a12'; ctx.font = FONT.body(11, 700);
-    ctx.fillText('★ ' + g.signature.name, L.x + 12, L.y + 37);
+    ctx.fillText('★ ' + g.signature.name, L.x + 12, L.y + 58);
   } else {
     ctx.fillStyle = 'rgba(60,46,26,.62)'; ctx.font = FONT.body(11, 600);
-    ctx.fillText(`升至 L${BAL.SIGNATURE_LEVEL} 解锁招牌技`, L.x + 12, L.y + 37);
+    ctx.fillText(`升至 L${BAL.SIGNATURE_LEVEL} 解锁招牌技`, L.x + 12, L.y + 58);
   }
 
   for (const b of L.buttons) {

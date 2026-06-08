@@ -13,14 +13,15 @@ import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRen
 import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, HUD_H } from './render/hud.js';
 import { spawnFloat } from './render/fx.js';
-import { drawBuildBar, hitBuildBar } from './ui/buildBar.js';
+import { drawBuildBar, hitBuildBar, buildBarLayout } from './ui/buildBar.js';
+import { drawHeroCard } from './ui/heroCard.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
 import { hitStoryCard, drawStoryCard } from './ui/storyCard.js';
 import { CHAPTERS } from './data/campaign.js';
 import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
-import { GENERALS } from './data/generals.js';
+import { GENERALS, towerStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
 import { button, panel, backdrop, vignette } from './ui/theme.js';
 
@@ -43,6 +44,7 @@ let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
 let selected = 'huang';
 let selectedTower = null;
 let hover = null;
+let hoverBuild = null;   // [检查点A] 建造栏悬停的将 id（→ 英雄卡浮窗）
 let lastProjCount = 0;   // [P6] 弹道数量增量 → 开火音效探测
 let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
 
@@ -153,6 +155,17 @@ function render(s) {
     }
   }
 
+  // [检查点A] 选中塔：场上画攻击范围光圈（射程随等级）
+  if (selectedTower && s.towers.includes(selectedTower)) {
+    const sg = GENERALS[selectedTower.generalId];
+    const srng = towerStats(sg, selectedTower.level).range;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255,210,77,.6)'; ctx.fillStyle = 'rgba(255,210,77,.08)';
+    ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
+    ctx.beginPath(); ctx.arc(selectedTower.px, selectedTower.py, srng * C, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke(); ctx.setLineDash([]); ctx.restore();
+  }
+
   // [P6] y-sort：塔+敌按脚底 py 升序绘制（远→近遮挡）；弹道/特效仍最后。
   for (const ent of sortByY([...s.towers, ...s.enemies])) {
     if (ent.generalId != null) drawTower(ctx, ent, s.time);
@@ -175,6 +188,7 @@ function render(s) {
   vignette(ctx, view.w, view.h);
   drawHud(ctx, s, view);
   drawBuildBar(ctx, s, view, selected);
+  if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view).find((b) => b.id === hoverBuild));
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
   if (s.phase === 'prep') button(ctx, EARLY_BTN(), { label: '⚔ 提前出兵 ↵', variant: 'gold' });
 
@@ -251,7 +265,11 @@ function onPointerDown(ev) {
   if (slot && tryBuild(state, slot, selected)) audio.sfx('build');
 }
 
-function onPointerMove(ev) { hover = screenToCell(ev.clientX, ev.clientY); }
+function onPointerMove(ev) {
+  hover = screenToCell(ev.clientX, ev.clientY);
+  hoverBuild = (screen === 'playing' && !state.paused && state.phase !== 'won' && state.phase !== 'lost')
+    ? hitBuildBar(view, ev.clientX, ev.clientY) : null;
+}
 
 function onKey(ev) {
   audio.init();                                           // [P6] 键盘也算手势，解锁音频
