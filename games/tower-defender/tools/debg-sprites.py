@@ -19,6 +19,10 @@ FILES = [
     'generals/zhao.png', 'generals/ma.png', 'generals/zhuge.png',
     'enemies/nanman_footman.png', 'enemies/tengjia.png', 'enemies/wolf.png',
     'bosses/mulu.png', 'bosses/wutugu.png',
+    # [检查点A v2] 6 样板战主将 + 3 敌兵
+    'bosses/xiahoudun.png', 'bosses/zhangliao.png', 'bosses/caocao.png',
+    'bosses/xiahouyuan.png', 'bosses/luxun.png', 'bosses/simayi.png',
+    'enemies/heavy.png', 'enemies/flyer.png', 'enemies/shaman.png',
 ]
 MIN_WHITE = 196    # 近白判定：min(r,g,b) ≥ 此值（角落 ~239、bg 渐变到 ~200 都算底）
 MAX_SAT = 32       # 低饱和判定：max-min ≤ 此值（彩色/深描边不算底）

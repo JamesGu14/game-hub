@@ -19,9 +19,19 @@ export const MANIFEST = {
   enemy_footman: 'assets/sprites/enemies/nanman_footman.png',
   enemy_tengjia: 'assets/sprites/enemies/tengjia.png',
   enemy_wolf: 'assets/sprites/enemies/wolf.png',
+  enemy_heavy: 'assets/sprites/enemies/heavy.png',     // [检查点A v2] 重甲（跨势力共用）
+  enemy_flyer: 'assets/sprites/enemies/flyer.png',     // [检查点A v2] 飞兵·战鹰
+  enemy_shaman: 'assets/sprites/enemies/shaman.png',   // [检查点A v2] 方士/术士
   // —— 南蛮名将 BOSS ——
   boss_mulu: 'assets/sprites/bosses/mulu.png',
   boss_wutugu: 'assets/sprites/bosses/wutugu.png',
+  // —— [检查点A v2] 6 样板战主将（博望坡/长坂坡/赤壁/定军山/夷陵/上方谷）——
+  boss_xiahoudun: 'assets/sprites/bosses/xiahoudun.png',
+  boss_zhangliao: 'assets/sprites/bosses/zhangliao.png',
+  boss_caocao: 'assets/sprites/bosses/caocao.png',
+  boss_xiahouyuan: 'assets/sprites/bosses/xiahouyuan.png',
+  boss_luxun: 'assets/sprites/bosses/luxun.png',
+  boss_simayi: 'assets/sprites/bosses/simayi.png',
 };
 
 // 默认浏览器加载器：返回 Promise<Image|null>；onload→图、onerror→null（缺图不 throw、不阻塞）。
