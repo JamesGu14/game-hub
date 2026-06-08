@@ -38,4 +38,8 @@ const chibiBoss = LEVELS[20].waves[LEVELS[20].waves.length - 1].spawns.find((s) 
 assert.equal(chibiBoss.name, '曹操', 'L21 boss name 来自 campaign 覆盖');
 assert.ok(Math.abs(chibiBoss.hpMult - 1.3) < 1e-9, 'L21 boss hpMult=1.3（campaign 覆盖 BOSSES）');
 
+// 多敌将（检查点A）：L1 末段含 主将夏侯惇 + 副将李典/于禁（敌方武将增加）
+const l1Generals = new Set(LEVELS[0].waves.flatMap((w) => w.spawns).filter((s) => s.enemyType === 'boss').map((s) => s.name));
+assert.ok(l1Generals.has('夏侯惇') && l1Generals.has('李典') && l1Generals.has('于禁'), `L1 应含主将+2副将（实际 ${[...l1Generals].join('/')}）`);
+
 console.log('ok levels-integrity');

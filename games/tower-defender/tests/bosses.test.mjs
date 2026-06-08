@@ -1,7 +1,7 @@
 // tests/bosses.test.mjs — boss 名册完整性（§5.2 扩 15-20）
 // 运行：node games/tower-defender/tests/bosses.test.mjs
 import assert from 'node:assert';
-import { BOSSES } from '../src/data/bosses.js';
+import { BOSSES, LIEUTENANTS } from '../src/data/bosses.js';
 
 const ids = Object.keys(BOSSES);
 assert.ok(ids.length >= 15 && ids.length <= 20, `boss 数 ${ids.length} 应在 15-20`);
@@ -16,6 +16,16 @@ assert.ok(BOSSES.simayi.bossSkills?.includes('summon') && BOSSES.simayi.bossSkil
 // 5 样板战 boss 必在册
 for (const id of ['xiahoudun', 'zhangliao', 'caocao', 'xiahouyuan', 'luxun']) {
   assert.ok(BOSSES[id], `样板战 boss ${id} 在册`);
+}
+
+// 副将名册（检查点A）：≥6 条，id 自洽 + name + hpMult>0
+const ltIds = Object.keys(LIEUTENANTS);
+assert.ok(ltIds.length >= 6, `副将数 ${ltIds.length} ≥6`);
+for (const id of ltIds) {
+  const l = LIEUTENANTS[id];
+  assert.equal(l.id, id, `副将 ${id} id 自洽`);
+  assert.ok(typeof l.name === 'string' && l.name.length, `副将 ${id} 有 name`);
+  assert.ok(typeof l.hpMult === 'number' && l.hpMult > 0, `副将 ${id} hpMult>0`);
 }
 
 console.log('ok bosses');

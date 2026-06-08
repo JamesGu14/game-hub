@@ -7,6 +7,7 @@ import { LEVELS } from '../src/data/levels.js';
 import { step } from '../src/core/gameLoop.js';
 import { tryBuild, tryUpgrade } from '../src/systems/economySystem.js';
 import { BAL } from '../src/data/balance.js';
+import { makeRng } from '../src/core/rng.js';
 
 const defenders = ['huang', 'zhuge', 'guan', 'zhao', 'ma', 'zhang'];   // 含诸葛(火克藤甲)+防空将
 
@@ -16,6 +17,7 @@ const SAMPLE_IDS = new Set([1, 5, 10, 11, 15, 20, 21, 25, 30, 31, 35, 40, 41, 45
 for (let i = 0; i < LEVELS.length; i++) {
   if (SAMPLE && !SAMPLE_IDS.has(LEVELS[i].id)) continue;
   const s = newGameState(LEVELS[i]);
+  s.rng = makeRng(LEVELS[i].id);   // 确定性 combat rng（去 flaky；固定种子下满防可通关）
   s.gold = 99999999;
   s.level.slots.forEach((sl, k) => {
     if (tryBuild(s, sl, defenders[k % 6])) {

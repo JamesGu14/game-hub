@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import { CHAPTERS, CAMPAIGN } from '../src/data/campaign.js';
 import { TEMPLATES } from '../src/data/boardTemplates.js';
-import { BOSSES } from '../src/data/bosses.js';
+import { BOSSES, LIEUTENANTS } from '../src/data/bosses.js';
 import { ENEMIES } from '../src/data/enemies.js';
 
 const VALID_FACTIONS = new Set(['nanman', 'wu', 'wei']);
@@ -29,6 +29,9 @@ for (const c of CAMPAIGN) {
   assert.equal(c.enemyTiers[0], 'footman', `L${c.id} enemyTiers[0]=footman（教学保底）`);
   for (const t of c.enemyTiers) assert.ok(ENEMIES[t], `L${c.id} enemyTier ${t} 合法`);
   assert.ok(c.boss && BOSSES[c.boss.id], `L${c.id} boss.id ${c.boss?.id} 在册`);
+  // 副将（检查点A）：≥1 名，id 合法（BOSSES 或 LIEUTENANTS）
+  assert.ok(Array.isArray(c.lieutenants) && c.lieutenants.length >= 1, `L${c.id} 有副将`);
+  for (const lid of c.lieutenants) assert.ok(BOSSES[lid] || LIEUTENANTS[lid], `L${c.id} 副将 ${lid} 在册`);
   // pathSubset（若有）⊆ 模板路
   if (c.pathSubset) for (const p of c.pathSubset) assert.ok(TEMPLATES[c.templateId].paths[p], `L${c.id} pathSubset ${p} ∈ 模板`);
   // story 6 键齐全（全关）

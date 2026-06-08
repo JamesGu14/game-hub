@@ -5,7 +5,7 @@
 import { CAMPAIGN } from './campaign.js';
 import { TEMPLATES } from './boardTemplates.js';
 import { genWaves } from './waveGen.js';
-import { BOSSES } from './bosses.js';
+import { BOSSES, LIEUTENANTS } from './bosses.js';
 
 // difficulty → 关参数（§5.1 公式；起点，balance-report 可调）
 export function difficultyParams(difficulty) {
@@ -26,10 +26,16 @@ function expand(c) {
   const baseBoss = BOSSES[c.boss.id];
   if (!baseBoss) throw new Error(`levels: 未知 boss.id '${c.boss.id}' (L${c.id})`);
   const boss = { ...baseBoss, ...c.boss };
+  // 副将（冷门小 BOSS，随末段波出场）：从 LIEUTENANTS（退而 BOSSES）解析为 {id,name,hpMult}
+  const lieutenants = (c.lieutenants || []).map((id) => {
+    const g = LIEUTENANTS[id] || BOSSES[id];
+    if (!g) throw new Error(`levels: 未知 lieutenant '${id}' (L${c.id})`);
+    return { ...g };
+  });
   const { scale, startGold, castleHp } = difficultyParams(c.difficulty);
   const waves = genWaves(
     { ...tmpl, camps, paths },
-    { waveCount: c.waveCount, difficulty: c.difficulty, enemyTiers: c.enemyTiers, boss },
+    { waveCount: c.waveCount, difficulty: c.difficulty, enemyTiers: c.enemyTiers, boss, lieutenants },
     c.id,                                   // seed = level.id（确定性）
   );
   return {

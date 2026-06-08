@@ -25,3 +25,22 @@ export const BOSSES = {
   sunquan: { id: 'sunquan', name: '孙权', hpMult: 1.2 },
   zhuran: { id: 'zhuran', name: '朱然', hpMult: 1.0 },
 };
+
+// —— 副将名册（偏冷门名将，作末波随主将出场的小 BOSS；hpMult 较主将低；v1 无 sprite → 渲染回退色块+名）——
+// [检查点A 实玩反馈]「敌方武将增加」：每关主将再带 2 名副将（campaign.lieutenants），越靠后的波将领越多。
+export const LIEUTENANTS = {
+  // 曹魏
+  lidian: { id: 'lidian', name: '李典', hpMult: 0.8 },
+  yuejin: { id: 'yuejin', name: '乐进', hpMult: 0.8 },
+  yujin: { id: 'yujin', name: '于禁', hpMult: 0.85 },
+  caohong: { id: 'caohong', name: '曹洪', hpMult: 0.85 },
+  caoxiu: { id: 'caoxiu', name: '曹休', hpMult: 0.8 },
+  niujin: { id: 'niujin', name: '牛金', hpMult: 0.75 },
+  // 东吴
+  zhoutai: { id: 'zhoutai', name: '周泰', hpMult: 0.85 },
+  jiangqin: { id: 'jiangqin', name: '蒋钦', hpMult: 0.8 },
+  dingfeng: { id: 'dingfeng', name: '丁奉', hpMult: 0.85 },
+  xusheng: { id: 'xusheng', name: '徐盛', hpMult: 0.8 },
+  panzhang: { id: 'panzhang', name: '潘璋', hpMult: 0.8 },
+  handang: { id: 'handang', name: '韩当', hpMult: 0.85 },
+};

@@ -53,4 +53,15 @@ for (const w of a) for (const s of w.spawns) {
 // 每关 ≥20 波（本例 24，断言 waveCount 透传）
 assert.ok(a.length >= 20, '≥20 波');
 
+// 副将（检查点A）：主将压末波 + N 副将落末波前 N 波（越靠后将领越多）
+const withLts = genWaves(tmpl, { ...params, lieutenants: [{ id: 'lidian', name: '李典', hpMult: 0.8 }, { id: 'yujin', name: '于禁', hpMult: 0.85 }] }, 14);
+const bossOf = (w) => w.spawns.filter((s) => s.enemyType === 'boss');
+const n = withLts.length;
+assert.equal(bossOf(withLts[n - 1]).length, 1, '末波仅主将');
+assert.equal(bossOf(withLts[n - 1])[0].id, 'caocao', '末波=主将 caocao');
+assert.equal(bossOf(withLts[n - 2]).length, 1, '倒2波 1 副将');
+assert.equal(bossOf(withLts[n - 3]).length, 1, '倒3波 1 副将');
+const ltNames = [withLts[n - 3], withLts[n - 2]].flatMap(bossOf).map((s) => s.name);
+assert.ok(ltNames.includes('李典') && ltNames.includes('于禁'), '副将 李典/于禁 末段出场');
+
 console.log('ok waveGen');
