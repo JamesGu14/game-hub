@@ -41,6 +41,7 @@ function expand(c) {
   return {
     id: c.id, name: c.name, chapter: c.chapter, faction: c.faction,
     scale, startGold, castleHp,
+    rampMax: c.rampMax,                       // 可选：覆盖 wave HP ramp 上限（缺省 → BAL.WAVE_HP_RAMP_MAX）
     cols: tmpl.cols, rows: tmpl.rows, castle: tmpl.castle,
     camps, paths, slots: tmpl.slots, waves,
   };

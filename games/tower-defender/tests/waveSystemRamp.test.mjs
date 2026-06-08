@@ -31,15 +31,25 @@ function mkState(waveIndex) {
   assert.equal(s.enemies[0].dmgTakenMult, 1, '首波无减伤');
 }
 
-// 末波(index1,t=1)：spawn rampHp=2、dmgTakenMult=0.85，敌兵 hp=120
+// 末波(index1,t=1)：默认上限 1.5 → spawn rampHp=1.5、dmgTakenMult=0.85，敌兵 hp=90
 {
   const s = mkState(1);
   waveSystem(s, 1 / 60);
-  assert.ok(Math.abs(s.activeSpawns[0].rampHp - 2) < 1e-9, '末波 spawn rampHp=2');
+  assert.ok(Math.abs(s.activeSpawns[0].rampHp - 1.5) < 1e-9, '末波 spawn rampHp=1.5（默认上限）');
   assert.ok(Math.abs(s.activeSpawns[0].dmgTakenMult - 0.85) < 1e-9, '末波 spawn dmgTakenMult=0.85');
   waveSystem(s, 1);
-  assert.equal(s.enemies[0].hp, 120, '末波步卒 120');
+  assert.equal(s.enemies[0].hp, 90, '末波步卒 60×1.5=90');
   assert.ok(Math.abs(s.enemies[0].dmgTakenMult - 0.85) < 1e-9, '末波敌兵带 dmgTakenMult');
+}
+
+// level.rampMax 覆盖：设 1.0 → 末波豁免 HP ramp（敌兵 hp 仍 60）
+{
+  const s = mkState(1);
+  s.level.rampMax = 1.0;
+  waveSystem(s, 1 / 60);
+  assert.equal(s.activeSpawns[0].rampHp, 1, 'rampMax=1.0 → 末波 spawn rampHp=1');
+  waveSystem(s, 1);
+  assert.equal(s.enemies[0].hp, 60, 'rampMax=1.0 末波步卒仍 60');
 }
 
 console.log('ok waveSystemRamp');

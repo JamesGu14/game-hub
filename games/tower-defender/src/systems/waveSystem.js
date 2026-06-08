@@ -47,7 +47,7 @@ export function waveSystem(state, dt) {
 
 function startWave(state) {
   const wave = state.level.waves[state.waveIndex];
-  const ramp = waveRamp(state.waveIndex, state.level.waves.length);  // 本波算一次（同波常量）
+  const ramp = waveRamp(state.waveIndex, state.level.waves.length, state.level.rampMax);  // 本波算一次（同波常量）；level.rampMax 可覆盖默认上限
   if (state.earlyRequested && state.prepTimer > 0) {
     const bonus = Math.min(Math.ceil(state.prepTimer) * BAL.EARLY_BONUS_PER_SEC, BAL.EARLY_BONUS_CAP);
     state.gold += bonus;            // [漏洞#4] 封顶 30

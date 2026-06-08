@@ -10,7 +10,7 @@ export const BAL = {
   WAVE_CLEAR_BONUS: 15,   // 清波奖励
 
   // —— wave 关内难度递增（每关独立·叠在 level.scale 上；§spec 2026-06-08）——
-  WAVE_HP_RAMP_MAX: 2.0,   // 末波单兵 HP = 首波 ×2.0（线性）
+  WAVE_HP_RAMP_MAX: 1.5,   // 末波单兵 HP = 首波 ×1.5（默认上限；可被 level.rampMax 覆盖。2.0 时 L47/48/50 满防不可通关，实测回调）
   WAVE_DEF_RAMP_MIN: 0.85, // 末波受伤 ×0.85（=15% 减伤；t² 后置）
 
   // —— Phase 2：升级 / 拆除（§17.1）——
