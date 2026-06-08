@@ -61,12 +61,12 @@ export function drawTowerPanel(ctx, view, state, tower) {
   }
 
   // 招牌技行
-  if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature) {
+  if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature) {
     ctx.fillStyle = '#9a3a12'; ctx.font = FONT.body(11, 700);
     ctx.fillText('★ ' + g.signature.name, L.x + 12, L.y + 37);
   } else {
     ctx.fillStyle = 'rgba(60,46,26,.62)'; ctx.font = FONT.body(11, 600);
-    ctx.fillText('升满 L3 解锁招牌技', L.x + 12, L.y + 37);
+    ctx.fillText(`升至 L${BAL.SIGNATURE_LEVEL} 解锁招牌技`, L.x + 12, L.y + 37);
   }
 
   for (const b of L.buttons) {

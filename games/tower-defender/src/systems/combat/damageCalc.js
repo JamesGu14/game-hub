@@ -7,7 +7,7 @@ import { towerStats } from '../../data/generals.js';
 export function calcDamage(tower, g, enemy, rng) {
   const base = towerStats(g, tower.level).dmg;
   // 黄忠 L3 百步穿杨（被动）：25% 暴击 ×2.5 且无视护甲（跳过 resist）。
-  if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.id === 'baibu' && rng() < BAL.CRIT_CHANCE) {
+  if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.id === 'baibu' && rng() < BAL.CRIT_CHANCE) {
     return { dmg: base * BAL.CRIT_MULT, isCrit: true };
   }
   const mult = enemy.resist?.[g.dmgType] ?? 1;     // 类型×抗性；未列项默认 ×1

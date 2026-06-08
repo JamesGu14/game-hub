@@ -42,7 +42,7 @@ export function runAttack(state, tower, g, primary, now, rng) {
 // 黄忠/赵云：单体。赵云 L3 七进七出：击杀后连射最前的下一目标（每次出手最多连 maxChain）。
 function attackSingle(state, tower, g, primary, rng, rangePx2) {
   const killed = hitOnce(state, tower, g, primary, rng);
-  const chainable = killed && tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.id === 'qijin';
+  const chainable = killed && tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.id === 'qijin';
   if (!chainable) return;
   const maxChain = g.signature.params.maxChain || 2;
   let shots = 1, lastKilled = true;
@@ -93,7 +93,7 @@ function attackCharge(state, tower, g, primary, rng, rangePx2) {
   line.sort((a, b) => b.progress - a.progress);            // 锋尖（primary）在前
   const hits = line.slice(0, maxHits);
   for (const e of hits) hitOnce(state, tower, g, e, rng);
-  if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.id === 'tuzhen' && hits.length) {
+  if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.id === 'tuzhen' && hits.length) {
     const front = hits[0];                                  // = primary（冲锋锋尖）
     if (front.alive) front.knockback += g.signature.params.knockback || 0.5;
   }
@@ -103,7 +103,7 @@ function attackCharge(state, tower, g, primary, rng, rangePx2) {
 // 诸葛：上灼烧（DoT，不走直伤）；L3 火烧藤甲对藤甲 dps×2。
 function attackBurn(state, tower, g, primary, now, stats) {
   let dps = stats.dmg;
-  if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.id === 'huoshao' && primary.tag === 'tengjia') {
+  if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.id === 'huoshao' && primary.tag === 'tengjia') {
     dps *= g.signature.params.vsTengjiaMult || 2;
   }
   applyBurn(primary, dps, g.attackParams.burnDur, now);

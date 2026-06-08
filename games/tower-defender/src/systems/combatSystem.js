@@ -15,7 +15,7 @@ export function combatSystem(state, dt) {
     if (tower.signatureCd > 0) tower.signatureCd -= dt;
 
     // L3 冷却技到点自动释放（关羽水淹七军 / 张飞当阳怒吼）；成功放才进 CD。
-    if (tower.level >= BAL.MAX_TOWER_LEVEL && g.signature?.type === 'cooldown' && tower.signatureCd <= 0) {
+    if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.type === 'cooldown' && tower.signatureCd <= 0) {
       if (fireSignature(state, tower, g, now)) tower.signatureCd = g.signature.cooldown;
     }
 

@@ -98,7 +98,7 @@ export function drawTower(ctx, t, now = 0) {
   ctx.fillText(MODE_GLYPH[t.mode] || '前', t.px + s - 4, t.py - s + 4);
 
   // L3 冷却技充能条（仅冷却技）
-  if (t.level >= BAL.MAX_TOWER_LEVEL && g.signature?.type === 'cooldown') {
+  if (t.level >= BAL.SIGNATURE_LEVEL && g.signature?.type === 'cooldown') {
     const cd = g.signature.cooldown || 1;
     const ratio = Math.max(0, Math.min(1, 1 - t.signatureCd / cd));
     ctx.fillStyle = '#23304a'; ctx.fillRect(t.px - s, t.py + s + 2, s * 2, 3);
