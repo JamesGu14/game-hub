@@ -11,5 +11,6 @@ export function calcDamage(tower, g, enemy, rng) {
     return { dmg: base * BAL.CRIT_MULT, isCrit: true };
   }
   const mult = enemy.resist?.[g.dmgType] ?? 1;     // 类型×抗性；未列项默认 ×1
-  return { dmg: base * mult, isCrit: false };
+  const dmgTaken = enemy.dmgTakenMult ?? 1;        // wave 末段波全局减伤（暴击早返回已跳过）
+  return { dmg: base * mult * dmgTaken, isCrit: false };
 }

@@ -26,4 +26,11 @@ assert.ok(Math.abs(c.dmg - 23.04 * 2.5) < 1e-9, '暴击=L3基础×2.5 无视护�
 const nc = calcDamage({ level: 3 }, huang, teng, noCrit);
 assert.ok(!nc.isCrit && Math.abs(nc.dmg - 23.04 * 0.5) < 1e-9, 'L3 普通 ×0.5');
 
+// wave 末波 dmgTakenMult：非暴击吃满减伤、暴击跳过（无视护甲同时跳减伤）
+const tengHard = { resist: { physical: 0.5, fire: 1.5, strategy: 1.0 }, dmgTakenMult: 0.85 };
+const ncHard = calcDamage({ level: 1 }, huang, tengHard, noCrit);
+assert.ok(Math.abs(ncHard.dmg - 9 * 0.5 * 0.85) < 1e-9, '非暴击吃满减伤(4.5×0.85=3.825)');
+const cHard = calcDamage({ level: 3 }, huang, tengHard, crit);
+assert.ok(Math.abs(cHard.dmg - 23.04 * 2.5) < 1e-9, '暴击跳过 dmgTakenMult(仍 57.6)');
+
 console.log('ok damageCalc');
