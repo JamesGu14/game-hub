@@ -86,6 +86,22 @@
 
 ## 验收
 
-- 同一关内，末波敌兵 HP ≈ 首波 ×2，末段波明显更耐打。
+- 同一关内，末波敌兵 HP ≈ 首波 ×1.5，末段波明显更耐打。
 - 满级塔不再秒杀末段波小兵，后期 wave 体感「又多又硬」。
 - 50 关全部仍可通关；门禁全绿。
+
+## 实施结果与回调（2026-06-08 实测）
+
+设计初值 `WAVE_HP_RAMP_MAX=2.0`（末波×2）在 `levels-winnable`（满将位全升 L5 + 每波抢出兵的理论天花板）下打崩 **L47/L48/L50**。实测扫描结论：
+
+- **L50 是唯一硬卡点**：司马懿终关有「震慑停火一座塔 + 召唤」，基线满防仅余 3 HP，对任何全局难度增量极敏感（×1.2 即崩，castleHp 翻倍也救不动——漏怪已远超墙厚）。
+- L47/L48 在 ×1.5 均可通关；L49 稳。
+- 全 50 关均匀可通关的 ramp 上限仅 ×1.1（几乎无感）。
+
+**James 裁决（×1.5 + L50 单独加固）→ 落地为：**
+
+1. 全局默认 `WAVE_HP_RAMP_MAX` 回调 **2.0 → 1.5**（末波×1.5，+50%，足以治「太简单」）。
+2. 新增 **per-level `rampMax` 覆盖**：`waveRamp(waveIndex, waveCount, hpMax=BAL.WAVE_HP_RAMP_MAX)` 第三参，`level.rampMax` 透传（`campaign → levels.js → waveSystem`）。
+3. **L50 设 `rampMax: 1.0`**（豁免 HP ramp，保其出厂难度，满防余 5 HP）；def ramp 仍保留（影响极小）。其余 49 关吃满 ×1.5。
+
+门禁：`node --test tests/*.mjs` → 42 pass / 0 fail；`node tools/verify-levels.mjs` → 50 关通过。待 James 浏览器实玩终验。
