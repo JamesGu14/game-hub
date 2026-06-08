@@ -3,6 +3,7 @@
 // schema: { version, unlockedLevel, stars:{levelId:stars}, settings:{muted,speed} }
 
 const KEY = 'save_td_v1';
+const RKEY = 'save_td_resume_v1';   // [检查点A·§5.4] 中断续玩快照 key
 
 export function defaultSave() {
   return { version: 1, unlockedLevel: 1, stars: {}, settings: { muted: false, speed: 1 } };
@@ -59,3 +60,30 @@ export function nextPlayableIndex(save, total) {
 // 浏览器便捷封装
 export const browserLoad = () => loadSave(window.localStorage);
 export const browserWrite = (s) => writeSave(window.localStorage, s);
+
+// —— [检查点A·§5.4] 中断续玩：state 快照 写/读/清（注入式纯函数，可单测）——
+// 退出游戏中（非结算）写快照；重进该关给「续上次/重头」；胜/负/退到选关清除。
+export function resumeSnapshot(state) {
+  return {
+    levelId: state.level.id,
+    waveIndex: state.waveIndex,
+    gold: state.gold,
+    castleHp: state.castleHp,
+    phase: state.phase,
+    prepTimer: state.prepTimer,
+    towers: state.towers.map((t) => ({ generalId: t.generalId, slot: { x: t.slot.x, y: t.slot.y }, level: t.level, mode: t.mode })),
+    seed: state.level.id,
+  };
+}
+export function writeResume(storage, snap) {
+  try { storage.setItem(RKEY, JSON.stringify(snap)); } catch { /* 隐私模式/配额 → 忽略 */ }
+}
+export function loadResume(storage) {
+  try { const raw = storage && storage.getItem(RKEY); return raw ? JSON.parse(raw) : null; } catch { return null; }
+}
+export function clearResume(storage) {
+  try { storage.removeItem(RKEY); } catch { /* 忽略 */ }
+}
+export const browserWriteResume = (snap) => writeResume(window.localStorage, snap);
+export const browserLoadResume = () => loadResume(window.localStorage);
+export const browserClearResume = () => clearResume(window.localStorage);
