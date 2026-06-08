@@ -11,7 +11,8 @@ export function createEnemy(type, pathId, path, scale = 1, opts = {}) {
   const s = path[0];
   const skin = opts.faction ? skinOf(opts.faction, type) : null;   // [P3] 换皮：仅覆盖 name/color
   const hpMult = opts.hpMult || 1;                                  // [P3] BOSS 血量倍率
-  const hp = def.hp * scale * hpMult;
+  const rampHp = opts.rampHp || 1;                                  // wave 关内 HP ramp（与 boss hpMult 相乘）
+  const hp = def.hp * scale * hpMult * rampHp;
   const bossSkills = opts.bossSkills || null;                       // [P3] 主动技（仅司马懿）
   return {
     id: ++_id, type, pathId,
@@ -23,6 +24,8 @@ export function createEnemy(type, pathId, path, scale = 1, opts = {}) {
     tag: def.tag || null,                          // 'tengjia'/'heavy'（克制键）
     heal: def.heal || null,                        // 方士治疗光环 {range,perSec}
     isBoss: !!def.isBoss,
+    rampHp,                                        // wave HP 倍率（召唤/分裂可继承）
+    dmgTakenMult: opts.dmgTakenMult || 1,          // wave 末段波全局减伤（damageCalc 直伤消费）
     bossId: opts.bossId || null,                   // [P6] 名将 id（mulu/wutugu…）→ boss sprite 映射；缺则 null
     bossSkills,                                    // [P3] ['summon','stunTower'] | null
     skillTimers: bossSkills
