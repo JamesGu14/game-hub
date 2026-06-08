@@ -15,6 +15,8 @@ const ids = pauseLayout(view).map((b) => b.id);
 for (const id of ['resume', 'restart', 'select', 'mute', 'hub']) {
   assert.ok(ids.includes(id), `应含按钮 ${id}`);
 }
+// [检查点A] 「重看故事」入口（防未来重构误删）
+assert.ok(ids.includes('story'), '含重看故事项');
 
 // 面板外空白 → null（左上角 / 顶部）
 assert.equal(hitPause(view, 4, 4), null, '左上空白 → null');

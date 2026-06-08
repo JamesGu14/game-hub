@@ -6,6 +6,7 @@ const PW = 320, BTN_H = 48, GAP = 12, HEAD_H = 78, PAD_BOT = 20;
 const ITEMS = [
   { id: 'resume', label: '继续', variant: 'jade' },
   { id: 'restart', label: '重开本关', variant: 'gold' },
+  { id: 'story', label: '重看故事', variant: 'jade' },   // [检查点A] 复看本关开场故事卡
   { id: 'select', label: '选关', variant: 'wood' },
   { id: 'mute', label: '🔊 音效', variant: 'wood' },   // [P6] 静音切换（label 随 muted 动态）
   { id: 'hub', label: '← 返回游戏中心', variant: 'ghost' },
