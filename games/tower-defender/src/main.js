@@ -9,7 +9,7 @@ import { bus } from './core/eventBus.js';
 import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
 import { rangeBonusFor } from './systems/terrainSystem.js';
-import { drawBoard } from './render/board.js';
+import { drawBoard, drawWeather } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, hudButtons, HUD_H } from './render/hud.js';
@@ -195,6 +195,7 @@ function render(s) {
   }
   for (const p of s.projectiles) drawProjectile(ctx, p);
   for (const f of s.fx) drawFx(ctx, f);
+  drawWeather(ctx, s);   // [地形] L50 大雨(板坐标系内、实体之上)
 
   // [P6] 音效探测（render 侧，不碰 core/sim）：开火=弹道增量；相位切换=号角/胜/败。
   if (s.projectiles.length > lastProjCount) audio.sfx('fire');

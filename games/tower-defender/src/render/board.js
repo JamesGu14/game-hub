@@ -33,6 +33,8 @@ export function drawBoard(ctx, state) {
     ctx.strokeStyle = tint.road2; ctx.lineWidth = C * 0.58; ctx.stroke();
   }
 
+  drawTerrainFx(ctx, state);   // [地形] 特效层：压在路上(落石警示圈/落石尘圈/火谷火苗/浅滩波光;spec §5 顺序)
+
   // 将位（未占用 = 虚线绿框）
   ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = '#9be07a';
   for (const s of slots) {
@@ -153,6 +155,82 @@ function drawTerrainBase(ctx, state) {
       }
     }
   }
+  ctx.restore();
+}
+
+// —— [板型+地形] terrain 特效层(路之上):火谷火苗/浅滩波光/落石警示与落石。time 驱动,零随机。——
+function drawTerrainFx(ctx, state) {
+  const zones = state.level.terrain;
+  if (!zones || !zones.length || !state.terrain) return;
+  const t = state.time || 0;
+  const disabled = state.terrain.disabled || new Set();
+  ctx.save();
+  for (const z of zones) {
+    if (z.type === 'firegully' && !disabled.has('firegully')) {
+      // 火苗:每格一簇,高度/横摆随 time 摆动(L50 大雨禁用时不画=被浇灭,焦地基底仍在)
+      for (const c of z.cells) {
+        const ph = t * 6 + (c.x * 11 + c.y * 17) * 0.9;
+        const h = 5 + Math.sin(ph) * 3;
+        const bx = c.x * C + C / 2 + Math.sin(ph * 0.7) * 3;
+        const grd = ctx.createLinearGradient(bx, c.y * C + C - 4, bx, c.y * C + C - 4 - h * 2);
+        grd.addColorStop(0, 'rgba(255,180,60,.85)'); grd.addColorStop(1, 'rgba(255,60,20,0)');
+        ctx.fillStyle = grd;
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, c.y * C + C - 4);
+        ctx.quadraticCurveTo(bx, c.y * C + C - 4 - h * 2.2, bx + 4, c.y * C + C - 4);
+        ctx.fill();
+      }
+    } else if (z.type === 'shallow') {
+      // 波光点:间歇高光(减速带的可读暗示)
+      ctx.fillStyle = 'rgba(255,255,255,.5)';
+      for (const c of z.cells) {
+        const ph = t * 2 + (c.x * 5 + c.y * 3);
+        if (Math.sin(ph) > 0.55) ctx.fillRect(c.x * C + C * 0.42, c.y * C + C * 0.45, 4, 2);
+      }
+    }
+  }
+  // 落石:前摇警示圈(急促脉动) + 落石瞬间(0.4s 内石块坠落+尘圈扩散)
+  for (const rf of state.terrain.rockfalls) {
+    const zone = state.level.terrain[rf.zoneIdx];
+    if (!zone) continue;
+    const toStrike = rf.nextStrikeAt - t;
+    if (toStrike > 0 && toStrike <= BAL.ROCKFALL_WARN) {
+      const a = 0.25 + 0.35 * Math.abs(Math.sin(t * 10));
+      ctx.strokeStyle = `rgba(255,80,40,${a.toFixed(3)})`; ctx.lineWidth = 2.5;
+      for (const c of zone.cells) {
+        ctx.beginPath(); ctx.arc(c.x * C + C / 2, c.y * C + C / 2, C * 0.42, 0, Math.PI * 2); ctx.stroke();
+      }
+    }
+    const sinceStrike = t - rf.lastStrikeAt;
+    if (sinceStrike >= 0 && sinceStrike < 0.4) {
+      const k = sinceStrike / 0.4;                            // 0→1
+      for (const c of zone.cells) {
+        const cx = c.x * C + C / 2, cy = c.y * C + C / 2;
+        ctx.fillStyle = `rgba(90,80,70,${(1 - k).toFixed(3)})`;   // 石块坠落淡出
+        ctx.beginPath(); ctx.arc(cx, cy - (1 - k) * C * 0.8, C * 0.22, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = `rgba(180,165,140,${(0.6 * (1 - k)).toFixed(3)})`; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.arc(cx, cy, C * (0.2 + k * 0.45), 0, Math.PI * 2); ctx.stroke();   // 尘圈扩散
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// —— L50 大雨(disableTerrain 含 firegully 的关;实体层之上,main.js 调;板坐标系)——
+export function drawWeather(ctx, state) {
+  if (!state.terrain || !state.terrain.disabled || !state.terrain.disabled.has('firegully')) return;
+  const t = state.time || 0;
+  const { cols, rows } = state.level;
+  const W = cols * C, H = rows * C;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(180,200,230,.35)'; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  for (let i = 0; i < 70; i++) {
+    const seed = i * 7919 % 997;                              // 固定伪随机(零 Math.random)
+    const x = ((seed * 13 + t * 260) % (W + 80)) - 40;
+    const y = ((seed * 31 + t * 640) % (H + 40)) - 20;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 5, y + 14); ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(40,60,90,.10)'; ctx.fillRect(0, 0, W, H);   // 雨幕压暗
   ctx.restore();
 }
 
