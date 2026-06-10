@@ -92,8 +92,8 @@ export function samplePathCells(paths) {
       const a = wp[i], b = wp[i + 1];
       const L = Math.hypot(b.x - a.x, b.y - a.y) || 1e-6;
       const steps = Math.max(1, Math.ceil(L / 0.25));
-      for (let k = 0; k <= steps; k++) {
-        const t = k / steps;
+      for (let step = 0; step <= steps; step++) {   // step 而非 k:本文件 k 固定指章内关序,避免读者混淆
+        const t = step / steps;
         cells.add(`${Math.round(a.x + (b.x - a.x) * t)},${Math.round(a.y + (b.y - a.y) * t)}`);
       }
     }

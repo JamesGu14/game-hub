@@ -67,7 +67,7 @@ function expand(c) {
     cols: board.cols, rows: board.rows, castle: board.castle,
     camps, paths: board.paths, slots: board.slots, waves,
     terrain: board.terrain, terrainAt: board.terrainAt,             // [板型+地形] 展开产物(resolveBoard 已过滤孤立区)
-    ...(c.disableTerrain ? { disableTerrain: c.disableTerrain } : {}),   // 段2 L50 用,先透传
+    ...(c.disableTerrain ? { disableTerrain: c.disableTerrain } : {}),   // [段2预留] L50 大雨彩蛋透传(terrainSystem 落地前不触发)
   };
 }
 
