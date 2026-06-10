@@ -41,7 +41,7 @@ let screen = 'select';        // [P4/检查点A] 'select' | 'story' | 'playing'
 let pendingLevel = -1;        // [检查点A] 故事屏待进关卡 index
 let pendingResume = null;     // [检查点A] 该关 resume 快照（有则故事屏给续玩选项）
 let storyReview = false;      // [检查点A] 「重看故事」复看模式（继续=回到当前对局，不重置）
-let storyState = null;         // [演绎] 两幕演绎状态(仅内存,演绎进度不入任何快照;中途退出重进从幕1重来)
+let storyState = null;        // [演绎] 两幕演绎状态(仅内存,演绎进度不入任何快照;中途退出重进从幕1重来)
 let selectChapter = 0;        // [检查点A] 选关当前章 index
 let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
 let selected = 'liao';
@@ -379,7 +379,7 @@ async function boot() {
     setSpeed(n) { state.speed = n; },
     // [演绎] 冒烟/QA:读演绎态、取布局矩形(算点击坐标)、写续玩快照、重看入口
     get storyState() { return storyState; },
-    storyLayout() { return storySceneLayout(view, storyState); },
+    storyLayout() { return storyState ? storySceneLayout(view, storyState) : null; },
     persistResume,
     reviewStory() { enterStoryReview(); },
   };

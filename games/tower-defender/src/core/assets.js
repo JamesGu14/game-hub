@@ -28,6 +28,8 @@ export const MANIFEST = {
   gen_guanping_1: 'assets/sprites/generals/guanping_1.png', gen_guanping_2: 'assets/sprites/generals/guanping_2.png', gen_guanping_3: 'assets/sprites/generals/guanping_3.png',
   gen_zhangbao_1: 'assets/sprites/generals/zhangbao_1.png', gen_zhangbao_2: 'assets/sprites/generals/zhangbao_2.png', gen_zhangbao_3: 'assets/sprites/generals/zhangbao_3.png',
   gen_yueying_1: 'assets/sprites/generals/yueying_1.png', gen_yueying_2: 'assets/sprites/generals/yueying_2.png', gen_yueying_3: 'assets/sprites/generals/yueying_3.png',
+  // —— [演绎段1] 剧情角色(非塔将):刘备(幕2 对话立绘;缺图 → storyScene 色块名牌兜底)——
+  gen_liubei: 'assets/sprites/generals/liubei.png',
   // —— 南蛮敌兵（footman 用南蛮基底图）——
   enemy_footman: 'assets/sprites/enemies/nanman_footman.png',
   enemy_tengjia: 'assets/sprites/enemies/tengjia.png',
