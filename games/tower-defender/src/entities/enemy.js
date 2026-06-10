@@ -37,6 +37,7 @@ export function createEnemy(type, pathId, path, scale = 1, opts = {}) {
     gx: s.x, gy: s.y,                              // 格坐标（float）
     px: s.x * BAL.CELL + BAL.CELL / 2, py: s.y * BAL.CELL + BAL.CELL / 2, // 像素中心
     alive: true,
+    envBurn: null,                                 // [地形] 火谷环境灼烧 {dps,until}(独立于塔灼烧栈;statusSystem 并行结算×火抗)
     statuses: {},                                  // { slow:{pct,until}, burn:[{dps,until}], stun:{until} } until=绝对游戏时间
   };
 }

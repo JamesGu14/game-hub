@@ -38,8 +38,16 @@ export function terrainSystem(state) {
     if (!e.alive || e.flying) continue;                       // 飞兵不踩地形
     const ty = terrainTypeAt(lvl, Math.round(e.gx), Math.round(e.gy));
     if (ty === 'shallow' && !disabled.has('shallow')) {
-      applySlow(e, BAL.SHALLOW_SLOW_PCT, BAL.SHALLOW_SLOW_DUR, now);   // 复用减速通道,取最强不叠加
+      // 短路:已有更强减速且 until 余量足 → 免每帧新建对象(GC;review 建议)
+      const c = e.statuses.slow;
+      if (!c || c.until < now + BAL.SHALLOW_SLOW_DUR - 1e-3 || c.pct < BAL.SHALLOW_SLOW_PCT) {
+        applySlow(e, BAL.SHALLOW_SLOW_PCT, BAL.SHALLOW_SLOW_DUR, now);
+      }
+    } else if (ty === 'firegully' && !disabled.has('firegully')) {
+      // 独立环境灼烧单槽:复用对象就地刷新(不占塔 3 层栈;并行结算见 statusSystem)
+      const dps = BAL.FIREGULLY_DPS * (lvl.scale || 1);
+      if (e.envBurn) { e.envBurn.dps = dps; e.envBurn.until = now + BAL.FIREGULLY_LINGER; }
+      else e.envBurn = { dps, until: now + BAL.FIREGULLY_LINGER };
     }
-    // —— firegully（火谷任务填）——
   }
 }

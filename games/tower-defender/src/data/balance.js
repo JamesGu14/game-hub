@@ -48,4 +48,6 @@ export const BAL = {
   SHALLOW_SLOW_PCT: 0.3,      // 浅滩敌速 ×0.7（applySlow 取最强不叠加）
   SHALLOW_SLOW_DUR: 0.2,      // 每帧维持时长（略大于帧间隔,出格自然衰退;spec §4 集成选型）
   ROCKFALL_PERIOD: 6,         // 落石周期（秒;每区独立计时;结算逻辑见落石任务）
+  FIREGULLY_DPS: 6,           // 火谷灼烧 6×scale/s（独立环境槽,不占塔灼烧 3 层栈）
+  FIREGULLY_LINGER: 1.5,      // 出区残留秒数（until = now + LINGER,区内每帧按需刷新）
 };

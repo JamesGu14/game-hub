@@ -29,6 +29,8 @@ export function statusSystem(state, dt) {
     e.statuses.burn = burns;
     let burn = 0;
     for (const b of burns) burn += b.dps;
+    // [地形] 火谷环境灼烧:独立单槽与塔栈并行叠加,走火抗通道(藤甲 resist.fire=1.5 照常被克)
+    if (e.envBurn && e.envBurn.until > now) burn += e.envBurn.dps * (e.resist?.fire ?? 1);
 
     // 净值结算（治疗抵消 DoT），不超 maxHp。
     const net = (heal - burn) * dt;
