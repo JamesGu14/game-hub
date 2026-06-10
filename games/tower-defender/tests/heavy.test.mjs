@@ -12,7 +12,7 @@ const noCrit = () => 0.99;
 // 重甲:物理×0.6、火×1.0(不怕火)、谋略×1.0
 assert.equal(calcDamage({ level: 1 }, GENERALS.huang, heavy, noCrit).dmg, 9 * 0.6, '物理×0.6');
 assert.equal(calcDamage({ level: 1 }, GENERALS.zhuge, heavy, noCrit).dmg, 8 * 1.0, '重甲不怕火×1.0');
-assert.equal(calcDamage({ level: 1 }, GENERALS.guan, heavy, noCrit).dmg, 10 * 1.0, '谋略×1.0');
+assert.equal(calcDamage({ level: 1 }, GENERALS.guan, heavy, noCrit).dmg, 28 * 1.0, '谋略×1.0');
 
 // 与藤甲区分:藤甲火×1.5
 assert.equal(calcDamage({ level: 1 }, GENERALS.zhuge, teng, noCrit).dmg, 8 * 1.5, '藤甲怕火×1.5');

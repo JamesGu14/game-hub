@@ -5,6 +5,7 @@ import { GENERALS } from '../src/data/generals.js';
 import { createTower } from '../src/entities/tower.js';
 import { createEnemy } from '../src/entities/enemy.js';
 import { runAttack } from '../src/systems/combat/attacks.js';
+import { fireSignature } from '../src/systems/combat/signatureSkills.js';
 
 const path = [{ x: 0, y: 0 }, { x: 12, y: 0 }];
 function enemy(type, px, py, opts = {}) { const e = createEnemy(type, 'a', path, 1); e.px = px; e.py = py; Object.assign(e, opts); return e; }
@@ -78,6 +79,61 @@ const rng = () => 0.99;   // 不暴击
   assert.equal(b.alive, false, '连射秒第二个');
   assert.equal(c.alive, true, '连射封顶 2，第三个不中');
   assert.equal(state.gold, a.gold + b.gold, '两杀两份掉金');
+}
+
+// —— 新将（signature:null）L3+ 各攻击路径不抛（防回归）——
+{
+  function towerL3(id, px, py) { const t = newTower(id, px, py); t.level = 3; return t; }
+
+  // 廖化 single L3：击杀目标后走连射分支判定（chainable 要求 signature?.id==='qijin'，null 安全）
+  {
+    const t = towerL3('liao', 100, 100);
+    const e1 = enemy('footman', 100, 100, { progress: 3 });   // 一击必杀（hp低于廖化L3输出）
+    const e2 = enemy('footman', 110, 100, { progress: 2 });
+    const state = { enemies: [e1, e2], projectiles: [], fx: [], gold: 0 };
+    assert.doesNotThrow(() => runAttack(state, t, GENERALS.liao, e1, 0, rng), '廖化 L3 single 不抛');
+  }
+
+  // 马岱 charge L3：锋尖击退判定（signature?.id==='tuzhen' 守卫，null 安全）
+  {
+    const t = towerL3('madai', 18, 100);
+    const primary = enemy('footman', 100, 100, { progress: 4, pathId: 'a' });
+    const state = { enemies: [primary], projectiles: [], fx: [], gold: 0 };
+    assert.doesNotThrow(() => runAttack(state, t, GENERALS.madai, primary, 0, rng), '马岱 L3 charge 不抛');
+  }
+
+  // 周仓 splash L3：无 signature 分支，溅射走到底
+  {
+    const t = towerL3('zhou', 100, 100);
+    const primary = enemy('footman', 100, 100);
+    const state = { enemies: [primary], projectiles: [], fx: [], gold: 0 };
+    assert.doesNotThrow(() => runAttack(state, t, GENERALS.zhou, primary, 0, rng), '周仓 L3 splash 不抛');
+  }
+
+  // 关平 slow L3：无 signature，减速路径
+  {
+    const t = towerL3('guanping', 100, 100);
+    const e = enemy('footman', 100, 100);
+    const state = { enemies: [e], projectiles: [], fx: [], gold: 0 };
+    assert.doesNotThrow(() => runAttack(state, t, GENERALS.guanping, e, 0, rng), '关平 L3 slow 不抛');
+  }
+
+  // 黄月英 burn L3，对 tengjia（huoshao 判定 signature?.id==='huoshao'，null 安全）
+  {
+    const t = towerL3('yueying', 100, 100);
+    const teng = enemy('tengjia', 100, 100);
+    const stats = { dmg: 5 * 1.5 * 1.5 };   // towerStats(yueying,3).dmg（近似）
+    const state = { enemies: [teng], projectiles: [], fx: [], gold: 0 };
+    assert.doesNotThrow(() => runAttack(state, t, GENERALS.yueying, teng, 0, rng), '黄月英 L3 burn 不抛');
+  }
+
+  // fireSignature：新将 signature===null，走 default 返回 false
+  {
+    const t = towerL3('liao', 100, 100);
+    const state = { enemies: [], projectiles: [], fx: [], gold: 0 };
+    const result = fireSignature(state, t, GENERALS.liao, 0);
+    assert.strictEqual(result, false, 'fireSignature(廖化 null signature)===false');
+  }
 }
 
 console.log('ok attacks');
