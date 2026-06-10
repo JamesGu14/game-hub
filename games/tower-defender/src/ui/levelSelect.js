@@ -64,7 +64,7 @@ export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   ctx.fillStyle = PAL.gold; ctx.font = FONT.head(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(`第 ${chapter.id} 章 · ${chapter.title}`, view.w / 2, L.header.chapterY);
   ctx.fillStyle = PAL.dim; ctx.font = FONT.body(13);
-  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, L.header.subY);
+  ctx.fillText('蜀汉守成都 · 众将御三方 —— 选择关卡', view.w / 2, L.header.subY);
   for (const card of L.cards) {
     const lv = levels[card.index];
     const unlocked = isUnlocked(save, card.index + 1);

@@ -2,7 +2,7 @@
 // layout/hit 为单一来源（draw 共用）。点面板内（非按钮）也消费点击，防穿透建塔。
 import { BAL } from '../data/balance.js';
 import { GENERALS, towerStats } from '../data/generals.js';
-import { assets } from '../core/assets.js';
+import { generalSprite } from '../core/assets.js';
 import { upgradeCost, sellRefund } from '../systems/economySystem.js';
 import { panel, button, roundRect, FONT, PAL } from './theme.js';
 
@@ -42,7 +42,7 @@ export function drawTowerPanel(ctx, view, state, tower) {
 
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   // 将名 + 等级（深字楷体）。[P6] 有立绘 → 头像缩略（缺则将色点）
-  const portrait = assets.images['gen_' + tower.generalId];
+  const portrait = generalSprite(tower.generalId, tower.level);
   if (portrait) {
     const ps = 28, pxL = L.x + 10, pyT = L.y + 4;
     roundRect(ctx, pxL, pyT, ps, ps, 6); ctx.fillStyle = g.color; ctx.fill();
@@ -65,13 +65,15 @@ export function drawTowerPanel(ctx, view, state, tower) {
   ctx.fillStyle = PAL.ink; ctx.font = FONT.body(10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.fillText(`攻击 ${Math.round(st.dmg)}　射程 ${st.range.toFixed(1)}　攻速 ${(1 / st.interval).toFixed(1)}`, L.x + 12, L.y + 40);
 
-  // 招牌技行
-  if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature) {
-    ctx.fillStyle = '#9a3a12'; ctx.font = FONT.body(11, 700);
-    ctx.fillText('★ ' + g.signature.name, L.x + 12, L.y + 58);
-  } else {
-    ctx.fillStyle = 'rgba(60,46,26,.62)'; ctx.font = FONT.body(11, 600);
-    ctx.fillText(`升至 L${BAL.SIGNATURE_LEVEL} 解锁招牌技`, L.x + 12, L.y + 58);
+  // 招牌技行(新6将无招牌技 → 整行隐藏,spec §5)
+  if (g.signature) {
+    if (tower.level >= BAL.SIGNATURE_LEVEL) {
+      ctx.fillStyle = '#9a3a12'; ctx.font = FONT.body(11, 700);
+      ctx.fillText('★ ' + g.signature.name, L.x + 12, L.y + 58);
+    } else {
+      ctx.fillStyle = 'rgba(60,46,26,.62)'; ctx.font = FONT.body(11, 600);
+      ctx.fillText(`升至 L${BAL.SIGNATURE_LEVEL} 解锁招牌技`, L.x + 12, L.y + 58);
+    }
   }
 
   for (const b of L.buttons) {

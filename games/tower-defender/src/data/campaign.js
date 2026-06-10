@@ -85,7 +85,7 @@ function buildSkeleton(ch, k) {
     story: {
       hook: `${C.title.split('·')[1] || '守护成都'}，守住我们的家！`,
       year: '三国时期', place: C.title.split('·')[0],
-      sides: `蜀汉六将 vs ${facCn}军`, result: '待你来改写', idiom: '众志成城', portrait: null,
+      sides: `蜀汉众将 vs ${facCn}军`, result: '待你来改写', idiom: '众志成城', portrait: null,
     },
   };
 }

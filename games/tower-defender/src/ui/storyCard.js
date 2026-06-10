@@ -8,7 +8,7 @@ import { CHAPTERS } from '../data/campaign.js';
 const PW = 560, PH = 460, BTN_W = 200, BTN_H = 52, GAP = 20;
 
 // 统一话术（内容铁律：避免误导孩子把"守成都"当史实）
-const DISCLAIMER = '历史上这是真实的大战；游戏里，我们想象蜀汉六将来守护这片战场。';
+const DISCLAIMER = '历史上这是真实的大战；游戏里，我们想象蜀汉众将来守护这片战场。';
 
 export function storyCardLayout(view, hasResume) {
   const x = (view.w - PW) / 2, y = (view.h - PH) / 2;
@@ -68,7 +68,7 @@ export function drawStoryCard(ctx, view, level, hasResume) {
   }
   y += 6;
 
-  // 可选头像（复用六将立绘缩略；portrait=null 则跳过）
+  // 可选头像（复用众将立绘缩略；portrait=null 则跳过）
   if (st.portrait) {
     const img = assets.images['gen_' + st.portrait];
     if (img) {

@@ -6,9 +6,9 @@
 export const assets = { ready: false, images: {} };
 
 // id 命名：gen_<generalId> / enemy_<enemyType> / boss_<bossId>。
-// v1 仅南蛮核心集（蜀汉六将 + 南蛮三兵 + 木鹿/兀突骨）；东吴/曹魏缺图 → 渲染回退色块。
+// v1 仅南蛮核心集（蜀汉十二将 + 南蛮三兵 + 木鹿/兀突骨）；东吴/曹魏缺图 → 渲染回退色块。
 export const MANIFEST = {
-  // —— 蜀汉六将（战场塔 + UI 立绘共用）——
+  // —— 蜀汉十二将（战场塔 + UI 立绘共用）——
   gen_huang: 'assets/sprites/generals/huang.png',
   gen_zhang: 'assets/sprites/generals/zhang.png',
   gen_guan: 'assets/sprites/generals/guan.png',
