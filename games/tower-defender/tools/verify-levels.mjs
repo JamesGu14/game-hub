@@ -80,6 +80,35 @@ export function verifyLevel(level) {
     }
   }
 
+  // —— [板型+地形] terrain 规则(level.terrain 存在才生效;老关无地形自动跳过)——
+  if (Array.isArray(level.terrain) && level.terrain.length) {
+    const cellKey = (c) => `${c.x},${c.y}`;
+    const blocked = new Set();   // river ∪ mountain = 禁建 + 敌不走
+    for (const z of level.terrain) {
+      if (z.type === 'river' || z.type === 'mountain') for (const c of z.cells) blocked.add(cellKey(c));
+    }
+    // ① 将位不落水/山
+    for (const s of level.slots || []) {
+      if (blocked.has(`${s.x},${s.y}`)) errors.push(`L${id}: 将位 (${s.x},${s.y}) 落在 river/mountain 上`);
+    }
+    // ② 路径采样格 / camps / castle 不与水/山相交(渡口=路径格,设计期已从 river 区抠除)
+    for (const k of pathCells) if (blocked.has(k)) errors.push(`L${id}: 蜀道格 (${k}) 穿 river/mountain`);
+    for (const cp of level.camps || []) if (blocked.has(`${cp.c},${cp.r}`)) errors.push(`L${id}: 敌营 ${cp.id} 落在 river/mountain 上`);
+    for (const k of castleCells) if (blocked.has(k)) errors.push(`L${id}: 成都格 (${k}) 被 river/mountain 覆盖`);
+    // ③ 动态地形(shallow/rockfall/firegully)每区至少盖 1 个路径格(防"装饰区"失效)
+    for (const z of level.terrain) {
+      if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) continue;
+      if (!z.cells.some((c) => pathCells.has(cellKey(c)))) errors.push(`L${id}: ${z.type} 区未覆盖任何路径格`);
+    }
+    // ④ plateau:不含路径格(高台上不走兵) + 每区至少含 1 个将位格(否则机制无感)
+    const slotSet = new Set((level.slots || []).map((s) => `${s.x},${s.y}`));
+    for (const z of level.terrain) {
+      if (z.type !== 'plateau') continue;
+      if (z.cells.some((c) => pathCells.has(cellKey(c)))) errors.push(`L${id}: plateau 区压住路径格`);
+      if (!z.cells.some((c) => slotSet.has(cellKey(c)))) errors.push(`L${id}: plateau 区不含任何将位格(机制无感)`);
+    }
+  }
+
   // —— 无漏怪:每段路采样点须在某将位 2.5 格内 ——
   for (const pid of pathIds) {
     const wp = level.paths[pid];

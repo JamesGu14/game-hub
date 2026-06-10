@@ -2,6 +2,8 @@
 // 运行:node games/tower-defender/tests/boardVariants.test.mjs
 import assert from 'node:assert';
 import { mirrorBoard, variantFor, pathSubsetFor, expandTerrain } from '../src/data/boardVariants.js';
+import { verifyLevel } from '../tools/verify-levels.mjs';
+import { genWaves } from '../src/data/waveGen.js';
 
 // —— 合成 fixture(24×14,2 营,带 terrain cells+rects,3 套将位)——
 const FIX = {
@@ -114,5 +116,38 @@ for (const [ch, m] of [[1, 2], [2, 3], [3, 4], [4, 5], [5, 6]]) {
   assert.equal(terrainAt[5][5], null, '空地 null');
   assert.ok(!('rects' in river) || river.rects === undefined, '展开产物不再带 rects');
 }
+
+// —— verify 地形规则(① slots 不落水/山 ② 路/营/城不穿水/山 ③ 动态地形必盖路 ④ plateau 不含路且含将位)——
+function fixLevel(terrain, slotsOverride) {
+  const b = { ...FIX, terrain };
+  const { terrain: tz, terrainAt } = expandTerrain(b);
+  const lv = {
+    id: 'T_fix', faction: 'wei', scale: 1, startGold: 300, castleHp: 20,
+    cols: b.cols, rows: b.rows, castle: b.castle, camps: b.camps, paths: b.paths,
+    slots: slotsOverride || [
+      { x: 6, y: 10 }, { x: 17, y: 3 }, { x: 10, y: 9 }, { x: 13, y: 4 }, { x: 3, y: 4 },
+      { x: 17, y: 7 }, { x: 6, y: 6 }, { x: 20, y: 9 }, { x: 9, y: 9 }, { x: 14, y: 4 },
+      { x: 6, y: 7 }, { x: 7, y: 7 }, { x: 9, y: 10 }, { x: 14, y: 3 },
+    ],   // = 老 twoCamp 的 14 槽(已知全覆盖 a/b 两路)
+    terrain: tz, terrainAt,
+    waves: genWaves({ camps: b.camps, paths: b.paths }, { waveCount: 2, difficulty: 0, enemyTiers: ['footman'], boss: { id: 'huaxiong', name: '华雄', hpMult: 1 } }, 1),
+  };
+  return verifyLevel(lv);
+}
+// 无 terrain → 老行为不变(回归)
+assert.equal(fixLevel([]).errors.length, 0, '无 terrain 零 errors');
+// ① 将位落山 → error
+assert.ok(fixLevel([{ type: 'mountain', cells: [{ x: 6, y: 10 }] }]).errors.some((e) => e.includes('将位') && e.includes('mountain')), '①槽位落山报错');
+// ② 路穿河 → error(path a 经过 (5,5))
+assert.ok(fixLevel([{ type: 'river', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('river')), '②路穿河报错');
+// ② castle 被山压 → error
+assert.ok(fixLevel([{ type: 'mountain', cells: [{ x: 11, y: 6 }] }]).errors.some((e) => e.includes('成都')), '②城被山压报错');
+// ③ 火谷不盖路 → error;盖路 → ok
+assert.ok(fixLevel([{ type: 'firegully', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('firegully')), '③火谷悬空报错');
+assert.equal(fixLevel([{ type: 'firegully', cells: [{ x: 5, y: 5 }] }]).errors.length, 0, '③火谷盖路通过');
+// ④ plateau 含路径格 → error;不含将位 → error;含将位(6,10) → ok
+assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 压路报错');
+assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 无将位报错');
+assert.equal(fixLevel([{ type: 'plateau', cells: [{ x: 6, y: 10 }] }]).errors.length, 0, '④plateau 含将位通过');
 
 console.log('ok boardVariants');
