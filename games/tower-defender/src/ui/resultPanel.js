@@ -3,7 +3,7 @@
 import { panel, button, title, seal, FONT, PAL } from './theme.js';
 
 const BTN_W = 124, BTN_H = 44, GAP = 16;
-const BTN_Y_OFF = 56;        // 按钮相对屏幕中心的下偏移
+const BTN_Y_OFF = 84;        // 按钮下移,给解锁提示行留位(spec §4)
 
 // 按钮组：won 且非末关 → next/retry/select；否则 retry/select。total = LEVELS.length。
 export function resultButtons(view, state, total) {
@@ -23,7 +23,7 @@ export function hitResult(view, state, total, sx, sy) {
   return null;
 }
 
-export function drawResult(ctx, view, state, total) {
+export function drawResult(ctx, view, state, total, opts = {}) {
   const won = state.phase === 'won';
   const cx = view.w / 2, cy = view.h / 2;
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -32,7 +32,7 @@ export function drawResult(ctx, view, state, total) {
   // 居中木匾底板（宽度容纳按钮组）
   const btns = resultButtons(view, state, total);
   const PW = Math.max(440, btns.length * BTN_W + (btns.length - 1) * GAP + 72);
-  panel(ctx, cx - PW / 2, cy - 156, PW, 268, { variant: 'wood', r: 16 });
+  panel(ctx, cx - PW / 2, cy - 156, PW, 296, { variant: 'wood', r: 16 });
 
   // 大印「胜 / 败」
   const R = 46;
@@ -65,6 +65,10 @@ export function drawResult(ctx, view, state, total) {
     if (state.level.id < total) {
       ctx.fillStyle = PAL.jadeBright; ctx.font = FONT.body(13, 700);
       ctx.fillText('已解锁 · 第 ' + (state.level.id + 1) + ' 关', cx, cy + 33);
+    }
+    if (opts.unlockNotice) {
+      ctx.fillStyle = PAL.goldBright; ctx.font = FONT.body(15, 700);
+      ctx.fillText(opts.unlockNotice, cx, cy + 58);
     }
   }
 

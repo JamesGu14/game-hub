@@ -47,6 +47,7 @@ let hover = null;
 let hoverBuild = null;   // [检查点A] 建造栏悬停的将 id（→ 英雄卡浮窗）
 let lastProjCount = 0;   // [P6] 弹道数量增量 → 开火音效探测
 let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
+let unlockNotice = null;   // [spec §4] 本局通关新解锁的武将提示
 
 function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
@@ -57,7 +58,7 @@ function curIndex() { return LEVELS.indexOf(state.level); }
 function enterLevel(n) {
   if (n < 0 || n >= LEVELS.length) return false;
   Object.assign(state, newGameState(LEVELS[n], { unlocked: unlockedGenerals(save) }));
-  recorded = false; selected = 'liao'; selectedTower = null;
+  recorded = false; unlockNotice = null; selected = 'liao'; selectedTower = null;
   lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
   resize(); screen = 'playing';
   audio.startBgm(audio.bgmTrackForLevel(state.level.id));   // [BGM] 按关号轮播 5 首史诗（(id-1)%5；文件未就绪程序乐兜底）
@@ -197,9 +198,14 @@ function render(s) {
     if (!recorded) {
       browserClearResume();                       // [检查点A] 胜/负先清续玩（防写档异常残留脏档）
       recorded = true;
-      if (s.phase === 'won') { save = applyClear(save, s.level.id, s.stars); browserWrite(save); }
+      if (s.phase === 'won') {
+        const prev = save.unlockedLevel;
+        save = applyClear(save, s.level.id, s.stars); browserWrite(save);
+        const ids = newlyUnlocked(prev, save.unlockedLevel);
+        unlockNotice = ids.length ? '⚔️ 新武将来援:' + ids.map((id) => GENERALS[id].name).join('、') + '!' : null;
+      }
     }
-    drawResult(ctx, view, s, LEVELS.length);
+    drawResult(ctx, view, s, LEVELS.length, { unlockNotice });
   }
 
   // [P5] 暂停菜单（playing 且非结算时叠加渲染）
