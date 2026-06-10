@@ -68,6 +68,10 @@ function expand(c) {
     camps, paths: board.paths, slots: board.slots, waves,
     terrain: board.terrain, terrainAt: board.terrainAt,             // [板型+地形] 展开产物(resolveBoard 已过滤孤立区)
     ...(c.disableTerrain ? { disableTerrain: c.disableTerrain } : {}),   // [段2预留] L50 大雨彩蛋透传(terrainSystem 落地前不触发)
+    // [演绎段1] 剧情数据透传:story(样板关含 narration/script)+ 已解析 boss/lieutenants(带 name)
+    // + waveCount/difficulty(storylines 兵力万数派生)。修复:此前 story 未透传,故事屏小档案画空。
+    story: c.story, boss, lieutenants,
+    waveCount: c.waveCount, difficulty: c.difficulty,
   };
 }
 

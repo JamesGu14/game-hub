@@ -46,4 +46,15 @@ assert.ok(l1Generals.has('夏侯惇') && l1Generals.has('李典') && l1Generals.
 assert.deepEqual(LEVELS[49].disableTerrain, ['firegully'], 'L50 带 disableTerrain');
 assert.ok(LEVELS[49].terrain.some((z) => z.type === 'firegully'), 'L50 板上有火谷区');
 
+// [演绎段1] expand 透传:story/boss/lieutenants/waveCount/difficulty(storylines 模板变量数据源;
+// 同时修复现版 story 字段丢失 → 故事屏 hook/小档案画空的潜在回归)
+for (const lv of LEVELS) {
+  assert.ok(lv.story && typeof lv.story.hook === 'string', `L${lv.id} story 透传(hook)`);
+  assert.ok(lv.boss && typeof lv.boss.name === 'string' && lv.boss.name.length >= 2, `L${lv.id} boss.name 已解析`);
+  assert.ok(Array.isArray(lv.lieutenants) && lv.lieutenants.length >= 1, `L${lv.id} lieutenants 透传`);
+  for (const lt of lv.lieutenants) assert.ok(typeof lt.name === 'string' && lt.name.length >= 2, `L${lv.id} 副将有名`);
+  assert.ok(Number.isFinite(lv.waveCount) && lv.waveCount >= 20, `L${lv.id} waveCount 透传`);
+  assert.ok(Number.isFinite(lv.difficulty), `L${lv.id} difficulty 透传`);
+}
+
 console.log('ok levels-integrity');
