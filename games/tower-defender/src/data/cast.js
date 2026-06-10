@@ -20,12 +20,12 @@ const SHU_VOICE = {
   guan:     { name: 'zh-CN-YunxiNeural', rate: '-6%', pitch: '-4%' },   // 威严
   zhang:    { name: 'zh-CN-YunxiNeural', rate: '+6%', pitch: '-6%' },   // 粗豪
   huang:    { name: 'zh-CN-YunjianNeural', rate: '-12%' },              // 老将苍劲
-  zhou:     { name: 'zh-CN-YunjianNeural', rate: '-12%' },
+  zhou:     { name: 'zh-CN-YunjianNeural', rate: '-12%' },              // 周仓黑面虬髯,spec §4 归老将音系
   zhuge:    { name: 'zh-CN-YunjianNeural', rate: '-12%' },
   yueying:  { name: 'zh-CN-XiaoyiNeural' },                             // 清亮才女
 };
 
-const ENEMY_VOICE = { name: 'zh-CN-YunjianNeural', pitch: '-8%' };       // 敌将共用,低沉威压
+const mkEnemyVoice = () => ({ name: 'zh-CN-YunjianNeural', pitch: '-8%' });   // 敌将共用,低沉威压(每条独立副本,防段2调参串改)
 
 export const CAST = {};
 
@@ -35,7 +35,7 @@ for (const id of Object.keys(GENERALS)) {
 }
 // 敌将(主将 + 副将;44 张 boss 图全有,缺图渲染层色块名牌兜底)
 for (const [id, b] of [...Object.entries(BOSSES), ...Object.entries(LIEUTENANTS)]) {
-  CAST[id] = { name: b.name, portrait: { img: 'boss_' + id }, voice: ENEMY_VOICE, side: 'enemy' };
+  CAST[id] = { name: b.name, portrait: { img: 'boss_' + id }, voice: mkEnemyVoice(), side: 'enemy' };
 }
 // 非作战角色(全拼 id)
 CAST.liubei = { name: '刘备', portrait: { img: 'gen_liubei' }, voice: { name: 'zh-CN-YunyangNeural' }, side: 'shu' };

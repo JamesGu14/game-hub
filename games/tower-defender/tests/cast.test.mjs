@@ -1,5 +1,6 @@
 // tests/cast.test.mjs — 角色注册表完整性(演绎段1):覆盖面/阵营/立绘引用/音色数据
 // 运行:node games/tower-defender/tests/cast.test.mjs
+// 音色名/rate/pitch 数值来源:演绎 spec §4 音色分配表(docs/superpowers/specs/2026-06-11-tower-defender-story-performance-design.md)
 import assert from 'node:assert';
 import { CAST } from '../src/data/cast.js';
 import { GENERALS } from '../src/data/generals.js';
@@ -46,5 +47,9 @@ assert.equal(CAST.yueying.voice.name, 'zh-CN-XiaoyiNeural');
 for (const id of ['liao', 'guanping', 'zhangbao', 'madai', 'zhao', 'ma', 'guan', 'zhang']) {
   assert.equal(CAST[id].voice.name, 'zh-CN-YunxiNeural', `${id} 年轻我方云希`);
 }
+
+// 总数防御:bosses/generals 将来扩充时,程序化循环若漏同步立即报错
+const expectedCount = Object.keys(GENERALS).length + Object.keys(BOSSES).length + Object.keys(LIEUTENANTS).length + 3;
+assert.equal(Object.keys(CAST).length, expectedCount, 'CAST 总条数 = 12将+全敌将+3特殊');
 
 console.log('ok cast');
