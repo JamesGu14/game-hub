@@ -2,6 +2,7 @@
 // 段1:静态助手(plateau 射程加成查询);段2:terrainSystem(state) 每步 tick(浅滩/火谷/落石)。
 // 铁律:render-free;查询 O(1) 走 level.terrainAt(boardVariants 加载期烘焙)。
 import { BAL } from '../data/balance.js';
+import { applySlow } from './combat/statusEffects.js';
 
 // 格地形类型（无 level / 无 terrainAt 的合成关/测试关 → null，全部行为退化为平地）
 export function terrainTypeAt(level, x, y) {
@@ -11,4 +12,34 @@ export function terrainTypeAt(level, x, y) {
 // 将位射程加成:高台 +0.5,否则 0。建塔(economySystem)与续玩重建(main.applyResume)共用 → 快照零迁移。
 export function rangeBonusFor(level, slot) {
   return terrainTypeAt(level, slot.x, slot.y) === 'plateau' ? BAL.PLATEAU_RANGE_BONUS : 0;
+}
+
+// 运行时地形状态（gameState.newGameState 调用;resume 重建即重置——v1 续玩回到波首,语义正确）
+export function initTerrainState(level) {
+  const disabled = new Set(level.disableTerrain || []);
+  const rockfalls = [];
+  (level.terrain || []).forEach((z, i) => {
+    if (z.type === 'rockfall' && !disabled.has('rockfall')) {
+      rockfalls.push({ zoneIdx: i, nextStrikeAt: BAL.ROCKFALL_PERIOD, lastStrikeAt: -9 });
+    }
+  });
+  return { rockfalls, disabled };
+}
+
+// 每步 tick（gameLoop 在 pathSystem 之后调;位置最新）。
+export function terrainSystem(state) {
+  const lvl = state.level;
+  if (!lvl || !lvl.terrain || !lvl.terrain.length || !state.terrain) return;
+  const now = state.time;
+  // —— rockfall 结算（落石任务填）——
+  if (state.phase !== 'combat') return;          // [P0-3] 相位守卫（效果只作用于交战中的敌）
+  const disabled = state.terrain.disabled;
+  for (const e of state.enemies) {
+    if (!e.alive || e.flying) continue;                       // 飞兵不踩地形
+    const ty = terrainTypeAt(lvl, Math.round(e.gx), Math.round(e.gy));
+    if (ty === 'shallow' && !disabled.has('shallow')) {
+      applySlow(e, BAL.SHALLOW_SLOW_PCT, BAL.SHALLOW_SLOW_DUR, now);   // 复用减速通道,取最强不叠加
+    }
+    // —— firegully（火谷任务填）——
+  }
 }

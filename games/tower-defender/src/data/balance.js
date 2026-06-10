@@ -45,4 +45,7 @@ export const BAL = {
 
   // —— 板型+地形（spec §6）——
   PLATEAU_RANGE_BONUS: 0.5,   // 高台将位射程 +0.5 格
+  SHALLOW_SLOW_PCT: 0.3,      // 浅滩敌速 ×0.7（applySlow 取最强不叠加）
+  SHALLOW_SLOW_DUR: 0.2,      // 每帧维持时长（略大于帧间隔,出格自然衰退;spec §4 集成选型）
+  ROCKFALL_PERIOD: 6,         // 落石周期（秒;每区独立计时;结算逻辑见落石任务）
 };

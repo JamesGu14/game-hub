@@ -11,12 +11,14 @@ import { statusSystem } from '../systems/statusSystem.js';
 import { economySystem } from '../systems/economySystem.js';
 import { victorySystem } from '../systems/victorySystem.js';
 import { updateProjectiles } from '../systems/combat/projectileManager.js';
+import { terrainSystem } from '../systems/terrainSystem.js';
 
 export function step(state, dt) {
   state.time += dt;
   if (state.phase === 'won' || state.phase === 'lost') { bus.flush(); return; }
   waveSystem(state, dt);          // prep & combat（自身判相位）
   pathSystem(state, dt);          // ↓ 各系统入口 if(phase!=='combat')return
+  terrainSystem(state);           // [地形] 浅滩减速/火谷灼烧刷新/落石计时（位置已最新;落石击杀在 targeting 前）
   bossSystem(state, dt);          // [P3] 司马懿召兵/震将（targeting 前：召出兵当帧可被锁）
   targetingSystem(state, dt);
   combatSystem(state, dt);

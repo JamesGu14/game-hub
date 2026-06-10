@@ -5,6 +5,7 @@
 
 import { BAL } from '../data/balance.js';
 import { makeRng } from './rng.js';
+import { initTerrainState } from '../systems/terrainSystem.js';
 
 export function newGameState(level, opts = {}) {
   return {
@@ -28,6 +29,7 @@ export function newGameState(level, opts = {}) {
     activeSpawns: [],             // 当前波展开的出兵计时器
     campsFallen: {},              // campId -> true（出兵出尽即攻陷）
     allWavesEmitted: false,       // 末波 spawns 出尽
+    terrain: initTerrainState(level),   // [地形] 运行时状态（落石计时/禁用集;敌身上的状态在敌实例）
     stars: 0,
   };
 }
