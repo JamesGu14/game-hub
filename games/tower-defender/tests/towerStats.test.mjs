@@ -42,6 +42,7 @@ assert.ok(hit('zhao') > hit('guan') && hit('guan') > hit('ma') && hit('ma') > hi
   `五虎单发排序 赵${hit('zhao')}>关${hit('guan')}>马${hit('ma')}>张${hit('zhang')}>黄${hit('huang')}`);
 
 // —— [spec §8.1] 师徒不变量：徒弟单发与 L1 DPS 均低于师父（张苞对照赵云）——
+// 全将共享同一组升级倍率（towerStats）⇒ L1 DPS 序即全级序；若未来引入按将专属曲线，此不变量需升级为逐级断言。
 const PAIRS = [['liao', 'huang'], ['zhou', 'zhang'], ['madai', 'ma'], ['guanping', 'guan'], ['zhangbao', 'zhao'], ['yueying', 'zhuge']];
 const dps1 = (id) => GENERALS[id].dmg / GENERALS[id].interval;
 for (const [stu, mas] of PAIRS) {

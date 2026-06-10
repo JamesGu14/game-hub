@@ -85,7 +85,7 @@ const rng = () => 0.99;   // 不暴击
 {
   function towerL3(id, px, py) { const t = newTower(id, px, py); t.level = 3; return t; }
 
-  // 廖化 single L3：击杀目标后走连射分支判定（chainable 要求 signature?.id==='qijin'，null 安全）
+  // 廖化 single L3：目标被击杀后 qijin 守卫(signature?.id)短路、不进连射分支——验证 null 安全,非覆盖连射逻辑
   {
     const t = towerL3('liao', 100, 100);
     const e1 = enemy('footman', 100, 100, { progress: 3 });   // 一击必杀（hp低于廖化L3输出）
@@ -94,7 +94,7 @@ const rng = () => 0.99;   // 不暴击
     assert.doesNotThrow(() => runAttack(state, t, GENERALS.liao, e1, 0, rng), '廖化 L3 single 不抛');
   }
 
-  // 马岱 charge L3：锋尖击退判定（signature?.id==='tuzhen' 守卫，null 安全）
+  // 马岱 charge L3：命中锋尖后 tuzhen 守卫短路、不进击退分支——验证 null 安全
   {
     const t = towerL3('madai', 18, 100);
     const primary = enemy('footman', 100, 100, { progress: 4, pathId: 'a' });
@@ -122,9 +122,10 @@ const rng = () => 0.99;   // 不暴击
   {
     const t = towerL3('yueying', 100, 100);
     const teng = enemy('tengjia', 100, 100);
-    const stats = { dmg: 5 * 1.5 * 1.5 };   // towerStats(yueying,3).dmg（近似）
     const state = { enemies: [teng], projectiles: [], fx: [], gold: 0 };
     assert.doesNotThrow(() => runAttack(state, t, GENERALS.yueying, teng, 0, rng), '黄月英 L3 burn 不抛');
+    // 无 huoshao 被动 → 对藤甲不享受 ×2:dps = 5×1.5² = 11.25(锁"新将不继承师父被动"语义)
+    assert.ok(Math.abs(teng.statuses.burn[0].dps - 11.25) < 1e-9, '黄月英灼烧 dps=11.25 不×2');
   }
 
   // fireSignature：新将 signature===null，走 default 返回 false
