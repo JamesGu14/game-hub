@@ -93,3 +93,12 @@ export async function preload(loadImage = defaultLoadImage, manifest = MANIFEST)
   assets.ready = true;
   return assets;
 }
+
+// [形象演进 spec §6.1] 按等级取将立绘:gen_<id>_<stage> 逐级回退 → 旧图 gen_<id> → null(调用方画色块/首字)。
+export function generalSprite(id, level = 1) {
+  for (let s = Math.min(level, 3); s >= 1; s--) {
+    const img = assets.images['gen_' + id + '_' + s];
+    if (img) return img;
+  }
+  return assets.images['gen_' + id] || null;
+}

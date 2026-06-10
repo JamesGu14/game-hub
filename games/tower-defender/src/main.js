@@ -13,7 +13,8 @@ import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRen
 import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, HUD_H } from './render/hud.js';
 import { spawnFloat } from './render/fx.js';
-import { drawBuildBar, hitBuildBar, buildBarLayout } from './ui/buildBar.js';
+import { drawBuildBar, hitBuildBar, buildBarLayout, HOTKEYS } from './ui/buildBar.js';
+import { unlockedGenerals, newlyUnlocked } from './data/unlocks.js';
 import { drawHeroCard } from './ui/heroCard.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
@@ -25,7 +26,6 @@ import { GENERALS, towerStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
 import { button, panel, backdrop, vignette } from './ui/theme.js';
 
-const GEN_IDS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge'];
 
 const C = BAL.CELL;
 const canvas = document.getElementById('game');
@@ -41,7 +41,7 @@ let pendingResume = null;     // [检查点A] 该关 resume 快照（有则故�
 let storyReview = false;      // [检查点A] 「重看故事」复看模式（继续=回到当前对局，不重置）
 let selectChapter = 0;        // [检查点A] 选关当前章 index
 let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
-let selected = 'huang';
+let selected = 'liao';
 let selectedTower = null;
 let hover = null;
 let hoverBuild = null;   // [检查点A] 建造栏悬停的将 id（→ 英雄卡浮窗）
@@ -56,8 +56,8 @@ function curIndex() { return LEVELS.indexOf(state.level); }
 // [P4] 进关(原地换关,循环持同一 state 引用)。enterLevel 不校验解锁(供 retry/调试);startLevel 校验。
 function enterLevel(n) {
   if (n < 0 || n >= LEVELS.length) return false;
-  Object.assign(state, newGameState(LEVELS[n]));
-  recorded = false; selected = 'huang'; selectedTower = null;
+  Object.assign(state, newGameState(LEVELS[n], { unlocked: unlockedGenerals(save) }));
+  recorded = false; selected = 'liao'; selectedTower = null;
   lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
   resize(); screen = 'playing';
   audio.startBgm(audio.bgmTrackForLevel(state.level.id));   // [BGM] 按关号轮播 5 首史诗（(id-1)%5；文件未就绪程序乐兜底）
@@ -188,7 +188,7 @@ function render(s) {
   vignette(ctx, view.w, view.h);
   drawHud(ctx, s, view);
   drawBuildBar(ctx, s, view, selected);
-  if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view).find((b) => b.id === hoverBuild));
+  if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view, state).find((b) => b.id === hoverBuild));
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
   if (s.phase === 'prep') button(ctx, EARLY_BTN(), { label: '⚔ 提前出兵 ↵', variant: 'gold' });
 
@@ -247,7 +247,7 @@ function onPointerDown(ev) {
     else if (act === 'hub') { browserClearResume(); window.location.href = '../../index.html'; }
     return;
   }
-  const pick = hitBuildBar(view, sx, sy);
+  const pick = hitBuildBar(view, state, sx, sy);
   if (pick) { selected = pick; selectedTower = null; audio.sfx('ui'); return; }
   if (selectedTower && state.towers.includes(selectedTower)) {
     const act = hitTowerPanel(view, selectedTower, sx, sy);
@@ -268,7 +268,7 @@ function onPointerDown(ev) {
 function onPointerMove(ev) {
   hover = screenToCell(ev.clientX, ev.clientY);
   hoverBuild = (screen === 'playing' && !state.paused && state.phase !== 'won' && state.phase !== 'lost')
-    ? hitBuildBar(view, ev.clientX, ev.clientY) : null;
+    ? hitBuildBar(view, state, ev.clientX, ev.clientY) : null;
 }
 
 function onKey(ev) {
@@ -282,7 +282,10 @@ function onKey(ev) {
   else if (ev.key === 'f' || ev.key === 'F') { state.speed = state.speed === 1 ? 2 : 1; }
   else if (ev.key === 'Enter') { if (state.phase === 'prep') state.earlyRequested = true; }
   else if (ev.key === 'Escape') { if (selectedTower) selectedTower = null; else state.paused = !state.paused; }
-  else if (ev.key >= '1' && ev.key <= '6') { selected = GEN_IDS[+ev.key - 1]; selectedTower = null; }
+  else if (HOTKEYS[ev.key.toLowerCase()]) {
+    const id = HOTKEYS[ev.key.toLowerCase()];
+    if (!state.unlocked || state.unlocked.has(id)) { selected = id; selectedTower = null; }
+  }
   else if (ev.key === '[') { const i = curIndex(); if (i > 0) enterLevel(i - 1); }   // 调试切关
   else if (ev.key === ']') { const i = curIndex(); if (i < LEVELS.length - 1) enterLevel(i + 1); }
 }
@@ -291,7 +294,7 @@ async function boot() {
   await preload();
   save = browserLoad();
   audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
-  state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)]);   // 预建有效 state(供 resize/loop)
+  state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: unlockedGenerals(save) });   // 预建有效 state(供 resize/loop)
   resize();
   screen = 'select';
   if (bannerEl) bannerEl.classList.remove('show');   // 改用 resultPanel,不再用 #banner
