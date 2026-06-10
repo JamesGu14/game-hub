@@ -23,6 +23,26 @@ for (const [id, b] of Object.entries(BASE_BOARDS)) {
   assert.equal(b.slotsVariants.length, 3, `${id} 恰 3 套将位`);
   const sigs = b.slotsVariants.map((s) => JSON.stringify([...s].sort((a, c) => a.x - c.x || a.y - c.y)));
   assert.equal(new Set(sigs).size, 3, `${id} 3 套将位两两不同`);
+  // 槽位纯数据快查:界内/不落路/不落城(完整管道校验在 boardVariants.test 全组合,这里是最早门禁)
+  const pathCells = new Set();
+  for (const pid of Object.keys(b.paths)) {
+    const wp = b.paths[pid];
+    for (let i = 0; i < wp.length - 1; i++) {
+      const a = wp[i], q = wp[i + 1];
+      const L = Math.hypot(q.x - a.x, q.y - a.y) || 1e-6;
+      const steps = Math.max(1, Math.ceil(L / 0.25));
+      for (let k = 0; k <= steps; k++) { const tt = k / steps; pathCells.add(`${Math.round(a.x + (q.x - a.x) * tt)},${Math.round(a.y + (q.y - a.y) * tt)}`); }
+    }
+  }
+  const castleCells = new Set();
+  for (let c = b.castle.c; c < b.castle.c + b.castle.w; c++) for (let r = b.castle.r; r < b.castle.r + b.castle.h; r++) castleCells.add(`${c},${r}`);
+  b.slotsVariants.forEach((variant, vi) => {
+    for (const s of variant) {
+      assert.ok(s.x >= 0 && s.x < b.cols && s.y >= 0 && s.y < b.rows, `${id} 套${vi} slot (${s.x},${s.y}) 越界`);
+      assert.ok(!pathCells.has(`${s.x},${s.y}`), `${id} 套${vi} slot (${s.x},${s.y}) 落路`);
+      assert.ok(!castleCells.has(`${s.x},${s.y}`), `${id} 套${vi} slot (${s.x},${s.y}) 落城`);
+    }
+  });
   for (const z of b.terrain || []) {
     assert.ok(TERRAIN_TYPES.has(z.type), `${id} terrain 类型 ${z.type} 合法`);
     assert.ok((z.cells && z.cells.length) || (z.rects && z.rects.length), `${id} terrain 区非空`);
