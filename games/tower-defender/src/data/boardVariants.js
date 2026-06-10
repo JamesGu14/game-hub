@@ -81,6 +81,26 @@ export function expandTerrain(board) {
   return { terrain, terrainAt };
 }
 
+// —— 路径格采样:0.25 步插值 + Math.round,与 verify-levels 同源。
+// 两处判定"盖没盖路"必须同一算法防漂移:resolveBoard 过滤和 verify-levels ③ 都调此函数。
+export function samplePathCells(paths) {
+  const cells = new Set();
+  for (const pid of Object.keys(paths)) {
+    const wp = paths[pid];
+    if (!Array.isArray(wp)) continue;
+    for (let i = 0; i < wp.length - 1; i++) {
+      const a = wp[i], b = wp[i + 1];
+      const L = Math.hypot(b.x - a.x, b.y - a.y) || 1e-6;
+      const steps = Math.max(1, Math.ceil(L / 0.25));
+      for (let k = 0; k <= steps; k++) {
+        const t = k / steps;
+        cells.add(`${Math.round(a.x + (b.x - a.x) * t)},${Math.round(a.y + (b.y - a.y) * t)}`);
+      }
+    }
+  }
+  return cells;
+}
+
 // —— 总装:查板 → 镜像 → 选将位套 → 路子集过滤 → terrain 展开(levels.js 唯一入口)——
 export function resolveBoard(chapter, k) {
   const { boardId, mirror, slotsIdx } = variantFor(chapter, k);
@@ -91,7 +111,22 @@ export function resolveBoard(chapter, k) {
   const subset = pathSubsetFor(chapter, k, allIds) || allIds;
   const paths = {}; for (const id of subset) paths[id] = b.paths[id];
   const camps = b.camps.filter((cp) => subset.includes(cp.id));
-  const { terrain, terrainAt } = expandTerrain(b);
+  const { terrain: rawTerrain, terrainAt: rawTerrainAt } = expandTerrain(b);
+  // 动态地形过滤:路子集关排除了部分路时,用 0.25 步插值采样(与 verify ③ 同源)判断
+  // shallow/rockfall/firegully 区是否至少盖 1 个活跃路径格;未覆盖的孤立区剔除。
+  // plateau/river/mountain 永不过滤(机制语义不依赖路径覆盖)。
+  const pc = samplePathCells(paths);
+  const terrain = rawTerrain.filter((z) => {
+    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) return true;
+    return z.cells.some((c) => pc.has(`${c.x},${c.y}`));
+  });
+  const terrainAt = rawTerrainAt.map((row) => [...row]);
+  for (const z of rawTerrain) {
+    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) continue;
+    if (!z.cells.some((c) => pc.has(`${c.x},${c.y}`))) {
+      for (const c of z.cells) terrainAt[c.y][c.x] = null;
+    }
+  }
   return {
     id: boardId, mirror, slotsIdx,
     cols: b.cols, rows: b.rows, castle: b.castle,

@@ -43,22 +43,7 @@ function expand(c) {
   }
   const cityNames = CITY_POOLS[c.chapter].slice(CITY_AT[c.id], CITY_AT[c.id] + board.camps.length);
   const camps = board.camps.map((cp, i) => ({ ...cp, cityName: cityNames[i] }));
-  // 动态地形过滤：路子集关排除了部分路时,仅保留至少覆盖 1 个活跃路径格的地形区
-  // (shallow/rockfall/firegully 按 verify 规则必须覆盖路；排除掉子集外路的孤立区)
-  const activePathCells = new Set(
-    Object.values(board.paths).flatMap((wps) => wps.map((p) => `${p.x},${p.y}`)),
-  );
-  const terrainFiltered = board.terrain.filter((z) => {
-    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) return true;
-    return z.cells.some((cell) => activePathCells.has(`${cell.x},${cell.y}`));
-  });
-  const terrainAtFiltered = board.terrainAt.map((row) => [...row]);
-  for (const z of board.terrain) {
-    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) continue;
-    if (!z.cells.some((cell) => activePathCells.has(`${cell.x},${cell.y}`))) {
-      for (const cell of z.cells) terrainAtFiltered[cell.y][cell.x] = null;
-    }
-  }
+  // 动态地形过滤已在 resolveBoard 完成(0.25 步插值,与 verify ③ 同源)。
   // boss：bosses.js 提供 name/hpMult/bossSkills；campaign 可覆盖 name/hpMult
   const baseBoss = BOSSES[c.boss.id];
   if (!baseBoss) throw new Error(`levels: 未知 boss.id '${c.boss.id}' (L${c.id})`);
@@ -81,7 +66,7 @@ function expand(c) {
     rampMax: c.rampMax,                       // 可选：覆盖 wave HP ramp 上限（缺省 → BAL.WAVE_HP_RAMP_MAX）
     cols: board.cols, rows: board.rows, castle: board.castle,
     camps, paths: board.paths, slots: board.slots, waves,
-    terrain: terrainFiltered, terrainAt: terrainAtFiltered,         // [板型+地形] 展开产物(子集孤立区已过滤)
+    terrain: board.terrain, terrainAt: board.terrainAt,             // [板型+地形] 展开产物(resolveBoard 已过滤孤立区)
     ...(c.disableTerrain ? { disableTerrain: c.disableTerrain } : {}),   // 段2 L50 用,先透传
   };
 }

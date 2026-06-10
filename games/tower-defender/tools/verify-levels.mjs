@@ -3,6 +3,7 @@
 // 用法:`node tools/verify-levels.mjs`(CLI,有问题 exit 1);单测 import { verifyLevel }。
 import { LEVELS } from '../src/data/levels.js';
 import { ENEMIES } from '../src/data/enemies.js';
+import { samplePathCells } from '../src/data/boardVariants.js';
 
 export const MIN_RANGE = 2.5;       // 将塔最小射程(格);§17.4
 const SAMPLE_STEP = 0.25;           // 沿段采样步长(格)
@@ -44,16 +45,8 @@ export function verifyLevel(level) {
   // 成都占据的格 / 蜀道占据的格(用于:末点须连成都、将位不得在路或城上)
   const castleCells = new Set();
   if (cs) for (let c = cs.c; c < cs.c + cs.w; c++) for (let r = cs.r; r < cs.r + cs.h; r++) castleCells.add(`${c},${r}`);
-  const pathCells = new Set();
-  for (const pid of pathIds) {
-    const wp = level.paths[pid]; if (!Array.isArray(wp)) continue;
-    for (let i = 0; i < wp.length - 1; i++) {
-      const a = wp[i], b = wp[i + 1];
-      const L = Math.hypot(b.x - a.x, b.y - a.y) || 1e-6;
-      const steps = Math.max(1, Math.ceil(L / 0.25));
-      for (let k = 0; k <= steps; k++) { const tt = k / steps; pathCells.add(`${Math.round(a.x + (b.x - a.x) * tt)},${Math.round(a.y + (b.y - a.y) * tt)}`); }
-    }
-  }
+  // pathCells:0.25 步插值采样,与 resolveBoard 动态地形过滤同源(两处判定"盖没盖路"必须一致)
+  const pathCells = samplePathCells(level.paths);
 
   // 每条 path:末点须是成都格(视觉连通)+ 总长 ≥ MIN_PATH_LEN(防短路速通)
   for (const pid of pathIds) {
