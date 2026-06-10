@@ -146,6 +146,7 @@ function drawNarration(ctx, view, st, level) {
   if (s.portrait) {
     const img = generalSprite(s.portrait, 3);
     if (img) {
+      // pyT=P.y+132:PH 460→540 后头像随小档案区下移(storyCard 旧值 120)
       const ps = 64, pxR = P.x + P.w - 56 - ps, pyT = P.y + 132;
       ctx.save(); roundRect(ctx, pxR, pyT, ps, ps, 8); ctx.clip();
       const ih = ps * ((img.height / img.width) || 1.35);
@@ -222,8 +223,8 @@ function drawDialogue(ctx, view, st, level, nowMs) {
   const line = script[st.lineIdx];
   const cur = CAST[line.who] || { name: line.who, side: 'shu', portrait: null };
 
-  // 战役名小标题(顶部居中,给娃上下文)
-  title(ctx, level.name, view.w / 2, 64, 30);
+  // 战役名小标题(顶部居中,给娃上下文;小窗立绘顶过高时让位,防与立绘重叠)
+  if (L.portraits.left.y >= 100) title(ctx, level.name, view.w / 2, 64, 30);
 
   // 双侧立绘(蜀左敌右;当前说话人全亮,另一侧压暗;齐声/无立绘角色不顶替立绘位)
   const sp = sideSpeakers(script, st.lineIdx);

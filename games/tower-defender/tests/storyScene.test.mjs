@@ -61,6 +61,13 @@ const mkContent = () => ({ narration: '测试旁白讲解两句话。第二句�
   assert.equal(st.lineIdx, 2);
   assert.equal(advanceDialogue(st, 999000), 'done', '末句显完 → done');
   assert.equal(advanceDialogue(st, 999100), 'done', 'done 幂等');
+
+  // 末句打字中 tap → reveal(非 done):重置末句计时模拟刚切到末句
+  const st2 = newStoryState(mkContent(), { hasResume: false, review: false });
+  toDialogue(st2, 1000);
+  while (st2.lineIdx < 2) advanceDialogue(st2, 9e6);
+  st2.lineStart = 9e6; st2.revealAll = false;
+  assert.equal(advanceDialogue(st2, 9e6 + 50), 'reveal', '末句打字中 tap=reveal 而非 done');
 }
 
 // 4) stub ctx draw 不抛 + save/restore 平衡:两幕 × 样板关(L1)/生成关(L2) × 多行号/时刻
@@ -102,7 +109,7 @@ const mkContent = () => ({ narration: '测试旁白讲解两句话。第二句�
   for (const r of [L.box, L.skip, L.portraits.left, L.portraits.right]) {
     for (const k of ['x', 'y', 'w', 'h']) assert.ok(Number.isFinite(r[k]), `小窗 ${k} 有限`);
   }
-  assert.ok(L.portraits.left.y > 0, '小窗立绘不越上沿');
+  assert.ok(L.portraits.left.y > 80, '小窗立绘不与顶部标题区重叠(h=640 实测 y≈199)');
 }
 
 console.log('ok storyScene');

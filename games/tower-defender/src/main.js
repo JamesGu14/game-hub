@@ -19,7 +19,8 @@ import { unlockedGenerals, newlyUnlocked } from './data/unlocks.js';
 import { drawHeroCard } from './ui/heroCard.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
-import { hitStoryCard, drawStoryCard } from './ui/storyCard.js';
+import { newStoryState, hitStoryScene, drawStoryScene, toDialogue, advanceDialogue, storySceneLayout } from './ui/storyScene.js';
+import { storyContentFor } from './data/storylines.js';
 import { CHAPTERS } from './data/campaign.js';
 import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
@@ -40,6 +41,7 @@ let screen = 'select';        // [P4/检查点A] 'select' | 'story' | 'playing'
 let pendingLevel = -1;        // [检查点A] 故事屏待进关卡 index
 let pendingResume = null;     // [检查点A] 该关 resume 快照（有则故事屏给续玩选项）
 let storyReview = false;      // [检查点A] 「重看故事」复看模式（继续=回到当前对局，不重置）
+let storyState = null;         // [演绎] 两幕演绎状态(仅内存,演绎进度不入任何快照;中途退出重进从幕1重来)
 let selectChapter = 0;        // [检查点A] 选关当前章 index
 let recorded = false;         // [P4] 本局是否已写档(胜利只记一次)
 let selected = 'liao';
@@ -55,6 +57,17 @@ function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
 }
 function curIndex() { return LEVELS.indexOf(state.level); }
+
+// [演绎] 进故事屏统一建态(选关入口/重看入口共用;roster 实时取,点将随解锁进度生长)
+function makeStoryState(n, { hasResume, review }) {
+  return newStoryState(storyContentFor(LEVELS[n], unlockedGenerals(save)), { hasResume, review });
+}
+// [演绎] 暂停菜单「重看故事」建态(DRY:Step7 暂停分支 + __td.reviewStory 共用)
+function enterStoryReview() {
+  storyReview = true; pendingLevel = curIndex(); pendingResume = null;
+  storyState = makeStoryState(curIndex(), { hasResume: false, review: true });
+  screen = 'story';
+}
 
 // [P4] 进关(原地换关,循环持同一 state 引用)。enterLevel 不校验解锁(供 retry/调试);startLevel 校验。
 function enterLevel(n) {
@@ -72,6 +85,7 @@ function startLevel(n) {
   pendingLevel = n; storyReview = false;
   const snap = browserLoadResume();
   pendingResume = (snap && snap.levelId === LEVELS[n].id) ? snap : null;
+  storyState = makeStoryState(n, { hasResume: !!pendingResume, review: false });
   screen = 'story'; audio.stopBgm();
   return true;
 }
@@ -102,7 +116,7 @@ function applyResume(snap) {
   });
   return true;
 }
-// 故事屏「继续/续上次/重头」路由。
+// 故事屏「继续/续上次/重头」终路由(演绎两幕走完/跳过后也汇于此)。[段2] 进战斗前在此 stopVoice()。
 function fromStory(act) {
   if (storyReview) { screen = 'playing'; storyReview = false; if (state.paused) state.paused = false; return; }
   if (act === 'resume' && pendingResume) { applyResume(pendingResume); browserClearResume(); screen = 'playing'; audio.startBgm(); }   // 续玩成功即清档（防下次/刷新读到旧波）
@@ -154,7 +168,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 function render(s) {
   // [P4] 选关屏:只画选关页
   if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); drawFsButton(); return; }
-  if (screen === 'story') { drawStoryCard(ctx, view, LEVELS[pendingLevel], !!pendingResume); drawFsButton(); return; }
+  if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   backdrop(ctx, view.w, view.h);
@@ -249,8 +263,12 @@ function onPointerDown(ev) {
     return;
   }
   if (screen === 'story') {
-    const act = hitStoryCard(view, !!pendingResume, sx, sy);
-    if (act) fromStory(act);
+    const act = hitStoryScene(view, storyState, sx, sy);
+    if (act === 'resume') fromStory('resume');                                    // 续上次=跳过演绎直接恢复(spec §5)
+    else if (act === 'continue' || act === 'restart') toDialogue(storyState, performance.now());   // 幕1→幕2(重头的快照在进战斗时清)
+    else if (act === 'skip') fromStory('continue');                               // 跳过演绎→直接开战/回对局(review)
+    else if (act === 'tap') { if (advanceDialogue(storyState, performance.now()) === 'done') fromStory('continue'); }   // 末句点击→开战
+    if (act) audio.sfx('ui');
     return;
   }
   // [P4] 结算屏(胜/负):仅响应结算按钮,消费其余点击
@@ -272,7 +290,7 @@ function onPointerDown(ev) {
     const act = hitPause(view, sx, sy);
     if (act === 'resume') state.paused = false;
     else if (act === 'restart') { browserClearResume(); enterLevel(curIndex()); }
-    else if (act === 'story') { storyReview = true; pendingLevel = curIndex(); pendingResume = null; screen = 'story'; }
+    else if (act === 'story') { enterStoryReview(); }
     else if (act === 'select') { state.paused = false; leaveToSelect(); }
     else if (act === 'mute') { save.settings.muted = !save.settings.muted; audio.setMuted(save.settings.muted); browserWrite(save); audio.sfx('ui'); }
     else if (act === 'hub') { browserClearResume(); window.location.href = '../../index.html'; }
@@ -359,6 +377,11 @@ async function boot() {
     get pendingResume() { return pendingResume; },
     early() { if (state.phase === 'prep') state.earlyRequested = true; },
     setSpeed(n) { state.speed = n; },
+    // [演绎] 冒烟/QA:读演绎态、取布局矩形(算点击坐标)、写续玩快照、重看入口
+    get storyState() { return storyState; },
+    storyLayout() { return storySceneLayout(view, storyState); },
+    persistResume,
+    reviewStory() { enterStoryReview(); },
   };
   bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
