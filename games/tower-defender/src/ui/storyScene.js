@@ -146,8 +146,8 @@ function drawNarration(ctx, view, st, level) {
   if (s.portrait) {
     const img = generalSprite(s.portrait, 3);
     if (img) {
-      // pyT=P.y+132:PH 460→540 后头像随小档案区下移(storyCard 旧值 120)
-      const ps = 64, pxR = P.x + P.w - 56 - ps, pyT = P.y + 132;
+      // pyT=P.y+264:贴小档案区右侧空带(冒烟目检:132 会压住居中 narration 行尾;narration 至多 4 行止于 ~258)
+      const ps = 64, pxR = P.x + P.w - 56 - ps, pyT = P.y + 264;
       ctx.save(); roundRect(ctx, pxR, pyT, ps, ps, 8); ctx.clip();
       const ih = ps * ((img.height / img.width) || 1.35);
       ctx.drawImage(img, pxR, pyT, ps, ih); ctx.restore();
