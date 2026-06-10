@@ -20,6 +20,8 @@ export function drawBoard(ctx, state) {
     }
   }
 
+  drawTerrainBase(ctx, state);   // [地形] 基底层：路压河上=渡口浮桥视觉天然成立(spec §5 顺序)
+
   // 弯曲蜀道（沿 waypoint 画粗线）
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const id in paths) {
@@ -86,6 +88,71 @@ function drawPlate(ctx, text, cx, footY, gold = false) {
   ctx.font = `bold ${r.fontPx}px system-ui`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(text, r.textX, r.textY);
+  ctx.restore();
+}
+
+// —— [板型+地形] terrain 基底(spec §5)：river 蓝带波纹 / shallow 亮蓝 / plateau 黄土台描边 /
+//     mountain 深岩棱线 / firegully 橙红焦地 / rockfall 碎石警示底。章 faction tint 之上叠加。——
+const TERRAIN_FILL = {
+  river: '#3d6e9e', shallow: '#5da7c9', plateau: '#c9a85c',
+  mountain: '#4a4640', firegully: '#8a3a24', rockfall: '#6e645a',
+};
+
+function drawTerrainBase(ctx, state) {
+  const zones = state.level.terrain;
+  if (!zones || !zones.length) return;
+  const t = state.time || 0;
+  ctx.save();
+  for (const z of zones) {
+    ctx.fillStyle = TERRAIN_FILL[z.type] || '#888';
+    for (const c of z.cells) ctx.fillRect(c.x * C, c.y * C, C, C);
+    if (z.type === 'river' || z.type === 'shallow') {
+      // 波纹线：每格两道正弦短横线，相位随 time 流动
+      ctx.strokeStyle = z.type === 'river' ? 'rgba(220,235,255,.28)' : 'rgba(255,255,255,.35)';
+      ctx.lineWidth = 1.5;
+      for (const c of z.cells) {
+        const ph = t * 1.2 + (c.x * 7 + c.y * 13) * 0.7;
+        const dy = Math.sin(ph) * 2;
+        ctx.beginPath();
+        ctx.moveTo(c.x * C + 6, c.y * C + C * 0.35 + dy); ctx.lineTo(c.x * C + C - 6, c.y * C + C * 0.35 + dy);
+        ctx.moveTo(c.x * C + 9, c.y * C + C * 0.7 - dy); ctx.lineTo(c.x * C + C - 9, c.y * C + C * 0.7 - dy);
+        ctx.stroke();
+      }
+    } else if (z.type === 'plateau') {
+      // 黄土台：亮顶边+暗底边的"抬升"描边
+      for (const c of z.cells) {
+        ctx.strokeStyle = 'rgba(255,235,180,.5)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(c.x * C + 1, c.y * C + 1); ctx.lineTo(c.x * C + C - 1, c.y * C + 1); ctx.stroke();
+        ctx.strokeStyle = 'rgba(70,50,20,.55)';
+        ctx.beginPath(); ctx.moveTo(c.x * C + 1, c.y * C + C - 1); ctx.lineTo(c.x * C + C - 1, c.y * C + C - 1); ctx.stroke();
+      }
+    } else if (z.type === 'mountain') {
+      // 岩壁棱线：对角短笔触
+      ctx.strokeStyle = 'rgba(160,150,135,.45)'; ctx.lineWidth = 2;
+      for (const c of z.cells) {
+        ctx.beginPath();
+        ctx.moveTo(c.x * C + 5, c.y * C + C - 7); ctx.lineTo(c.x * C + C * 0.45, c.y * C + 6);
+        ctx.lineTo(c.x * C + C - 5, c.y * C + C - 7);
+        ctx.stroke();
+      }
+    } else if (z.type === 'firegully') {
+      // 焦地裂纹（静态；火苗动效段2）
+      ctx.strokeStyle = 'rgba(255,150,60,.4)'; ctx.lineWidth = 1.5;
+      for (const c of z.cells) {
+        ctx.beginPath();
+        ctx.moveTo(c.x * C + 5, c.y * C + C * 0.55); ctx.lineTo(c.x * C + C * 0.5, c.y * C + C * 0.4);
+        ctx.lineTo(c.x * C + C - 5, c.y * C + C * 0.6);
+        ctx.stroke();
+      }
+    } else if (z.type === 'rockfall') {
+      // 碎石点（警示圈动效段2）
+      ctx.fillStyle = 'rgba(40,35,30,.45)';
+      for (const c of z.cells) {
+        ctx.beginPath(); ctx.arc(c.x * C + C * 0.3, c.y * C + C * 0.62, 2.5, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(c.x * C + C * 0.66, c.y * C + C * 0.34, 2, 0, Math.PI * 2); ctx.fill();
+      }
+    }
+  }
   ctx.restore();
 }
 
