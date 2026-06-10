@@ -11,7 +11,7 @@ import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economyS
 import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
-import { drawHud, hitHud, HUD_H } from './render/hud.js';
+import { drawHud, hitHud, hudButtons, HUD_H } from './render/hud.js';
 import { spawnFloat } from './render/fx.js';
 import { drawBuildBar, hitBuildBar, buildBarLayout, HOTKEYS } from './ui/buildBar.js';
 import { unlockedGenerals, newlyUnlocked } from './data/unlocks.js';
@@ -48,6 +48,7 @@ let hoverBuild = null;   // [检查点A] 建造栏悬停的将 id（→ 英雄�
 let lastProjCount = 0;   // [P6] 弹道数量增量 → 开火音效探测
 let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
 let unlockNotice = null;   // [spec §4] 本局通关新解锁的武将提示
+let isFs = false;          // [全屏] 当前是否全屏(fullscreenchange 同步,驱动 ⛶ 高亮)
 
 function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
@@ -109,6 +110,24 @@ function fromStory(act) {
 // [检查点A] 退出对局即清续玩（退到选关/大厅=放弃）。
 function leaveToSelect() { browserClearResume(); toSelect(); }
 
+// —— [全屏] 标准 + webkit 前缀(iPad Safari/Chrome 同 WebKit 内核走前缀);不支持(如 iPhone)按钮隐藏 ——
+const docEl = document.documentElement;
+const fsSupported = () => !!(docEl.requestFullscreen || docEl.webkitRequestFullscreen);
+const fsState = () => ({ supported: fsSupported(), active: isFs });
+function toggleFullscreen() {
+  if (document.fullscreenElement || document.webkitFullscreenElement) {
+    (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+  } else {
+    const p = (docEl.requestFullscreen || docEl.webkitRequestFullscreen).call(docEl);
+    if (p && p.catch) p.catch(() => { /* 用户/系统拒绝 → 保持原状,无需提示 */ });
+  }
+}
+// 选关/故事屏没有 HUD,单独画右上角 ⛶(几何与 HUD 同源)。
+function drawFsButton() {
+  if (!fsSupported()) return;
+  button(ctx, hudButtons(view).fs, { label: '⛶', variant: isFs ? 'jade' : 'wood', active: isFs });
+}
+
 const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
 
 function resize() {
@@ -132,8 +151,8 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); return; }
-  if (screen === 'story') { drawStoryCard(ctx, view, LEVELS[pendingLevel], !!pendingResume); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); drawFsButton(); return; }
+  if (screen === 'story') { drawStoryCard(ctx, view, LEVELS[pendingLevel], !!pendingResume); drawFsButton(); return; }
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   backdrop(ctx, view.w, view.h);
@@ -187,7 +206,7 @@ function render(s) {
 
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   vignette(ctx, view.w, view.h);
-  drawHud(ctx, s, view);
+  drawHud(ctx, s, view, fsState());
   drawBuildBar(ctx, s, view, selected);
   if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view, state).find((b) => b.id === hoverBuild));
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
@@ -215,6 +234,9 @@ function render(s) {
 function onPointerDown(ev) {
   audio.init();                       // [P6] 首次手势解锁 AudioContext（幂等）
   const sx = ev.clientX, sy = ev.clientY;
+
+  // [全屏] 任意屏右上角 ⛶ 优先消费(选关/故事/对局/结算/暂停均可用;pointerdown=用户手势,满足 API 要求)
+  if (fsSupported() && hitHud(view, sx, sy) === 'fs') { toggleFullscreen(); audio.sfx('ui'); return; }
 
   // [P4] 选关屏
   if (screen === 'select') {
@@ -331,6 +353,10 @@ async function boot() {
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
 
   window.addEventListener('resize', resize);
+  // [全屏] 进/退全屏同步 ⛶ 高亮并重排画布(含 ESC 退出/系统手势退出)
+  const onFsChange = () => { isFs = !!(document.fullscreenElement || document.webkitFullscreenElement); resize(); };
+  document.addEventListener('fullscreenchange', onFsChange);
+  document.addEventListener('webkitfullscreenchange', onFsChange);
   canvas.addEventListener('pointerdown', onPointerDown);
   canvas.addEventListener('pointermove', onPointerMove);
   window.addEventListener('keydown', onKey);
