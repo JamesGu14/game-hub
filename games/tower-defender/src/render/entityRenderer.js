@@ -23,7 +23,7 @@ function pulse(since, now, dur) {
   const k = (now - since) / dur;
   return k >= 0 && k < 1 ? 1 - k : 0;
 }
-function aspect(img) {
+export function aspect(img) {
   const a = img && img.width ? img.height / img.width : 1.35;
   return a > 0 && Number.isFinite(a) ? a : 1.35;
 }

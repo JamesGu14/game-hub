@@ -1,7 +1,10 @@
-// render/board.js — 盘面：棋盘格 + 弯曲蜀道 + 将位 + 成都 + 敌营（色块占位）。只读 state。
+// render/board.js — 盘面：棋盘格 + 弯曲蜀道 + 将位 + 成都 + 敌营（建筑贴图，缺图回退色块）。只读 state。
 // 约定：调用方已把 ctx 变换设到「板像素坐标」（见 main.js camera）。
 import { BAL } from '../data/balance.js';
 import { tintOf } from '../data/factions.js';
+import { assets } from '../core/assets.js';
+import { aspect } from './entityRenderer.js';
+import { plateRect } from './plate.js';
 
 const C = BAL.CELL;
 
@@ -36,18 +39,70 @@ export function drawBoard(ctx, state) {
   }
   ctx.setLineDash([]);
 
-  // 敌营（深色块 + 旗）
+  // 敌营：势力城堡贴图（building_wei/wu/...；缺图回退色块+旗）+ 城名牌
+  const campImg = assets.images['building_' + state.level.faction];
   for (const cp of camps) {
-    ctx.fillStyle = '#4a3550'; ctx.fillRect(cp.c * C + 3, cp.r * C + 3, C - 6, C - 6);
-    ctx.fillStyle = '#b3243a'; ctx.fillRect(cp.c * C + C / 2 - 1, cp.r * C + 4, 8, 5);
+    const ccx = cp.c * C + C / 2, footY = cp.r * C + C - 1;
+    if (campImg) {
+      drawBuilding(ctx, campImg, ccx, footY, 1.6);
+    } else {
+      ctx.fillStyle = '#4a3550'; ctx.fillRect(cp.c * C + 3, cp.r * C + 3, C - 6, C - 6);
+      ctx.fillStyle = '#b3243a'; ctx.fillRect(cp.c * C + C / 2 - 1, cp.r * C + 4, 8, 5);
+    }
+    if (cp.cityName) drawPlate(ctx, cp.cityName, ccx, footY + 1);
   }
 
-  // 成都 2×2
-  ctx.fillStyle = '#9aa0a8';
-  ctx.fillRect(castle.c * C + 2, castle.r * C + 2, castle.w * C - 4, castle.h * C - 4);
-  ctx.fillStyle = '#5f6268'; ctx.lineWidth = 2;
-  ctx.strokeRect(castle.c * C + 2, castle.r * C + 2, castle.w * C - 4, castle.h * C - 4);
-  ctx.fillStyle = '#2b2b30'; ctx.font = `bold ${C * 0.46}px system-ui`;
+  // 成都：蜀汉大城楼贴图（缺图回退色块）+ 金红名牌 + 受损烟雾
+  const castleImg = assets.images.building_chengdu;
+  const kcx = (castle.c + castle.w / 2) * C, kFootY = (castle.r + castle.h) * C - 2;
+  if (castleImg) {
+    drawBuilding(ctx, castleImg, kcx, kFootY, 2.7);
+  } else {
+    ctx.fillStyle = '#9aa0a8';
+    ctx.fillRect(castle.c * C + 2, castle.r * C + 2, castle.w * C - 4, castle.h * C - 4);
+    ctx.strokeStyle = '#5f6268'; ctx.lineWidth = 2;
+    ctx.strokeRect(castle.c * C + 2, castle.r * C + 2, castle.w * C - 4, castle.h * C - 4);
+  }
+  drawPlate(ctx, '成都', kcx, kFootY + 1, true);
+  drawCastleSmoke(ctx, state, kcx, castleImg ? kFootY - C * 2.7 : castle.r * C + 4);
+}
+
+// 建筑 billboard：底边锚 footY、高 hCells 格、按图片纵横比定宽 + 椭圆投影（同 entityRenderer 约定）
+function drawBuilding(ctx, img, cx, footY, hCells) {
+  const h = C * hCells, w = h / aspect(img);
+  ctx.fillStyle = 'rgba(0,0,0,.22)';
+  ctx.beginPath(); ctx.ellipse(cx, footY, w * 0.36, w * 0.12, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.drawImage(img, cx - w / 2, footY - h, w, h);
+}
+
+// 城名牌：敌营=深底白字；gold=true 成都金红款（spec §6 配色）
+function drawPlate(ctx, text, cx, footY, gold = false) {
+  const r = plateRect(text, cx, footY, C, gold ? 1.3 : 1);
+  ctx.fillStyle = gold ? 'rgba(94,18,22,.85)' : 'rgba(20,16,24,.78)';
+  ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 4); ctx.fill();
+  ctx.strokeStyle = gold ? '#e8c06a' : 'rgba(255,255,255,.25)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = gold ? '#ffe9b0' : '#f5edd8';
+  ctx.font = `bold ${r.fontPx}px system-ui`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('成都', (castle.c + castle.w / 2) * C, (castle.r + castle.h / 2) * C);
+  ctx.fillText(text, r.textX, r.textY);
+}
+
+// 成都受损烟雾（spec §4）：HP<50% 灰烟 2 缕、HP<25% 橙红 3 缕；脉动用 state.time（gameLoop 累计秒）
+function drawCastleSmoke(ctx, state, cx, topY) {
+  const ratio = state.castleHp / state.castleMaxHp;
+  if (!(ratio < 0.5)) return;
+  const t = state.time || 0, fire = ratio < 0.25, n = fire ? 3 : 2;
+  ctx.lineCap = 'round';
+  for (let i = 0; i < n; i++) {
+    const ph = t * 0.9 + i * 2.1;
+    const sway = Math.sin(ph) * C * 0.18;
+    const a = 0.25 + 0.15 * Math.sin(ph * 1.7);
+    ctx.strokeStyle = fire ? `rgba(224,122,42,${a.toFixed(3)})` : `rgba(90,90,100,${a.toFixed(3)})`;
+    ctx.lineWidth = C * (0.16 - i * 0.03);
+    const bx = cx + (i - 1) * C * 0.35;
+    ctx.beginPath();
+    ctx.moveTo(bx, topY);
+    ctx.bezierCurveTo(bx + sway, topY - C * 0.5, bx - sway, topY - C * 0.9, bx + sway * 1.4, topY - C * 1.3);
+    ctx.stroke();
+  }
 }
