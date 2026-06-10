@@ -9,7 +9,7 @@ import { waveSystem } from '../src/systems/waveSystem.js';
   const s = { gold: 100, towers: [] };
   assert.equal(canBuild(s, 'huang'), true);
   assert.equal(tryBuild(s, { x: 1, y: 1 }, 'huang'), true);
-  assert.equal(s.gold, 30, '扣 70');
+  assert.equal(s.gold, 10, '扣 90');
   assert.equal(s.towers.length, 1);
   // 将位已占 → 失败
   s.gold = 100;

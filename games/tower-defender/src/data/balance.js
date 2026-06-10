@@ -16,14 +16,14 @@ export const BAL = {
   // —— Phase 2：升级 / 拆除（§17.1）——
   MAX_TOWER_LEVEL: 5,         // 原地升级 L1→L5（封顶/满级判定用此）
   SIGNATURE_LEVEL: 3,         // 招牌技解锁/充能门槛（与封顶解耦；勿混用 MAX）
-  UPGRADE_DMG_MULT: 1.6,      // 每级伤害 ×1.6
+  UPGRADE_DMG_MULT: 1.5,      // [重排spec §2.3] 每级伤害 ×1.5（原1.6）
   UPGRADE_RANGE_ADD: 0.5,     // 每级射程 +0.5 格
   UPGRADE_INTERVAL_MULT: 0.9, // 每级攻击间隔 ×0.9
   UPGRADE_COST_L2: 1.0,       // L2 造价 = 基础 cost ×1.0
   UPGRADE_COST_L3: 1.6,       // L3 造价 = 基础 cost ×1.6
   UPGRADE_COST_L4: 2.0,       // L4 造价 = 基础 cost ×2.0（保守起点；balance-report 跑完再上调）
   UPGRADE_COST_L5: 2.8,       // L5 造价 = 基础 cost ×2.8（同上）
-  UPGRADE_DMG_MULT_SOFT: 1.35,     // [§5.3] L3→L5 软坡：每级伤害 ×1.35（防 DPS 爆炸）
+  UPGRADE_DMG_MULT_SOFT: 1.3,      // [§5.3+重排spec] L3→L5 软坡 ×1.3（原1.35）
   UPGRADE_INTERVAL_MULT_SOFT: 0.95,// [§5.3] L3→L5 软坡：每级间隔 ×0.95
   SELL_REFUND: 0.6,           // 拆除返还 = 总投入 ×0.6
 

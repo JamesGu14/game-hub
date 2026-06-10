@@ -61,14 +61,14 @@ const rng = () => 0.99;   // 不暴击
   const teng = enemy('tengjia', 100, 100);
   const s2 = { enemies: [teng], projectiles: [], fx: [], gold: 0 };
   runAttack(s2, t3, GENERALS.zhuge, teng, 0, rng);
-  // L3 dps = towerStats(zhuge,3).dmg(8×1.6²=20.48) ×2(火烧藤甲)
-  assert.ok(Math.abs(teng.statuses.burn[0].dps - 20.48 * 2) < 1e-9, '火烧藤甲 dps×2');
+  // L3 dps = towerStats(zhuge,3).dmg(8×1.5²=18) ×2(火烧藤甲)
+  assert.ok(Math.abs(teng.statuses.burn[0].dps - 18 * 2) < 1e-9, '火烧藤甲 dps×2');
 }
 
 // 赵云 L3 七进七出：击杀后连射，最多连 2
 {
   const t = newTower('zhao', 100, 100); t.level = 3; t.targets = 'ground';
-  const g = GENERALS.zhao;                    // dmg48 L3=48×1.6²=122.88，秒杀步卒
+  const g = GENERALS.zhao;                    // dmg48 L3=48×1.5²=108，秒杀步卒
   const a = enemy('footman', 100, 100, { progress: 3 });   // primary
   const b = enemy('footman', 110, 100, { progress: 2 });   // 连射目标
   const c = enemy('footman', 120, 100, { progress: 1 });   // 超出连 2 不再射
