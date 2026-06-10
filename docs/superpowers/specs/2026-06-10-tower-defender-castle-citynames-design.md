@@ -26,7 +26,7 @@
 > 事实核查：当前 50 关战役 faction 分布为魏 31 关、吴 19 关，**无南蛮关卡**（node 实测）。故蛮款城堡设计与 prompt 在此定稿存档，**本期不生成**（见 §8），避免死资产。
 
 `gen-sprites.mjs` 新增 `cat: 'buildings'` 条目；新增建筑版风格常量 `STYLE_BUILDING`：
-「近正俯视 3/4 视角的半写实卡通塔防游戏**建筑**立绘，厚描边，暖色调，类似 Kingdom Rush 的精细卡通美术。正方形构图，建筑居中，底边贴画面底部中线，纯透明背景，无地面、无阴影、**无任何文字**，旗帜一律纯色无字。」（AI 生成小图汉字必乱码，故全部文字由 canvas 叠加。）
+「近正俯视 3/4 视角的半写实卡通塔防游戏**建筑**立绘，厚描边，暖色调，类似 Kingdom Rush 的精细卡通美术。正方形构图，建筑居中，底边贴画面底部中线，纯透明背景，无地面、无阴影、**无任何文字**，旗帜一律纯色无字。」（AI 生成小图汉字必乱码，故全部文字由 canvas 叠加。）集成方式：`const styleOf = (u) => u.cat === 'buildings' ? STYLE_BUILDING : STYLE;`，`gen()` 拼 prompt 处（现 `STYLE + unit.desc`）改用 `styleOf(unit)`。
 
 | id | 资产 | 元素清单（写入 prompt） |
 |---|---|---|
@@ -35,7 +35,7 @@
 | `building_nanman` | 蛮·兽骨木寨（**本期不生成**） | 尖头原木栅栏+绳索捆扎、巨兽头骨门楣、高架了望塔、三色羽毛幡、插地獠牙、火堆，无汉字旗。气质：原始野性 |
 | `building_chengdu` | 成都·蜀汉大城楼 | 金红配色、三层楼阁、石墙朱门、汉式旌旗（纯色）、规格比敌营宏伟。气质：巍峨家园 |
 
-生成流程沿用现管线：`OPENROUTER_API_KEY` 环境变量传入 → 黄忠锚链式生成 → `contact-sheet.py` 拼审阅图 → 人工过目后入库 `assets/sprites/buildings/`，并在 `src/core/assets.js` MANIFEST 注册 3 个 id（wei/wu/chengdu；渲染按 `building_ + faction` 通用取图，蛮款将来补图即生效，代码零改动）。
+生成流程沿用现管线：`OPENROUTER_API_KEY` 环境变量传入 → 黄忠锚链式生成 → `contact-sheet.py` 拼审阅图 → 人工过目后入库 `assets/sprites/buildings/`，并在 `src/core/assets.js` MANIFEST 注册 3 个 id（wei/wu/chengdu）。渲染代码**本期实现** `building_ + faction` 通用取图；蛮款将来补图 + MANIFEST 加一行即生效，渲染逻辑零改动。
 
 ## 4. 渲染（src/render/board.js）
 
@@ -66,15 +66,17 @@ export const CITY_POOLS = { 1: [/*26*/], 2: [/*36*/], 3: [/*46*/], 4: [/*56*/], 
 
 ### 5.2 分配算法（src/data/levels.js）
 
-`expand(c)` 时按**章内累计 camp 数切片**：第 k 关取池 `[start, start + campCount)`（start = 章内前 k-1 关 camp 数之和），逐个写入 `camp.cityName`。纯切片 ⇒ 章内唯一、确定性（加载期无随机）、越往后越知名，三性质自动成立。
+`expand(c)` 时按**章内累计 camp 数切片**：第 k 关取池 `[start, start + campCount)`（start = 章内前 k-1 关 camp 数之和）。注入必须创建新对象防模板污染（`TEMPLATES` 为导出单例，camps 数组是其引用）：`camps = tmpl.camps.filter(...).map((cp, i) => ({ ...cp, cityName: names[i] }))`。纯切片 ⇒ 章内唯一、确定性（加载期无随机）、越往后越知名，三性质自动成立。
 
 ### 5.3 样板关贴题（编辑例外）
 
-6 个手写样板关的切片位置直接放**贴题城名**（cities.js 为唯一真相源，知名度/地理排序的局部例外）：
+6 个手写样板关的切片位置直接放**贴题城名**（cities.js 为唯一真相源）。池数组编排规则：**以知名度升序为骨架，样板关对应的切片区间用贴题城名整体替换；替换后区间外其余城名仍保持升序**（升序主线中的"主题岛"）：
 
 - L1 博望坡（3 营）：宛城、叶县、堵阳（夏侯惇出兵方向）
 - L50 上方谷·五丈原（8 营，第5章池尾最知名段）：渭南、郿县、武功、五丈原、陈仓、街亭、上邽、长安
 - L11/L21/L31/L41 同理（当阳系/赤壁水陆营系/汉中系/夷陵系），实现期定稿。
+
+**faction 一致性**：城堡贴图按 `level.faction`、城名按章池切片，两者独立。L50 为第 5 章（吴）中唯一 `faction='wei'` 的关卡——渲染魏款城堡 + 北伐雍凉魏国城名，主题自洽（诸葛亮北伐攻魏城）。
 
 ## 6. 城名牌匾渲染
 
@@ -92,14 +94,14 @@ export const CITY_POOLS = { 1: [/*26*/], 2: [/*36*/], 3: [/*46*/], 4: [/*56*/], 
 5. 每关 camps 均有非空 `cityName` 且关内唯一
 6. `plateRect()` 几何（2/3/4 字宽度、居中）
 
-存量门禁全部保持绿：现有 40 单测、`verify-levels.mjs`、`check-imports.sh`、headless 冒烟。冒烟补截图覆盖两款敌营城堡 + 成都（建议 L1 魏·3营 / L21 吴·5营 / L41 吴·8营），人工看图确认贴图与名牌。
+存量门禁全部保持绿：现有 42 单测、`tools/verify-levels.mjs`、`scripts/check-imports.sh`、headless 冒烟。冒烟补截图覆盖两款敌营城堡 + 成都（建议 L1 魏·3营 / L21 吴·5营 / L41 吴·8营），人工看图确认贴图与名牌。
 
 ## 8. 范围外（本期不做）
 
 - 玩法不变：敌营不可攻击、不掉血；成都 HP 机制不变。
 - story 文案 / storyCard / HUD / 选关界面不动。
 - 旗帜飘动、火苗、水波等程序化动画层 → 二期 polish（本期 sprite 静态）。
-- 蛮·兽骨木寨的图片生成 → 待出现南蛮关卡的章节时执行（设计与 prompt 已在 §3 定稿，补图即生效）。
+- 蛮·兽骨木寨的图片生成 → 待出现南蛮关卡的章节时执行（设计与 prompt 已在 §3 定稿，届时补图 + MANIFEST 注册一行即生效）。
 - 音频不动。
 
 ## 9. 验收标准
