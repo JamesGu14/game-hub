@@ -8,6 +8,7 @@ import { createTower } from '../entities/tower.js';
 export function economySystem(_state, _dt) { /* no-op */ }
 
 export function canBuild(state, generalId) {
+  if (state.unlocked && !state.unlocked.has(generalId)) return false;   // [spec §3] 未解锁不可建
   return state.gold >= GENERALS[generalId].cost;
 }
 

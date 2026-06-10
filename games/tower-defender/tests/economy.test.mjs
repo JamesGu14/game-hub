@@ -3,6 +3,9 @@
 import assert from 'node:assert';
 import { canBuild, tryBuild } from '../src/systems/economySystem.js';
 import { waveSystem } from '../src/systems/waveSystem.js';
+import { newGameState } from '../src/core/gameState.js';
+
+const LV = { startGold: 200, castleHp: 20, scale: 1, paths: {}, waves: [{ spawns: [] }] };
 
 // 够钱建塔 → 扣金、塔 +1
 {
@@ -35,6 +38,18 @@ import { waveSystem } from '../src/systems/waveSystem.js';
   waveSystem(s, 0);
   assert.equal(s.phase, 'combat', '提前出兵 → combat');
   assert.equal(s.gold, 30, '剩 30s ×2=60 → 封顶 30');
+}
+
+// —— [spec §3] 解锁门禁:state.unlocked 存在时,未解锁将不可建;缺省(null)=全解锁(存量测试零破坏)——
+{
+  const s = newGameState(LV, { unlocked: new Set(['liao']) });
+  s.gold = 9999;
+  assert.equal(canBuild(s, 'liao'), true, '已解锁可建');
+  assert.equal(canBuild(s, 'zhao'), false, '未解锁不可建(金够也不行)');
+  assert.equal(tryBuild(s, { x: 1, y: 1 }, 'zhao'), false, 'tryBuild 同样拦截');
+  const s2 = newGameState(LV);
+  s2.gold = 9999;
+  assert.equal(canBuild(s2, 'zhao'), true, '缺省全解锁');
 }
 
 console.log('ok economy');

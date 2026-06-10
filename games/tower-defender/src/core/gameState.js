@@ -6,10 +6,11 @@
 import { BAL } from '../data/balance.js';
 import { makeRng } from './rng.js';
 
-export function newGameState(level) {
+export function newGameState(level, opts = {}) {
   return {
     phase: 'prep',
     level,
+    unlocked: opts.unlocked || null,   // [spec §3] 已解锁将 Set;null=全解锁(单测/老调用零破坏)
     rng: makeRng(),               // [P2] 暴击/被动随机源（时间种子；单测各自注入 stub）
     gold: level.startGold,
     castleHp: level.castleHp,
