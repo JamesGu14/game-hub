@@ -1,4 +1,4 @@
-// tests/heroCard.test.mjs — 英雄卡浮窗：stub ctx draw 不抛 + save/restore 平衡（6 将 + 无 anchor + 未知 id）
+// tests/heroCard.test.mjs — 英雄卡浮窗：stub ctx draw 不抛 + save/restore 平衡（12 将 + 无 anchor + 未知 id）
 // 运行：node games/tower-defender/tests/heroCard.test.mjs
 import assert from 'node:assert';
 import { drawHeroCard } from '../src/ui/heroCard.js';
@@ -20,7 +20,7 @@ function mkCtx() {
   return { ctx, depth: () => depth, neg: () => neg };
 }
 
-// 六将各画一次：不抛 + save/restore 平衡
+// 十二将各画一次（含无招牌技新将的升级文案分支）：不抛 + save/restore 平衡
 for (const id of Object.keys(GENERALS)) {
   const { ctx, depth, neg } = mkCtx();
   drawHeroCard(ctx, view, id, { id, x: 100, y: 730, w: 74, h: 70 });
