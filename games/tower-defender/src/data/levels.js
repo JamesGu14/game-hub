@@ -6,6 +6,19 @@ import { CAMPAIGN } from './campaign.js';
 import { TEMPLATES } from './boardTemplates.js';
 import { genWaves } from './waveGen.js';
 import { BOSSES, LIEUTENANTS } from './bosses.js';
+import { CITY_POOLS } from './cities.js';
+
+// 城名切片起点：章内累计 camp 数（spec §5.2）。确定性，加载期无随机。
+const CITY_AT = (() => {
+  const next = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, at = {};
+  for (const c of CAMPAIGN) {
+    const tmpl = TEMPLATES[c.templateId];
+    const n = (c.pathSubset && c.pathSubset.length) || Object.keys(tmpl.paths).length;
+    at[c.id] = next[c.chapter];
+    next[c.chapter] += n;
+  }
+  return at;
+})();
 
 // difficulty → 关参数（§5.1 公式；起点，balance-report 可调）
 export function difficultyParams(difficulty) {
@@ -21,7 +34,8 @@ function expand(c) {
   if (!tmpl) throw new Error(`levels: 未知 templateId '${c.templateId}' (L${c.id})`);
   const subset = (c.pathSubset && c.pathSubset.length) ? c.pathSubset : Object.keys(tmpl.paths);
   const paths = {}; for (const id of subset) paths[id] = tmpl.paths[id];
-  const camps = tmpl.camps.filter((cp) => subset.includes(cp.id));
+  const cityNames = CITY_POOLS[c.chapter].slice(CITY_AT[c.id], CITY_AT[c.id] + subset.length);
+  const camps = tmpl.camps.filter((cp) => subset.includes(cp.id)).map((cp, i) => ({ ...cp, cityName: cityNames[i] }));
   // boss：bosses.js 提供 name/hpMult/bossSkills；campaign 可覆盖 name/hpMult
   const baseBoss = BOSSES[c.boss.id];
   if (!baseBoss) throw new Error(`levels: 未知 boss.id '${c.boss.id}' (L${c.id})`);
