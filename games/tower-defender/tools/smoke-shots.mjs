@@ -10,6 +10,7 @@ const URL = 'http://localhost:8850/games/tower-defender/index.html';
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const SHOT_LEVELS = (process.env.SHOT_LEVELS || '2,13,24,35,46').split(',').map(Number);
 const OUT_PREFIX = process.env.OUT_PREFIX || '/tmp/td';
+const WAIT_MS = +(process.env.WAIT_MS || 700);   // 进关后等待毫秒(默认1帧渲染;抓落石前摇窗口可设 ~5300)
 const errors = [];
 
 const browser = await puppeteer.launch({
@@ -34,7 +35,7 @@ await page.goto(URL, { waitUntil: 'networkidle2' });
 
 for (const id of SHOT_LEVELS) {
   await page.evaluate((n) => window.__td.loadLevel(n - 1), id);
-  await new Promise((r) => setTimeout(r, 700));   // 等渲染帧+建筑贴图
+  await new Promise((r) => setTimeout(r, WAIT_MS));   // 等渲染帧+建筑贴图(或落石前摇窗口)
   const out = `${OUT_PREFIX}-L${id}.png`;
   await page.screenshot({ path: out });
   console.log(`shot L${id} → ${out}`);
