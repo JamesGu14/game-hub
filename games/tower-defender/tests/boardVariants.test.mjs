@@ -142,9 +142,13 @@ assert.ok(fixLevel([{ type: 'mountain', cells: [{ x: 6, y: 10 }] }]).errors.some
 assert.ok(fixLevel([{ type: 'river', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('river')), '②路穿河报错');
 // ② castle 被山压 → error
 assert.ok(fixLevel([{ type: 'mountain', cells: [{ x: 11, y: 6 }] }]).errors.some((e) => e.includes('成都')), '②城被山压报错');
+// ② 营被山压 → error(camp a 在 (1,2))
+assert.ok(fixLevel([{ type: 'mountain', cells: [{ x: 1, y: 2 }] }]).errors.some((e) => e.includes('敌营')), '②营被山压报错');
 // ③ 火谷不盖路 → error;盖路 → ok
 assert.ok(fixLevel([{ type: 'firegully', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('firegully')), '③火谷悬空报错');
 assert.equal(fixLevel([{ type: 'firegully', cells: [{ x: 5, y: 5 }] }]).errors.length, 0, '③火谷盖路通过');
+assert.ok(fixLevel([{ type: 'shallow', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('shallow')), '③shallow悬空报错');
+assert.ok(fixLevel([{ type: 'rockfall', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('rockfall')), '③rockfall悬空报错');
 // ④ plateau 含路径格 → error;不含将位 → error;含将位(6,10) → ok
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 压路报错');
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 无将位报错');
