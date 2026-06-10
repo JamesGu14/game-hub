@@ -1,5 +1,6 @@
 // systems/terrainSystem.js — 地形系统（板型+地形 spec §4）。
-// 段1:静态助手(plateau 射程加成查询);段2:terrainSystem(state) 每步 tick(浅滩/火谷/落石)。
+// 静态助手:terrainTypeAt / rangeBonusFor(plateau 射程+0.5) / initTerrainState(落石计时+禁用集)。
+// terrainSystem(state) 每步 tick:rockfall(while 追赶,相位守卫前·prep 可观察节奏) → 浅滩减速 / 火谷 envBurn(combat 限定)。
 // 铁律:render-free;查询 O(1) 走 level.terrainAt(boardVariants 加载期烘焙)。
 import { BAL } from '../data/balance.js';
 import { applySlow } from './combat/statusEffects.js';
@@ -33,6 +34,8 @@ export function terrainSystem(state) {
   if (!lvl || !lvl.terrain || !lvl.terrain.length || !state.terrain) return;
   const now = state.time;
   // —— rockfall:每区独立计时,while 追赶(跨周期补结算,确定性不依赖帧率;prep 也走表供观察节奏)——
+  // 禁用语义不对称说明:rockfall 被禁用时 initTerrainState 根本不建计时器,此处无需查 disabled;
+  // shallow/firegully 是逐格效果,在下方敌循环逐次查 disabled。
   for (const rf of state.terrain.rockfalls) {
     while (now >= rf.nextStrikeAt) {
       const zone = lvl.terrain[rf.zoneIdx];
