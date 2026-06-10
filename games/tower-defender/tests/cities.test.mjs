@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import { CITY_POOLS } from '../src/data/cities.js';
 import { CAMPAIGN } from '../src/data/campaign.js';
-import { TEMPLATES } from '../src/data/boardTemplates.js';
+import { BASE_BOARDS as TEMPLATES } from '../src/data/baseBoards.js';
 
 // 推导各章 camp 总需求（样板关按 pathSubset，生成关按模板全路）
 const need = {};

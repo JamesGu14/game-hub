@@ -1,9 +1,10 @@
 // data/levels.js — 运行时确定性展开（检查点A·§5.1）。
-// CAMPAIGN（50 关谱）× boardTemplates（板型）× waveGen（确定性波次）→ LEVELS。
+// CAMPAIGN（50 关谱）× baseBoards/boardVariants（板型+地形）× waveGen（确定性波次）→ LEVELS。
 // 对外仍 export const LEVELS（与现手写关完全同形）；下游（渲染/存档/verify/winnable）零感知。
 // 铁律：加载期无 Math.random/Date — waveGen seed=level.id（有限数），genWaves 强制确定性。
 import { CAMPAIGN } from './campaign.js';
-import { TEMPLATES } from './boardTemplates.js';
+import { BASE_BOARDS } from './baseBoards.js';
+import { variantFor, resolveBoard } from './boardVariants.js';
 import { genWaves } from './waveGen.js';
 import { BOSSES, LIEUTENANTS } from './bosses.js';
 import { CITY_POOLS } from './cities.js';
@@ -12,7 +13,7 @@ import { CITY_POOLS } from './cities.js';
 const CITY_AT = (() => {
   const next = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }, at = {};
   for (const c of CAMPAIGN) {
-    const tmpl = TEMPLATES[c.templateId];
+    const tmpl = BASE_BOARDS[c.templateId];
     const n = (c.pathSubset && c.pathSubset.length) || Object.keys(tmpl.paths).length;
     at[c.id] = next[c.chapter];
     next[c.chapter] += n;
@@ -30,12 +31,34 @@ export function difficultyParams(difficulty) {
 }
 
 function expand(c) {
-  const tmpl = TEMPLATES[c.templateId];
-  if (!tmpl) throw new Error(`levels: 未知 templateId '${c.templateId}' (L${c.id})`);
-  const subset = (c.pathSubset && c.pathSubset.length) ? c.pathSubset : Object.keys(tmpl.paths);
-  const paths = {}; for (const id of subset) paths[id] = tmpl.paths[id];
-  const cityNames = CITY_POOLS[c.chapter].slice(CITY_AT[c.id], CITY_AT[c.id] + subset.length);
-  const camps = tmpl.camps.filter((cp) => subset.includes(cp.id)).map((cp, i) => ({ ...cp, cityName: cityNames[i] }));
+  const k = (c.id - 1) % 10;
+  // [板型+地形] 公式与 campaign 双源一致性（加载期断言,防漂移）
+  const v = variantFor(c.chapter, k);
+  if (v.boardId !== c.templateId) throw new Error(`levels: L${c.id} variantFor=${v.boardId} ≠ templateId=${c.templateId}`);
+  const board = resolveBoard(c.chapter, k);
+  const subsetIds = board.camps.map((cp) => cp.id);
+  const declared = c.pathSubset && c.pathSubset.length ? [...c.pathSubset].sort() : Object.keys(BASE_BOARDS[c.templateId].paths).sort();
+  if (JSON.stringify([...subsetIds].sort()) !== JSON.stringify(declared)) {
+    throw new Error(`levels: L${c.id} 子集不一致 board=[${subsetIds}] campaign=[${declared}]`);
+  }
+  const cityNames = CITY_POOLS[c.chapter].slice(CITY_AT[c.id], CITY_AT[c.id] + board.camps.length);
+  const camps = board.camps.map((cp, i) => ({ ...cp, cityName: cityNames[i] }));
+  // 动态地形过滤：路子集关排除了部分路时,仅保留至少覆盖 1 个活跃路径格的地形区
+  // (shallow/rockfall/firegully 按 verify 规则必须覆盖路；排除掉子集外路的孤立区)
+  const activePathCells = new Set(
+    Object.values(board.paths).flatMap((wps) => wps.map((p) => `${p.x},${p.y}`)),
+  );
+  const terrainFiltered = board.terrain.filter((z) => {
+    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) return true;
+    return z.cells.some((cell) => activePathCells.has(`${cell.x},${cell.y}`));
+  });
+  const terrainAtFiltered = board.terrainAt.map((row) => [...row]);
+  for (const z of board.terrain) {
+    if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) continue;
+    if (!z.cells.some((cell) => activePathCells.has(`${cell.x},${cell.y}`))) {
+      for (const cell of z.cells) terrainAtFiltered[cell.y][cell.x] = null;
+    }
+  }
   // boss：bosses.js 提供 name/hpMult/bossSkills；campaign 可覆盖 name/hpMult
   const baseBoss = BOSSES[c.boss.id];
   if (!baseBoss) throw new Error(`levels: 未知 boss.id '${c.boss.id}' (L${c.id})`);
@@ -48,7 +71,7 @@ function expand(c) {
   });
   const { scale, startGold, castleHp } = difficultyParams(c.difficulty);
   const waves = genWaves(
-    { ...tmpl, camps, paths },
+    { camps, paths: board.paths },
     { waveCount: c.waveCount, difficulty: c.difficulty, enemyTiers: c.enemyTiers, boss, lieutenants },
     c.id,                                   // seed = level.id（确定性）
   );
@@ -56,8 +79,10 @@ function expand(c) {
     id: c.id, name: c.name, chapter: c.chapter, faction: c.faction,
     scale, startGold, castleHp,
     rampMax: c.rampMax,                       // 可选：覆盖 wave HP ramp 上限（缺省 → BAL.WAVE_HP_RAMP_MAX）
-    cols: tmpl.cols, rows: tmpl.rows, castle: tmpl.castle,
-    camps, paths, slots: tmpl.slots, waves,
+    cols: board.cols, rows: board.rows, castle: board.castle,
+    camps, paths: board.paths, slots: board.slots, waves,
+    terrain: terrainFiltered, terrainAt: terrainAtFiltered,         // [板型+地形] 展开产物(子集孤立区已过滤)
+    ...(c.disableTerrain ? { disableTerrain: c.disableTerrain } : {}),   // 段2 L50 用,先透传
   };
 }
 

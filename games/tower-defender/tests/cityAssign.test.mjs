@@ -3,7 +3,7 @@
 import assert from 'node:assert';
 import { LEVELS } from '../src/data/levels.js';
 import { CITY_POOLS } from '../src/data/cities.js';
-import { TEMPLATES } from '../src/data/boardTemplates.js';
+import { BASE_BOARDS as TEMPLATES } from '../src/data/baseBoards.js';
 
 // 1) 每关每营都有 cityName 且关内唯一
 for (const lv of LEVELS) {

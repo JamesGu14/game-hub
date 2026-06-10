@@ -2,7 +2,7 @@
 // 运行：node games/tower-defender/tests/campaign.test.mjs
 import assert from 'node:assert';
 import { CHAPTERS, CAMPAIGN } from '../src/data/campaign.js';
-import { TEMPLATES } from '../src/data/boardTemplates.js';
+import { BASE_BOARDS as TEMPLATES } from '../src/data/baseBoards.js';
 import { BOSSES, LIEUTENANTS } from '../src/data/bosses.js';
 import { ENEMIES } from '../src/data/enemies.js';
 

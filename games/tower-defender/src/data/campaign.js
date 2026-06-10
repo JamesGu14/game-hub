@@ -5,13 +5,15 @@
 // 铁律：render-free、纯数据、加载期无 Math.random/Date（仅 index 数学）。
 // 故事铁律：原创、史实向、一年级能懂、不抄受版权文本；成语取公共常识。
 // 框架声明（统一话术）由 storyCard.js 固定渲染，避免误导孩子把"守成都"当史实。
+import { BASE_BOARDS } from './baseBoards.js';
+import { pathSubsetFor } from './boardVariants.js';
 
 export const CHAPTERS = [
-  { id: 1, title: '天下大乱·诸侯并起', faction: 'wei', templates: ['twoCamp', 'threeCamp'], tiers: ['footman', 'wolf'], bossPool: ['huaxiong', 'lvbu', 'menghuo'], lieutenantPool: ['lidian', 'yujin', 'yuejin', 'caohong'], diffLo: 0.0, diffHi: 0.8 },
-  { id: 2, title: '官渡之争·以弱胜强', faction: 'wei', templates: ['threeCamp', 'fourCamp'], tiers: ['footman', 'wolf', 'heavy'], bossPool: ['yanliang', 'wenchou', 'zhangliao'], lieutenantPool: ['yuejin', 'caohong', 'caoxiu', 'niujin'], diffLo: 0.8, diffHi: 1.6 },
-  { id: 3, title: '火烧赤壁·三分天下', faction: 'wu', templates: ['fourCamp', 'fiveCamp'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'], bossPool: ['caocao', 'ganning', 'sunquan'], lieutenantPool: ['zhoutai', 'jiangqin', 'dingfeng', 'xusheng'], diffLo: 1.6, diffHi: 2.4 },
-  { id: 4, title: '进取西川·汉中之战', faction: 'wei', templates: ['fiveCamp', 'sixCamp'], tiers: ['footman', 'wolf', 'heavy', 'tengjia'], bossPool: ['xiahouyuan', 'zhangren', 'caoren'], lieutenantPool: ['lidian', 'yujin', 'caoxiu', 'niujin'], diffLo: 2.4, diffHi: 3.2 },
-  { id: 5, title: '夷陵之火·六出祁山', faction: 'wu', templates: ['sixCamp', 'eightCamp'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'], bossPool: ['luxun', 'zhuran', 'zhanghe', 'xuchu'], lieutenantPool: ['dingfeng', 'xusheng', 'panzhang', 'handang'], diffLo: 3.2, diffHi: 4.0 },
+  { id: 1, title: '天下大乱·诸侯并起', faction: 'wei', templates: ['ch1A', 'ch1B'], tiers: ['footman', 'wolf'], bossPool: ['huaxiong', 'lvbu', 'menghuo'], lieutenantPool: ['lidian', 'yujin', 'yuejin', 'caohong'], diffLo: 0.0, diffHi: 0.8 },
+  { id: 2, title: '官渡之争·以弱胜强', faction: 'wei', templates: ['ch2A', 'ch2B'], tiers: ['footman', 'wolf', 'heavy'], bossPool: ['yanliang', 'wenchou', 'zhangliao'], lieutenantPool: ['yuejin', 'caohong', 'caoxiu', 'niujin'], diffLo: 0.8, diffHi: 1.6 },
+  { id: 3, title: '火烧赤壁·三分天下', faction: 'wu', templates: ['ch3A', 'ch3B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'], bossPool: ['caocao', 'ganning', 'sunquan'], lieutenantPool: ['zhoutai', 'jiangqin', 'dingfeng', 'xusheng'], diffLo: 1.6, diffHi: 2.4 },
+  { id: 4, title: '进取西川·汉中之战', faction: 'wei', templates: ['ch4A', 'ch4B'], tiers: ['footman', 'wolf', 'heavy', 'tengjia'], bossPool: ['xiahouyuan', 'zhangren', 'caoren'], lieutenantPool: ['lidian', 'yujin', 'caoxiu', 'niujin'], diffLo: 2.4, diffHi: 3.2 },
+  { id: 5, title: '夷陵之火·六出祁山', faction: 'wu', templates: ['ch5A', 'ch5B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'], bossPool: ['luxun', 'zhuran', 'zhanghe', 'xuchu'], lieutenantPool: ['dingfeng', 'xusheng', 'panzhang', 'handang'], diffLo: 3.2, diffHi: 4.0 },
 ];
 
 const FACTION_CN = { nanman: '南蛮', wu: '东吴', wei: '曹魏' };
@@ -30,37 +32,37 @@ function positionParams(ch, k) {
 // 落点：各章首关 1/11/21/31/41（章首=该章最易，适合开篇）+ L50 终局（司马懿，验主动技管线）。
 const SAMPLES = {
   1: {
-    name: '博望坡之战', faction: 'wei', templateId: 'threeCamp', pathSubset: ['a', 'b', 'c'], enemyTiers: ['footman', 'wolf'],
+    name: '博望坡之战', faction: 'wei', templateId: 'ch1A', pathSubset: ['a', 'b', 'c'], enemyTiers: ['footman', 'wolf'],
     boss: { id: 'xiahoudun', name: '夏侯惇', hpMult: 1.1 },
     lieutenants: ['lidian', 'yujin'],   // 李典、于禁（史载随夏侯惇战博望坡）
     story: { hook: '初出茅庐第一计，一把火烧退曹军！', year: '公元202年', place: '新野·博望坡', sides: '刘备军 vs 夏侯惇', result: '蜀军以火攻大胜', idiom: '初出茅庐', portrait: 'zhuge' },
   },
   11: {
-    name: '长坂坡之战', faction: 'wei', templateId: 'fourCamp', pathSubset: ['a', 'b', 'c', 'd'], enemyTiers: ['footman', 'wolf', 'heavy'],
+    name: '长坂坡之战', faction: 'wei', templateId: 'ch2A', pathSubset: ['a', 'b', 'c', 'd'], enemyTiers: ['footman', 'wolf', 'heavy'],
     boss: { id: 'zhangliao', name: '张辽', hpMult: 1.0 },
     lieutenants: ['yuejin', 'caohong'],   // 乐进、曹洪
     story: { hook: '赵云七进七出，怀里护着小阿斗！', year: '公元208年', place: '当阳·长坂坡', sides: '刘备军 vs 曹操追兵', result: '赵云单骑救主', idiom: '单骑救主', portrait: 'zhao' },
   },
   21: {
-    name: '赤壁之战', faction: 'wu', templateId: 'fiveCamp', pathSubset: ['a', 'b', 'c', 'd', 'e'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'],
+    name: '赤壁之战', faction: 'wu', templateId: 'ch3A', pathSubset: ['a', 'b', 'c', 'd', 'e'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'],
     boss: { id: 'caocao', name: '曹操', hpMult: 1.3 },
     lieutenants: ['caohong', 'caoxiu'],   // 曹洪、曹休
     story: { hook: '借东风一把火，烧退曹操八十万大军！', year: '公元208年', place: '长江·赤壁', sides: '孙刘联军 vs 曹操', result: '曹操大败，三分天下', idiom: '火烧赤壁', portrait: 'zhuge' },
   },
   31: {
-    name: '定军山之战', faction: 'wei', templateId: 'sixCamp', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f'], enemyTiers: ['footman', 'wolf', 'heavy', 'tengjia'],
+    name: '定军山之战', faction: 'wei', templateId: 'ch4A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f'], enemyTiers: ['footman', 'wolf', 'heavy', 'tengjia'],
     boss: { id: 'xiahouyuan', name: '夏侯渊', hpMult: 1.1 },
     lieutenants: ['yujin', 'niujin'],   // 于禁、牛金
     story: { hook: '老将黄忠一刀斩下夏侯渊！', year: '公元219年', place: '汉中·定军山', sides: '刘备军 vs 夏侯渊', result: '黄忠斩将夺山', idiom: '老当益壮', portrait: 'huang' },
   },
   41: {
-    name: '夷陵之战', faction: 'wu', templateId: 'eightCamp', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
+    name: '夷陵之战', faction: 'wu', templateId: 'ch5A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
     boss: { id: 'luxun', name: '陆逊', hpMult: 1.2 },
     lieutenants: ['handang', 'xusheng'],   // 韩当、徐盛（夷陵吴将）
     story: { hook: '陆逊火烧连营七百里！', year: '公元222年', place: '夷陵·猇亭', sides: '刘备军 vs 陆逊', result: '蜀军连营被焚', idiom: '火烧连营', portrait: null },
   },
   50: {
-    name: '上方谷·五丈原', faction: 'wei', templateId: 'eightCamp', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
+    name: '上方谷·五丈原', faction: 'wei', templateId: 'ch5B', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
     boss: { id: 'simayi', name: '司马懿', hpMult: 1.6 },   // bossSkills 由 BOSSES.simayi 透传（summon+stunTower）
     rampMax: 1.0,   // 司马懿终关豁免 HP ramp：震慑停火+召唤本就全战役最紧（满防仅余 3-5 HP），叠 1.5 必崩，单独保出厂难度
     lieutenants: ['caoxiu', 'niujin'],   // 曹休、牛金
@@ -73,6 +75,7 @@ function buildSkeleton(ch, k) {
   const C = CHAPTERS[ch - 1];
   const p = k / 9;
   const templateId = C.templates[k < 5 ? 0 : 1];   // 章内前半 templates[0]、后半 templates[1]
+  const pathSubset = pathSubsetFor(ch, k, Object.keys(BASE_BOARDS[templateId].paths));   // 前半=子集,后半/样板=null
   const tierN = Math.max(1, Math.min(C.tiers.length, 1 + Math.round(p * (C.tiers.length - 1))));
   const bossId = C.bossPool[k % C.bossPool.length];
   const lt = C.lieutenantPool;
@@ -80,6 +83,7 @@ function buildSkeleton(ch, k) {
   return {
     name: `${C.title.split('·')[0]}·第${k + 1}阵`,
     faction: C.faction, templateId, enemyTiers: C.tiers.slice(0, tierN),
+    ...(pathSubset ? { pathSubset } : {}),
     boss: { id: bossId },   // levels.js 展开时 { ...BOSSES[id], ...boss } 补 name/hpMult
     lieutenants: [lt[k % lt.length], lt[(k + 1) % lt.length]],   // 2 冷门副将（随末波出场）
     story: {

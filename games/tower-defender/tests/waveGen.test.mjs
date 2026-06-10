@@ -2,10 +2,10 @@
 // 运行：node games/tower-defender/tests/waveGen.test.mjs
 import assert from 'node:assert';
 import { genWaves } from '../src/data/waveGen.js';
-import { TEMPLATES } from '../src/data/boardTemplates.js';
+import { BASE_BOARDS as TEMPLATES } from '../src/data/baseBoards.js';
 import { ENEMIES } from '../src/data/enemies.js';
 
-const tmpl = TEMPLATES.fourCamp;
+const tmpl = TEMPLATES.ch2B;
 const params = { waveCount: 24, difficulty: 1.6, enemyTiers: ['footman', 'wolf', 'heavy', 'flyer'], boss: { id: 'caocao', name: '曹操', hpMult: 1.3 } };
 const totalCount = (waves) => waves.reduce((n, w) => n + w.spawns.reduce((m, s) => m + (s.enemyType === 'boss' ? 0 : s.count), 0), 0);
 
