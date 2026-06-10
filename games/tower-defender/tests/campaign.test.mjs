@@ -57,4 +57,16 @@ for (let i = 1; i < CAMPAIGN.length; i++) {
   assert.ok(CAMPAIGN[i].difficulty >= CAMPAIGN[i - 1].difficulty, `L${i + 1} difficulty 不低于 L${i}`);
 }
 
+// [演绎段1] 样板关精写剧本:narration(2-3句讲解)+ script(8-12句对话),无占位、句长≤60
+for (const id of sampleIds) {
+  const st = CAMPAIGN[id - 1].story;
+  assert.ok(typeof st.narration === 'string' && st.narration.length >= 20, `L${id} narration 充实`);
+  assert.ok(Array.isArray(st.script) && st.script.length >= 8 && st.script.length <= 12, `L${id} script 8-12 句(实际 ${st.script && st.script.length})`);
+  for (const [i, line] of st.script.entries()) {
+    assert.ok(typeof line.who === 'string' && line.who.length >= 2, `L${id} 句${i} who`);
+    assert.ok(typeof line.text === 'string' && line.text.length > 0 && line.text.length <= 60, `L${id} 句${i} ≤60 字(实际 ${line.text && line.text.length})`);
+    assert.ok(!line.text.includes('undefined') && !line.text.includes('{'), `L${id} 句${i} 无占位`);
+  }
+}
+
 console.log('ok campaign');
