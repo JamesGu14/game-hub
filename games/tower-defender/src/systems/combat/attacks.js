@@ -30,6 +30,7 @@ export function runAttack(state, tower, g, primary, now, rng) {
   const stats = towerStats(g, tower.level);
   const rangePx2 = ((stats.range + (tower.rangeBonus || 0)) * CELL) ** 2;
   switch (g.attack) {
+    // splash/slow/burn 不在本层判射程(targeting+combatSystem 已确认 primary 在圈内);rangePx2 仅供连射/冲锋选次目标
     case 'splash': return attackSplash(state, tower, g, primary, rng);
     case 'slow':   return attackSlow(state, tower, g, primary, now, rng);
     case 'charge': return attackCharge(state, tower, g, primary, rng, rangePx2);
