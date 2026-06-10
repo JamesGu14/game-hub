@@ -46,7 +46,7 @@ function suggest(level, seed = 0) {
   const rng = makeRng(seed * 7919 + 1);
   const jitter = new Map();
   const bias = (c) => {
-    if (!seed && !(level.terrainAt)) return 0;          // 旧 LEVELS 模式零影响
+    if (!seed && !(level.terrainAt)) return 0;          // LEVELS 模式(seed=0 且无 terrainAt)bias 全零→旧行为逐位不变;board 模式 seed≥1 不走此分支
     const key = `${c.x},${c.y}`;
     if (!jitter.has(key)) jitter.set(key, seed ? (rng() - 0.5) * 0.6 : 0);
     const onPlateau = level.terrainAt && level.terrainAt[c.y] && level.terrainAt[c.y][c.x] === 'plateau' ? 0.5 : 0;
@@ -86,6 +86,7 @@ function suggest(level, seed = 0) {
       if (z.cells.some((c) => slots.some((s) => s.x === c.x && s.y === c.y))) continue;
       const inZone = scored.filter((o) => z.cellSet.has(`${o.c.x},${o.c.y}`) && !slots.includes(o.c));
       if (inZone.length) slots.push(inZone[0].c);
+      else console.error(`  [warn] plateau 区无可用候选(路太远?该区将无将位,verify ④ 会拦)`);
     }
   }
 
@@ -100,6 +101,7 @@ if (bIdx > 0) {
   const { terrain, terrainAt } = expandTerrain(board);
   const sIdx = process.argv.indexOf('--seed');
   const seeds = sIdx > 0 ? [+process.argv[sIdx + 1]] : [1, 2, 3];
+  if (seeds.some((s) => !Number.isFinite(s))) { console.error('--seed 需要整数值'); process.exit(1); }
   const lv = { cols: board.cols, rows: board.rows, castle: board.castle, camps: board.camps, paths: board.paths, terrain, terrainAt };
   for (const seed of seeds) {
     const { slots, uncovered } = suggest(lv, seed);
