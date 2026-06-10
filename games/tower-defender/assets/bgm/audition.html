@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>成都保卫战 — BGM 5 首试听 + 轮播</title>
+<style>
+  :root { --gold:#e8c479; --gold-dim:#b8923f; --bg:#15110c; --card:#221a11; --line:#3a2c19; --ink:#f2e6d0; --mut:#a99570; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:radial-gradient(120% 80% at 50% 0%, #2a1f12 0%, var(--bg) 60%); color:var(--ink);
+         font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif; line-height:1.6; padding:32px 18px 64px; }
+  .wrap { max-width:780px; margin:0 auto; }
+  h1 { font-size:26px; margin:0 0 4px; color:var(--gold); letter-spacing:1px; }
+  .sub { color:var(--mut); margin:0 0 24px; font-size:14px; }
+  h2 { font-size:16px; color:var(--gold-dim); border-left:3px solid var(--gold-dim); padding-left:10px; margin:30px 0 14px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 18px; margin:0 0 14px; }
+  .card .top { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .tag { background:var(--gold); color:#2a1f0c; font-weight:700; font-size:12px; border-radius:6px; padding:2px 9px; }
+  .name { font-size:18px; font-weight:700; color:var(--ink); }
+  .lvls { color:var(--gold-dim); font-size:12px; font-weight:600; }
+  .lic { margin-left:auto; font-size:11px; color:var(--mut); }
+  .desc { color:var(--mut); font-size:13.5px; margin:8px 0 12px; }
+  audio { width:100%; filter:saturate(0.85); }
+  table { width:100%; border-collapse:collapse; margin:6px 0 4px; font-size:13px; }
+  th,td { border:1px solid var(--line); padding:7px 8px; text-align:center; }
+  th { background:#2a1f12; color:var(--gold); font-weight:600; }
+  td.k { color:var(--gold-dim); font-weight:700; }
+  .foot { margin-top:30px; padding-top:16px; border-top:1px solid var(--line); color:var(--mut); font-size:13px; }
+  .foot b { color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>⚔️ 成都保卫战 — 5 首战争 BGM(西式电影管弦史诗)</h1>
+  <p class="sub">点播放试听(已设循环)。重点听新补的 <b style="color:#e8c479">西 4 / 西 5</b> 是否满意;不满意告诉我换。授权:全部 CC-BY 4.0 · Kevin MacLeod · incompetech.com(采用时游戏内会署名)。</p>
+
+  <div class="card">
+    <div class="top"><span class="tag">西 1 · A</span><span class="name">Crossing the Chasm</span><span class="lvls">关 1·6·11…46</span><span class="lic">CC-BY 4.0</span></div>
+    <p class="desc">史诗悲壮、大开大合。映射到<b>每章首关</b>,当开篇主题。</p>
+    <audio controls loop preload="none" src="west-1-crossing-the-chasm.mp3"></audio>
+  </div>
+
+  <div class="card">
+    <div class="top"><span class="tag">西 2 · B</span><span class="name">Five Armies</span><span class="lvls">关 2·7·12…47</span><span class="lic">CC-BY 4.0</span></div>
+    <p class="desc">大军压境,密集鼓点 + 铜管,「万军交战」最雄浑。</p>
+    <audio controls loop preload="none" src="west-2-five-armies.mp3"></audio>
+  </div>
+
+  <div class="card">
+    <div class="top"><span class="tag">西 3 · C</span><span class="name">Heroic Age</span><span class="lvls">关 3·8·13…48</span><span class="lic">CC-BY 4.0</span></div>
+    <p class="desc">英雄主题进行曲,昂扬热血,贴三国豪情。</p>
+    <audio controls loop preload="none" src="west-3-heroic-age.mp3"></audio>
+  </div>
+
+  <div class="card">
+    <div class="top"><span class="tag">西 4 · D</span><span class="name">Strength of the Titans</span><span class="lvls">关 4·9·14…49</span><span class="lic">CC-BY 4.0 · 新</span></div>
+    <p class="desc">厚重史诗战鼓,巨人之力般的压迫感,沉稳有力。</p>
+    <audio controls loop preload="none" src="west-4-strength-of-the-titans.mp3"></audio>
+  </div>
+
+  <div class="card">
+    <div class="top"><span class="tag">西 5 · E</span><span class="name">The Descent</span><span class="lvls">关 5·10·15…50</span><span class="lic">CC-BY 4.0 · 新</span></div>
+    <p class="desc">暗黑史诗,低沉压迫,适合后段硬仗与终关。<b>终关 L50 司马懿</b>正好落这首。</p>
+    <audio controls loop preload="none" src="west-5-the-descent.mp3"></audio>
+  </div>
+
+  <h2>🔁 轮播映射:(关号 − 1) % 5 —— 每章 10 关恰好走两轮 A→E</h2>
+  <table>
+    <tr><th>章内位置</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th></tr>
+    <tr><td class="k">曲目</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td><td>A</td><td>B</td><td>C</td><td>D</td><td>E</td></tr>
+  </table>
+  <p class="sub" style="margin-top:6px">例:关 1·6→A,关 2·7→B,关 3·8→C…(与你说的完全一致)。第 2 章关 11–20 同样 A→E→A→E,依此类推到第 5 章。</p>
+
+  <div class="foot">
+    <p>📌 听完回我:<b>5 首都满意</b> → 我直接接入;或<b>哪首想换</b> → 告诉我编号,我再找。</p>
+  </div>
+</div>
+</body>
+</html>

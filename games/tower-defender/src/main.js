@@ -60,7 +60,7 @@ function enterLevel(n) {
   recorded = false; selected = 'huang'; selectedTower = null;
   lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
   resize(); screen = 'playing';
-  audio.startBgm();                                  // [P6] 轻量 BGM（ctx 未建则静默）
+  audio.startBgm(audio.bgmTrackForLevel(state.level.id));   // [BGM] 按关号轮播 5 首史诗（(id-1)%5；文件未就绪程序乐兜底）
   return true;
 }
 // [检查点A] 选关 → 故事屏（有续玩则带选项）；校验解锁。

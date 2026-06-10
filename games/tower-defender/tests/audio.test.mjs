@@ -77,5 +77,29 @@ function makeFakeAC() {
   assert.doesNotThrow(() => audio.stopBgm(), 'stopBgm 不抛');
 }
 
+// 7) startBgm(trackIndex)：文件未就绪（假 AC 无 decodeAudioData）→ 程序兜底，不抛 + 幂等
+{
+  audio._reset();
+  const { AC } = makeFakeAC();
+  audio._setAudioContextFactory(AC);
+  assert.doesNotThrow(() => audio.startBgm(2), 'startBgm(idx) 不抛');
+  assert.doesNotThrow(() => audio.startBgm(2), 'startBgm(idx) 幂等');
+  assert.doesNotThrow(() => audio.stopBgm(), 'stopBgm 不抛');
+}
+
+// 8) bgmTrackForLevel：轮播映射 (关号-1)%5；章内两轮 A→E、每章首关→A、终关 L50→E
+{
+  assert.equal(audio.bgmTrackForLevel(1), 0, 'L1→A');
+  assert.equal(audio.bgmTrackForLevel(2), 1, 'L2→B');
+  assert.equal(audio.bgmTrackForLevel(3), 2, 'L3→C');
+  assert.equal(audio.bgmTrackForLevel(4), 3, 'L4→D');
+  assert.equal(audio.bgmTrackForLevel(5), 4, 'L5→E');
+  assert.equal(audio.bgmTrackForLevel(6), 0, 'L6→A（与 L1 同）');
+  assert.equal(audio.bgmTrackForLevel(7), 1, 'L7→B（与 L2 同）');
+  assert.equal(audio.bgmTrackForLevel(8), 2, 'L8→C');
+  for (const opener of [1, 11, 21, 31, 41]) assert.equal(audio.bgmTrackForLevel(opener), 0, `章首 L${opener}→A`);
+  assert.equal(audio.bgmTrackForLevel(50), 4, '终关 L50→E');
+}
+
 audio._reset();   // 清理：停 BGM 计时器，避免进程挂起
 console.log('ok audio');

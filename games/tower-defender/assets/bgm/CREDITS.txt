@@ -1,0 +1,19 @@
+成都保卫战 — 背景音乐署名 / BGM Credits
+============================================
+
+以下 5 首战斗背景音乐由 Kevin MacLeod 创作，来自 incompetech.com，
+采用「知识共享 署名 4.0 国际」许可（Creative Commons Attribution 4.0, CC-BY 4.0）。
+游戏按关号 (id-1)%5 轮播这 5 首。
+
+  west-1-crossing-the-chasm.mp3      — "Crossing the Chasm"      Kevin MacLeod
+  west-2-five-armies.mp3             — "Five Armies"             Kevin MacLeod
+  west-3-heroic-age.mp3              — "Heroic Age"              Kevin MacLeod
+  west-4-strength-of-the-titans.mp3  — "Strength of the Titans"  Kevin MacLeod
+  west-5-the-descent.mp3             — "The Descent"             Kevin MacLeod
+
+Music by Kevin MacLeod (https://incompetech.com)
+Licensed under Creative Commons: By Attribution 4.0 License
+https://creativecommons.org/licenses/by/4.0/
+
+----
+audition.html 为开发期试听对比页（非游戏运行所需，可删）。

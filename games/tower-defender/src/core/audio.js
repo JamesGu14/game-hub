@@ -1,21 +1,33 @@
-// core/audio.js — 程序 WebAudio 音效子系统（SFX + 轻量 BGM + 静音）。Phase 6。
+// core/audio.js — 程序 WebAudio 音效（SFX）+ 文件 BGM（HTMLAudioElement 流播，程序乐兜底）+ 静音。
 // 技法 copy-and-own 自 js/hub.js 的 blip（osc + gain 指数包络）；不 import 跨游戏（自含铁律）。
-// 懒建 AudioContext（首次用户手势后 init()，绕 autoplay）；无 AudioContext / 被拒 → 全程静默不崩。
+// 懒建 AudioContext（首次用户手势后 init()，绕 autoplay）；无 AudioContext / 被拒 → SFX 静默不崩。
+// BGM 走 HTMLAudioElement（file:// 双击与 http 部署均可播本地 mp3）；无 Audio / 文件不可用 → 程序行军乐兜底。
 // 只发声：不碰 gameState / save。静音持久化由 main.js 经 save.settings.muted 落地（main 调 setMuted + 写档）。
 
-let ctx = null;            // AudioContext（懒建）
-let master = null;         // 主增益（静音闸门）
-let muted = false;         // 静音标记（sfx/bgm 据此短路；与 master.gain 双保险）
-let bgmTimer = null;       // BGM 排程句柄
-let bgmStep = 0;           // BGM 音符游标
+let ctx = null;            // AudioContext（懒建，供 SFX + 程序兜底 BGM）
+let master = null;         // 主增益（SFX 静音闸门）
+let muted = false;         // 静音标记（sfx/bgm 据此短路；与 master.gain / bgmEl.volume 同步）
+let bgmTimer = null;       // 程序兜底 BGM 排程句柄
+let bgmStep = 0;           // 程序兜底 BGM 音符游标
 let ACFactory = null;      // 测试注入点（替换 AudioContext 构造器）
 const lastAt = {};         // 每名节流时间戳（ctx.currentTime 秒）
+
+// —— 文件 BGM 状态（西式管弦史诗轨，用 HTMLAudioElement 流播；程序乐作兜底）——
+const bgmEls = [];         // 每轨 Audio 元素缓存：index → HTMLAudioElement
+let bgmEl = null;          // 当前在播 Audio 元素
+let bgmCurrent = -1;       // 当前在播文件轨 index（-1=无/程序兜底）
+let bgmWanted = -1;        // 期望轨 index（startBgm 设）
+let bgmFileActive = false; // 是否在播文件轨（区别程序兜底 timer）
+let bgmOn = false;         // BGM 总开关（startBgm↔stopBgm 之间为 true）
 
 // —— 测试钩子 ——（生产不用）
 export function _setAudioContextFactory(f) { ACFactory = f; }   // 注入假 AudioContext
 export function _reset() {                                       // 复位内部（多用例隔离）
   try { stopBgm(); } catch { /* ignore */ }
+  for (const e of bgmEls) { if (e) { try { e.pause(); } catch { /* ignore */ } } }
   ctx = null; master = null; muted = false; bgmStep = 0;
+  bgmEls.length = 0; bgmEl = null;
+  bgmCurrent = -1; bgmWanted = -1; bgmFileActive = false; bgmOn = false;
   for (const k of Object.keys(lastAt)) delete lastAt[k];
 }
 
@@ -93,10 +105,65 @@ export function sfx(name) {
   play();
 }
 
-// —— 战争风格 BGM：行军战鼓 + 低音号角动机（程序生成，无音频文件）。muted 时不发声 ——
+// —— 战争 BGM ——
+// 主路：西式管弦史诗 mp3，HTMLAudioElement 流播（loop+volume）。本地文件在 file:// 双击与 http 部署下均可播
+//       （区别 fetch+decodeAudioData：后者在 Chrome file:// 下被 CORS 拦）。BGM 不经 master，静音由 setMuted 同步 volume。
+// 兜底：无 Audio（如 Node 测试）/ 文件不可用 → 程序行军乐（战鼓+号角，下方 bgmTick），绝不静默崩。
+// 轨文件：CC-BY 4.0 · Kevin MacLeod · incompetech.com（见 assets/bgm/CREDITS.txt）。
+const BGM_FILES = [
+  'west-1-crossing-the-chasm.mp3',      // A · 每章首关开篇主题
+  'west-2-five-armies.mp3',             // B
+  'west-3-heroic-age.mp3',              // C
+  'west-4-strength-of-the-titans.mp3',  // D
+  'west-5-the-descent.mp3',             // E · 终关
+];
+const BGM_VOL = 0.35;                                             // BGM 音量（压在 SFX 之下；可调）
+
+// 纯函数：关号(1-based) → 轨 index。章内 10 关恰好两轮 A→E；负/0 也安全。测试点。
+export function bgmTrackForLevel(levelId) {
+  const n = BGM_FILES.length;
+  return (((levelId - 1) % n) + n) % n;
+}
+function bgmUrl(i) {
+  try { return new URL('../../assets/bgm/' + BGM_FILES[i], import.meta.url).href; }
+  catch { return null; }
+}
+// 取/建第 i 轨 Audio 元素（缓存 + preload）。无 Audio（Node）/ 建失败 → null（回退程序乐）。
+function bgmAudio(i) {
+  if (bgmEls[i]) return bgmEls[i];
+  if (typeof Audio === 'undefined') return null;
+  const url = bgmUrl(i);
+  if (!url) return null;
+  try {
+    const el = new Audio(url);
+    el.loop = true; el.preload = 'auto'; el.volume = muted ? 0 : BGM_VOL;
+    bgmEls[i] = el;
+    return el;
+  } catch { return null; }
+}
+function prefetchNext(i) { bgmAudio((i + 1) % BGM_FILES.length); }   // 预建下一首元素 → 浏览器预缓冲，切关更顺
+function stopBgmFile() {
+  if (bgmEl) { try { bgmEl.pause(); } catch { /* ignore */ } }
+  bgmEl = null; bgmFileActive = false;
+}
+function playBgmFile(i) {
+  const el = bgmAudio(i);
+  if (!el) return false;
+  try {
+    stopBgmProcedural();                                          // 切到文件轨：停程序兜底
+    for (const e of bgmEls) { if (e && e !== el) { try { e.pause(); } catch { /* ignore */ } } }   // 防叠播
+    el.volume = muted ? 0 : BGM_VOL;
+    try { el.currentTime = 0; } catch { /* ignore */ }
+    const p = el.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});    // autoplay 被拒：静默（下次手势再起）
+    bgmEl = el; bgmCurrent = i; bgmFileActive = true;
+    return true;
+  } catch { return false; }
+}
+
+// —— 程序兜底：行军战鼓 + 低音号角动机（无 Audio / 文件不可用时）。muted 时不发声 ——
 const BGM_STEP_MS = 300;                                          // ~100 BPM 行军（每 2 步一拍）
-// 号角动机（16 步,0=休止）：A2→C3→D3→C3→A2 英雄小调,落在重拍。
-const BGM_HORN = [110, 0, 0, 0, 131, 0, 0, 0, 147, 0, 131, 0, 110, 0, 0, 0];
+const BGM_HORN = [110, 0, 0, 0, 131, 0, 0, 0, 147, 0, 131, 0, 110, 0, 0, 0];   // A2→C3→D3→C3→A2 英雄小调,落重拍
 function bgmTick() {
   if (muted || !ctx) return;
   const i = bgmStep % 16;
@@ -109,7 +176,7 @@ function bgmTick() {
     tone({ type: 'sawtooth', freq: f * 1.5, dur: 0.5, gain: 0.03, begin: 0.02 });
   }
 }
-export function startBgm() {
+function startBgmProcedural() {
   if (bgmTimer) return;
   if (!ctx) init();
   if (!ctx) return;
@@ -118,14 +185,33 @@ export function startBgm() {
     if (bgmTimer && typeof bgmTimer.unref === 'function') bgmTimer.unref();   // Node：不阻塞进程退出（浏览器 id 无 unref，忽略）
   } catch { bgmTimer = null; }
 }
-export function stopBgm() {
+function stopBgmProcedural() {
   if (bgmTimer) { try { clearInterval(bgmTimer); } catch { /* ignore */ } bgmTimer = null; }
 }
 
-// 静音开关：gate master + 标记（sfx/bgm 短路）。返回新 muted。不写 save（main 负责持久化）。
+// 进关时调用：trackIndex=目标轨（main 用 bgmTrackForLevel 算）。省略=沿用当前期望轨。
+// 文件轨流播（loop）；Audio 不可用则程序乐兜底。已在播该轨→幂等不重启。
+export function startBgm(trackIndex) {
+  if (typeof trackIndex === 'number' && trackIndex >= 0) bgmWanted = trackIndex % BGM_FILES.length;
+  if (bgmWanted < 0) bgmWanted = 0;
+  bgmOn = true;
+  if (bgmFileActive && bgmCurrent === bgmWanted) return;         // 已在播目标文件轨：不重启
+  const want = bgmWanted;
+  if (playBgmFile(want)) { prefetchNext(want); return; }         // 文件轨直接流播（file:///http 均可）
+  startBgmProcedural();                                          // 无 Audio：程序乐兜底
+}
+export function stopBgm() {
+  bgmOn = false;
+  stopBgmFile();
+  stopBgmProcedural();
+  bgmCurrent = -1;
+}
+
+// 静音开关：gate master（SFX）+ 同步 BGM 元素 volume + 标记（sfx/bgmTick 短路）。返回新 muted。不写 save。
 export function setMuted(m) {
   muted = !!m;
   if (master) { try { master.gain.value = muted ? 0 : 0.9; } catch { /* ignore */ } }
+  for (const e of bgmEls) { if (e) { try { e.volume = muted ? 0 : BGM_VOL; } catch { /* ignore */ } } }
   return muted;
 }
 export function isMuted() { return muted; }
