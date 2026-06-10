@@ -39,4 +39,12 @@ const fakeImg = (src) => ({ src, width: 100, height: 130 });
   assert.equal(Object.keys(assets.images).length, 0, 'reject → 无图');
 }
 
+// 5) [形象演进 spec §6.1] 12 将 × 3 阶全部注册,路径规范
+{
+  const IDS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge', 'liao', 'zhou', 'madai', 'guanping', 'zhangbao', 'yueying'];
+  for (const id of IDS) for (const s of [1, 2, 3]) {
+    assert.equal(MANIFEST[`gen_${id}_${s}`], `assets/sprites/generals/${id}_${s}.png`, `gen_${id}_${s} 注册`);
+  }
+}
+
 console.log('ok assets');

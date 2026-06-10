@@ -4,7 +4,7 @@
 // 只读对象，不改 state。core 资源层 assets.images[id] 取图；缺则回退（东吴/曹魏暂无图 → 色块照常可玩）。
 import { BAL } from '../data/balance.js';
 import { GENERALS } from '../data/generals.js';
-import { assets } from '../core/assets.js';
+import { assets, generalSprite } from '../core/assets.js';
 
 const C = BAL.CELL;
 
@@ -34,7 +34,7 @@ function shadow(ctx, x, y, rx, ry) {
 
 export function drawTower(ctx, t, now = 0) {
   const g = GENERALS[t.generalId];
-  const img = assets.images['gen_' + t.generalId];
+  const img = generalSprite(t.generalId, t.level);
   const s = C * 0.32;
 
   // —— 补间量 ——
