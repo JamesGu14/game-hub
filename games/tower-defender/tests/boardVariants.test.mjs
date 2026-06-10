@@ -4,6 +4,7 @@ import assert from 'node:assert';
 import { mirrorBoard, variantFor, pathSubsetFor, expandTerrain } from '../src/data/boardVariants.js';
 import { verifyLevel } from '../tools/verify-levels.mjs';
 import { genWaves } from '../src/data/waveGen.js';
+import { BASE_BOARDS } from '../src/data/baseBoards.js';
 
 // —— 合成 fixture(24×14,2 营,带 terrain cells+rects,3 套将位)——
 const FIX = {
@@ -153,5 +154,28 @@ assert.ok(fixLevel([{ type: 'rockfall', cells: [{ x: 20, y: 0 }] }]).errors.some
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 压路报错');
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 无将位报错');
 assert.equal(fixLevel([{ type: 'plateau', cells: [{ x: 6, y: 10 }] }]).errors.length, 0, '④plateau 含将位通过');
+
+// —— 真实基板全组合:每板 × 4 镜像 × 3 将位套 全过 verifyLevel + 镜像指纹去重(防对称基板撞图)——
+const fp = (paths, slots) => JSON.stringify(paths) + '|' + JSON.stringify(slots);
+for (const [bid, base] of Object.entries(BASE_BOARDS)) {
+  const mirrorFps = new Set();
+  for (const m of ['none', 'h', 'v', 'hv']) {
+    const b = mirrorBoard(base, m);
+    const { terrain, terrainAt } = expandTerrain(b);
+    mirrorFps.add(fp(b.paths, b.slotsVariants[0]));
+    for (let si = 0; si < b.slotsVariants.length; si++) {
+      const lv = {
+        id: `${bid}/${m}/s${si}`, faction: 'wei', scale: 1, startGold: 300, castleHp: 20,
+        cols: b.cols, rows: b.rows, castle: b.castle, camps: b.camps, paths: b.paths,
+        slots: b.slotsVariants[si], terrain, terrainAt,
+        waves: genWaves({ camps: b.camps, paths: b.paths }, { waveCount: 2, difficulty: 0, enemyTiers: ['footman'], boss: { id: 'huaxiong', name: '华雄', hpMult: 1 } }, 1),
+      };
+      const r = verifyLevel(lv);
+      assert.equal(r.errors.length, 0, `${lv.id} errors: ${r.errors.join('; ')}`);
+      assert.equal(r.leaks.length, 0, `${lv.id} leaks: ${JSON.stringify(r.leaks)}`);
+    }
+  }
+  assert.equal(mirrorFps.size, 4, `${bid} 4 镜像指纹两两不同(基板有轴对称,须打破)`);
+}
 
 console.log('ok boardVariants');
