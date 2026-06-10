@@ -62,8 +62,9 @@ export function drawTowerPanel(ctx, view, state, tower) {
 
   // 当前数值（攻击/射程/攻速；射程同时以场上光圈显示）
   const st = towerStats(g, tower.level);
+  const rngEff = st.range + (tower.rangeBonus || 0);
   ctx.fillStyle = PAL.ink; ctx.font = FONT.body(10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(`攻击 ${Math.round(st.dmg)}　射程 ${st.range.toFixed(1)}　攻速 ${(1 / st.interval).toFixed(1)}`, L.x + 12, L.y + 40);
+  ctx.fillText(`攻击 ${Math.round(st.dmg)}　射程 ${rngEff.toFixed(1)}${tower.rangeBonus ? '⛰' : ''}　攻速 ${(1 / st.interval).toFixed(1)}`, L.x + 12, L.y + 40);
 
   // 招牌技行(新6将无招牌技 → 整行隐藏,spec §5)
   if (g.signature) {

@@ -8,6 +8,7 @@ import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
 import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
+import { rangeBonusFor } from './systems/terrainSystem.js';
 import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
@@ -96,6 +97,7 @@ function applyResume(snap) {
   state.towers = (snap.towers || []).map((ts) => {
     const t = createTower(ts.generalId, ts.slot);
     t.level = ts.level; t.mode = ts.mode; t.totalInvested = investedFor(ts.generalId, ts.level);
+    t.rangeBonus = rangeBonusFor(state.level, ts.slot);   // [地形] 按 slot 重算（快照零迁移）
     return t;
   });
   return true;
@@ -170,7 +172,7 @@ function render(s) {
       ctx.strokeStyle = 'rgba(191,224,255,.5)'; ctx.fillStyle = 'rgba(191,224,255,.08)';
       ctx.lineWidth = 1.5; ctx.setLineDash([6, 6]);
       ctx.beginPath();
-      ctx.arc(slot.x * C + C / 2, slot.y * C + C / 2, g.range * C, 0, Math.PI * 2);
+      ctx.arc(slot.x * C + C / 2, slot.y * C + C / 2, (g.range + rangeBonusFor(state.level, slot)) * C, 0, Math.PI * 2);
       ctx.fill(); ctx.stroke(); ctx.setLineDash([]);
     }
   }
@@ -178,7 +180,7 @@ function render(s) {
   // [检查点A] 选中塔：场上画攻击范围光圈（射程随等级）
   if (selectedTower && s.towers.includes(selectedTower)) {
     const sg = GENERALS[selectedTower.generalId];
-    const srng = towerStats(sg, selectedTower.level).range;
+    const srng = towerStats(sg, selectedTower.level).range + (selectedTower.rangeBonus || 0);
     ctx.save();
     ctx.strokeStyle = 'rgba(255,210,77,.6)'; ctx.fillStyle = 'rgba(255,210,77,.08)';
     ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);

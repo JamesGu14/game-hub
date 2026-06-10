@@ -23,7 +23,7 @@ export function combatSystem(state, dt) {
     if (tower.cooldown > 0 || !target || !target.alive) continue;
     const stats = towerStats(g, tower.level);     // 升级生效：射程/间隔随等级
     const dx = target.px - tower.px, dy = target.py - tower.py;
-    if (dx * dx + dy * dy > (stats.range * BAL.CELL) ** 2) continue;   // 命中前确认在射程
+    if (dx * dx + dy * dy > ((stats.range + (tower.rangeBonus || 0)) * BAL.CELL) ** 2) continue;   // 命中前确认在射程
 
     runAttack(state, tower, g, target, now, rng);
     tower.cooldown = stats.interval;

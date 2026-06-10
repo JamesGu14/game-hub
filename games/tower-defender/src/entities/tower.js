@@ -14,5 +14,6 @@ export function createTower(generalId, slot) {
     totalInvested: GENERALS[generalId].cost,        // [P2] 拆除返还基数（建造+各级升级累加）
     signatureCd: 0,                                 // [P2] L3 冷却技计时（单时钟 dt 递减）
     stunnedUntil: 0,                                // [P3] 被司马懿震慑前的停火截止时间（绝对游戏时间）
+    rangeBonus: 0,                                  // [地形] 高台射程加成（建塔/续玩按 slot 落点，见 terrainSystem）
   };
 }

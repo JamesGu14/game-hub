@@ -8,7 +8,7 @@ export function targetingSystem(state) {
   if (state.phase !== 'combat') return;          // [P0-3] 相位守卫
   for (const tower of state.towers) {
     const g = GENERALS[tower.generalId];
-    const rangePx = towerStats(g, tower.level).range * BAL.CELL;
+    const rangePx = (towerStats(g, tower.level).range + (tower.rangeBonus || 0)) * BAL.CELL;
     const r2 = rangePx * rangePx;
     let best = null, bestKey = null;
     for (const e of state.enemies) {

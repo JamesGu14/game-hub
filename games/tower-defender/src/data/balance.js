@@ -42,4 +42,7 @@ export const BAL = {
   BOSS_SUMMON_COUNT: 2,       // 每次召 2 名魏卒
   BOSS_STUN_CD: 8,            // 每 8s 震慑一座将塔
   BOSS_STUN_DUR: 2,           // 被震慑停火 2s
+
+  // —— 板型+地形（spec §6）——
+  PLATEAU_RANGE_BONUS: 0.5,   // 高台将位射程 +0.5 格
 };

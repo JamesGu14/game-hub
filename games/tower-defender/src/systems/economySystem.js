@@ -3,6 +3,7 @@
 import { GENERALS } from '../data/generals.js';
 import { BAL } from '../data/balance.js';
 import { createTower } from '../entities/tower.js';
+import { rangeBonusFor } from './terrainSystem.js';
 
 // 每步占位（保持循环顺序统一；无周期性经济）
 export function economySystem(_state, _dt) { /* no-op */ }
@@ -21,7 +22,9 @@ export function tryBuild(state, slot, generalId) {
   if (!canBuild(state, generalId)) return false;
   if (slotOccupied(state, slot)) return false;
   state.gold -= GENERALS[generalId].cost;
-  state.towers.push(createTower(generalId, slot));
+  const t = createTower(generalId, slot);
+  t.rangeBonus = rangeBonusFor(state.level, slot);   // [地形] 高台加成落实例（静态字段）
+  state.towers.push(t);
   return true;
 }
 

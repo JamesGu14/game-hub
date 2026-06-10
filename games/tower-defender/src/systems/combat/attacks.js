@@ -28,7 +28,7 @@ function inRange(tower, e, rangePx2) {
 
 export function runAttack(state, tower, g, primary, now, rng) {
   const stats = towerStats(g, tower.level);
-  const rangePx2 = (stats.range * CELL) ** 2;
+  const rangePx2 = ((stats.range + (tower.rangeBonus || 0)) * CELL) ** 2;
   switch (g.attack) {
     case 'splash': return attackSplash(state, tower, g, primary, rng);
     case 'slow':   return attackSlow(state, tower, g, primary, now, rng);
