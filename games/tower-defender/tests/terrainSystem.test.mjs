@@ -148,4 +148,15 @@ function makeState(level, enemies) {
   assert.equal(s5.terrain.rockfalls[0].nextStrikeAt, BAL.ROCKFALL_PERIOD * 3, '追赶后计时=18');
 }
 
+// —— disableTerrain:火谷失效(L50 大雨;disabled 机制通路验证)——
+{
+  const lv = makeLevel([{ type: 'firegully', cells: [{ x: 4, y: 5 }] }]);
+  lv.disableTerrain = ['firegully'];
+  const e = createEnemy('footman', 'a', PATH, 1); e.gx = 4.2; e.gy = 5;
+  const s = makeState(lv, [e]);
+  terrainSystem(s); statusSystem(s, 1);
+  assert.equal(e.envBurn, null, '禁用后不刷 envBurn');
+  assert.equal(e.hp, 60, '大雨火谷不烧');
+}
+
 console.log('ok terrainSystem');

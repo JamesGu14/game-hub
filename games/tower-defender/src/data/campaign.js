@@ -65,8 +65,9 @@ const SAMPLES = {
     name: '上方谷·五丈原', faction: 'wei', templateId: 'ch5B', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
     boss: { id: 'simayi', name: '司马懿', hpMult: 1.6 },   // bossSkills 由 BOSSES.simayi 透传（summon+stunTower）
     rampMax: 1.0,   // 司马懿终关豁免 HP ramp：震慑停火+召唤本就全战役最紧（满防仅余 3-5 HP），叠 1.5 必崩，单独保出厂难度
+    disableTerrain: ['firegully'],   // [地形] 终关天命大雨：火谷失效（呼应火烧上方谷；雨丝渲染见 board.drawWeather）
     lieutenants: ['caoxiu', 'niujin'],   // 曹休、牛金
-    story: { hook: '火烧上方谷，天降大雨救了司马懿！', year: '公元234年', place: '郿县·五丈原', sides: '诸葛亮 vs 司马懿', result: '诸葛亮病逝军中，北伐落幕', idiom: '死诸葛吓走活仲达', portrait: 'zhuge' },
+    story: { hook: '火烧上方谷，天降大雨救了司马懿！', year: '公元234年', place: '郿县·五丈原', sides: '诸葛亮 vs 司马懿', result: '大雨浇灭谷中烈火，诸葛亮病逝军中，北伐落幕', idiom: '死诸葛吓走活仲达', portrait: 'zhuge' },
   },
 };
 

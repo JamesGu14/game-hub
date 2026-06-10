@@ -42,4 +42,8 @@ assert.ok(Math.abs(chibiBoss.hpMult - 1.3) < 1e-9, 'L21 boss hpMult=1.3（campai
 const l1Generals = new Set(LEVELS[0].waves.flatMap((w) => w.spawns).filter((s) => s.enemyType === 'boss').map((s) => s.name));
 assert.ok(l1Generals.has('夏侯惇') && l1Generals.has('李典') && l1Generals.has('于禁'), `L1 应含主将+2副将（实际 ${[...l1Generals].join('/')}）`);
 
+// [板型+地形] L50 大雨彩蛋:终关火谷失效 flag + 板上确有火谷区(彩蛋有的可灭)
+assert.deepEqual(LEVELS[49].disableTerrain, ['firegully'], 'L50 带 disableTerrain');
+assert.ok(LEVELS[49].terrain.some((z) => z.type === 'firegully'), 'L50 板上有火谷区');
+
 console.log('ok levels-integrity');
