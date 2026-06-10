@@ -58,6 +58,10 @@ export const MANIFEST = {
   boss_xusheng: 'assets/sprites/bosses/xusheng.png',
   boss_panzhang: 'assets/sprites/bosses/panzhang.png',
   boss_handang: 'assets/sprites/bosses/handang.png',
+  // —— [城堡美化] 建筑：势力敌营 + 成都（蛮款待南蛮关卡：补图 + 此处加一行即生效）——
+  building_wei: 'assets/sprites/buildings/wei.png',
+  building_wu: 'assets/sprites/buildings/wu.png',
+  building_chengdu: 'assets/sprites/buildings/chengdu.png',
 };
 
 // 默认浏览器加载器：返回 Promise<Image|null>；onload→图、onerror→null（缺图不 throw、不阻塞）。

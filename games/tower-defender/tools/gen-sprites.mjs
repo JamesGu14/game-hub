@@ -13,6 +13,8 @@ const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'google/gemini-2.5-flash-image';
 
 const STYLE = '近正俯视 3/4 视角的半写实卡通塔防游戏单位立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，全身站姿，角色居中，脚底位于画面底部中线，纯透明背景，无地面、无阴影、无文字、无边框。';
+const STYLE_BUILDING = '近正俯视 3/4 视角的半写实卡通塔防游戏建筑立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，建筑单体居中，底边贴画面底部中线，纯透明背景，无地面、无阴影、无任何文字，旗帜一律纯色无字。';
+const styleOf = (u) => (u.cat === 'buildings' ? STYLE_BUILDING : STYLE);
 
 // v1 南蛮核心集：6 将（蜀汉，玩家方）+ 3 兵 + 2 BOSS（南蛮，敌方）。锚 = huang。
 const UNITS = [
@@ -63,12 +65,16 @@ const UNITS = [
   { cat: 'bosses', id: 'xusheng', desc: '三国东吴将领·徐盛（敌方副将）：智勇兼备的江东将领，青绿轻甲，手持长枪，沉着锐利，中等体型。' },
   { cat: 'bosses', id: 'panzhang', desc: '三国东吴将领·潘璋（敌方副将）：性烈骁勇的吴将，墨绿轻甲配锦袍，手持长刀，粗豪悍勇，中等体型。' },
   { cat: 'bosses', id: 'handang', desc: '三国东吴老将·韩当（敌方副将）：历经三世的江东宿将，花白须发，青碧铠甲配锦袍，手持长弓与佩刀，老练沉稳，中等体型。' },
+  // —— [城堡美化] 建筑：势力敌营城堡 + 成都（蛮款待南蛮关卡时再生成，见 spec §3/§8）——
+  { cat: 'buildings', id: 'wei', desc: '三国曹魏军镇城堡（敌方据点）：玄黑砖石城墙与垛口，铆钉加固的厚重铁门，城墙上一座双层中式歇山顶城楼，深色瓦顶配暗红色檐线点缀，墙头两座燃着火光的烽火盆，一面深蓝色纯色燕尾战旗（旗面无任何文字图案）。气质森严压迫。' },
+  { cat: 'buildings', id: 'wu', desc: '三国东吴水寨城堡（敌方据点）：建在水边木桩平台上的水寨城堡，底部可见波纹水面与木桩基座，木石混合城墙，江南风格翘檐青瓦双层城楼，城门两侧挂一对红灯笼，背景露出一截战船桅杆与布帆，一面青绿色纯色战旗（旗面无任何文字图案）。气质灵秀水乡。' },
+  { cat: 'buildings', id: 'chengdu', desc: '三国蜀汉都城成都的雄伟城楼（玩家大本营）：金红配色的三层中式楼阁城楼，朱红色城门与立柱，金黄色瓦顶层层飞檐，浅色石砌城墙，多面赤红色纯色汉式旌旗（旗面无任何文字图案），比普通军镇城堡更高大宏伟。气质巍峨温暖、值得守护的家园。' },
 ];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function gen(unit, refDataUrl) {
-  const text = STYLE + ' 单位：' + unit.desc
+  const text = styleOf(unit) + (unit.cat === 'buildings' ? ' 建筑：' : ' 单位：') + unit.desc
     + (refDataUrl ? ' 【重要】严格参考所给图片的画风、笔触、配色、描边粗细与光照，保持整套素材风格高度统一。' : '');
   const content = [{ type: 'text', text }];
   if (refDataUrl) content.push({ type: 'image_url', image_url: { url: refDataUrl } });
