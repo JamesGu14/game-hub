@@ -45,6 +45,7 @@ story: {
 - 我方 12 将 → `gen_<id>_3`(三阶最威风,经 generalSprite 回退);**刘备 → 新增 `gen_liubei`**(立绘 ×1,gen-sprites 黄忠锚);旁白 narrator 无头像
 - 敌将 → `boss_<id>`(44 张全有,缺图回退色块名牌)
 - `side: 'shu' | 'enemy'` 决定对话框左右站位
+- **命名规则**:塔将沿用 GENERALS 既有缩写 id(liao/zhou/madai…历史命名不动);非作战角色用全拼 id(`liubei`,将来如有孙尚香=`sunshangxiang`);规则写入 cast.js 头注释
 
 ## 4. 配音设计(段2)
 
@@ -60,7 +61,8 @@ story: {
 - **文件名 = 剧本句内容 hash**(`assets/voice/<sha1 前12>.mp3`,32kbps mono):剧本微调只重生成改动句,不全量重跑
 - "末将在!"齐声句:云希单声 + 文字标"(齐声)"(不做多声混音,YAGNI)
 - `core/audio.js` 增 `playVoice(src)/stopVoice()`:HTMLAudio 单实例,切句即停旧播新;**复用 save.settings.muted 静音**;无文件/加载失败静默
-- 生成工具 `tools/gen-voice.py`:遍历 50 关剧本(样板 script + storylines 展开)→ edge-tts 批量;输出 registry 清单供校验
+- **加载策略**:即点即播(本地 mp3 单句 20-50KB,HTMLAudio 自带流式,无感延迟);进 story 屏时 `preload='auto'` 预热旁白与幕2 首句,每次推进预热下一句;不做整关批量预载管理(YAGNI)
+- 生成工具 `tools/gen-voice.py`:遍历 50 关剧本(样板 script + storylines 展开)→ edge-tts 批量;输出 registry 清单供校验;**启动时 `edge-tts --list-voices` 校验音色存在**,CAST 音色经集中别名映射表(微软更名/下线时改一处全局生效)
 
 ## 5. UI 设计(ui/storyScene.js,改造自 storyCard)
 
@@ -70,17 +72,19 @@ story: {
 
 ### 幕2 · 对话演绎
 
-- 底部 ~1/3 高羊皮纸对话框;**说话者立绘 ~180px 裁上半身**立于框上沿,**蜀汉靠左、敌方靠右**;当前说话人全亮,非说话人压暗 0.45;立绘旁金底楷体**名牌**
-- 文本**打字机逐字 ~24 字/s**;**点击①=整句全显,点击②=下一句**;右下"▼"闪烁提示;无倒计时无自动推进
+- 底部 ~1/3 高羊皮纸对话框;**说话者立绘框 180×220px(宽×高)**立于框上沿,**蜀汉靠左、敌方靠右**;当前说话人全亮,非说话人压暗 0.45;立绘旁金底楷体**名牌**
+- **立绘裁切规则**:按宽 contain 缩放、**顶部对齐**(统一头部安全区,各将头位齐平;骑乘图顶部即人头,天然取上身),超出框底裁掉;冒烟目检关羽/赵云/马超三张骑乘图
+- 文本**打字机逐字 ~24 字/s**(由 rAF 渲染循环按时间差驱动,无 setInterval;低端设备降帧不丢字);**点击①=整句全显,点击②=下一句**;右下"▼"闪烁提示;无倒计时无自动推进
 - 右上角常驻「**跳过演绎 ▶**」→ 直接开战
 - 段2:每句切换播对应 mp3
-- 骑乘立绘(关羽/赵云/马超三阶)裁切锚点取"头部上 1/3",冒烟目检
+- **边缘行为**:①跳过/末句进战斗前**先 `stopVoice()` 再 `enterLevel()`**(防语音与 BGM 叠音);②幕1 点击=打断旁白语音**并**进幕2(单击单语义,不做"仅打断");③`muted=true` 时不播任何语音但**流程完全不变**(字幕仍逐句点击,静音≠跳过)
 
 ### 流程状态机
 
 `screen='story'` 内加 `act: 'narration' | 'dialogue'`:选关 → 幕1 → 点击 → 幕2 逐句 → 末句点击/跳过 → `enterLevel()` 开战。**演绎全程在 enterLevel 之前,模拟未启动——"演绎中游戏暂停"天然满足,零暂停逻辑**。BGM 在 story 屏已停(现状),语音独占。
 
 - 续玩快照存在:幕1 给"继续上次/重头"——**续上次跳过演绎**直接恢复,重头走完整两幕
+- **演绎进度不入任何快照**:幕2 中途退出(切后台/关页/返回选关)重进一律从幕1 重来——30 秒演绎不做断点续播;"续上次"仅指**战斗快照**(恢复到所在波备战起点),与演绎无关
 - 暂停菜单"重看故事":重播两幕,不重置对局(storyReview 机制兼容,重看末句返回对局而非 enterLevel)
 
 ## 6. 6 样板关剧本大纲(实现期精写,每关 8-12 句)
@@ -96,14 +100,14 @@ story: {
 
 (文风=James 原型;史实向、一年级能懂、不抄受版权文本;历史声明照旧)
 
-## 7. 实施触点
+## 7. 实施触点(路径均相对 `games/tower-defender/`)
 
 | 文件 | 改动 |
 |---|---|
 | src/data/campaign.js | 6 样板关 story 增 narration+script |
 | src/data/storylines.js(新) | 44 关模板生成器 |
 | src/data/cast.js(新) | 角色注册表(名/头像/音色/阵营) |
-| src/ui/storyScene.js(新,storyCard 改造) | 两幕状态机+对话框渲染+命中 |
+| src/ui/storyScene.js(新) | 两幕状态机+对话框渲染+命中;**storyCard.js 删除**,其羊皮纸版式代码迁入幕1;tests/storyCard.test.mjs 改名 storyScene.test.mjs 并扩两幕用例 |
 | src/main.js | story 屏接 storyScene(act 路由/跳过/重看兼容) |
 | src/core/audio.js | playVoice/stopVoice(段2) |
 | tools/gen-sprites.mjs | 刘备条目 |
@@ -113,8 +117,8 @@ story: {
 
 ## 8. 门禁
 
-1. **storylines.test**:全 50 关 build 不抛、确定性、who 全在 CAST、变量零 undefined/占位符、单句 ≤60 字(框容量)、点将名单随 roster 变化正确
-2. **storyScene.test**:layout/hit(幕切换/点击推进/全显再推进/跳过命中)、stub ctx 不抛、save/restore 平衡
+1. **storylines.test**:全 50 关 build 不抛、确定性、who 全在 CAST、变量零 undefined/占位符、单句 ≤60 **中文字符(text.length,含标点)**、点将名单随 roster 变化正确
+2. **storyScene.test**:layout/hit(幕切换/点击推进/全显再推进/跳过命中)、stub ctx(=CanvasRenderingContext2D 代理,沿用 heroCard.test 模式)draw 不抛、save/restore 平衡;打字机速度为纯表现常量(rAF 时间驱动),不进单测
 3. 段2:**voice registry 校验**(每句有 mp3,缺失列清单,exit 1)
 4. 冒烟:L1 两幕完整走→开战;跳过路径;续玩路径;重看故事;骑乘立绘裁切目检
 5. James+娃实玩:语速/字号/音色违和度/模板重样感
