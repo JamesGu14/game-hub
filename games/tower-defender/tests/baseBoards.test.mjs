@@ -48,4 +48,17 @@ for (const [id, b] of Object.entries(BASE_BOARDS)) {
     assert.ok((z.cells && z.cells.length) || (z.rects && z.rects.length), `${id} terrain 区非空`);
   }
 }
+// 10 板完备 + 每章 A/B 配对
+assert.deepEqual(
+  Object.keys(BASE_BOARDS).sort(),
+  ['ch1A', 'ch1B', 'ch2A', 'ch2B', 'ch3A', 'ch3B', 'ch4A', 'ch4B', 'ch5A', 'ch5B'],
+  '恰好 10 张基板',
+);
+// 每章新机制就位(教学承诺):ch1 高台/ch2 河/ch3 浅滩/ch4 山+落石/ch5 火谷
+const typesOf = (ch) => new Set(['A', 'B'].flatMap((h) => (BASE_BOARDS[`ch${ch}${h}`].terrain || []).map((z) => z.type)));
+assert.ok(typesOf(1).has('plateau'), 'ch1 有高台');
+assert.ok(typesOf(2).has('river'), 'ch2 有河');
+assert.ok(typesOf(3).has('shallow'), 'ch3 有浅滩');
+assert.ok(typesOf(4).has('mountain') && typesOf(4).has('rockfall'), 'ch4 有山+落石');
+assert.ok(typesOf(5).has('firegully'), 'ch5 有火谷');
 console.log(`ok baseBoards (${Object.keys(BASE_BOARDS).length} 板)`);
