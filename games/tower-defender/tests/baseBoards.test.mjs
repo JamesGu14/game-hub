@@ -60,5 +60,8 @@ assert.ok(typesOf(1).has('plateau'), 'ch1 有高台');
 assert.ok(typesOf(2).has('river'), 'ch2 有河');
 assert.ok(typesOf(3).has('shallow'), 'ch3 有浅滩');
 assert.ok(typesOf(4).has('mountain') && typesOf(4).has('rockfall'), 'ch4 有山+落石');
-assert.ok(typesOf(5).has('firegully'), 'ch5 有火谷');
+assert.ok(
+  typesOf(5).has('firegully') && typesOf(5).has('river') && typesOf(5).has('shallow') && typesOf(5).has('plateau'),
+  'ch5 集大成=火谷+河+浅滩+高台',
+);
 console.log(`ok baseBoards (${Object.keys(BASE_BOARDS).length} 板)`);
