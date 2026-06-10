@@ -77,6 +77,7 @@ function drawBuilding(ctx, img, cx, footY, hCells) {
 
 // 城名牌：敌营=深底白字；gold=true 成都金红款（spec §6 配色）
 function drawPlate(ctx, text, cx, footY, gold = false) {
+  ctx.save();   // 字体/对齐/线宽等全局 ctx 状态不外溢（质量审 Important 修复）
   const r = plateRect(text, cx, footY, C, gold ? 1.3 : 1);
   ctx.fillStyle = gold ? 'rgba(94,18,22,.85)' : 'rgba(20,16,24,.78)';
   ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, 4); ctx.fill();
@@ -85,6 +86,7 @@ function drawPlate(ctx, text, cx, footY, gold = false) {
   ctx.font = `bold ${r.fontPx}px system-ui`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(text, r.textX, r.textY);
+  ctx.restore();
 }
 
 // 成都受损烟雾（spec §4）：HP<50% 灰烟 2 缕、HP<25% 橙红 3 缕；脉动用 state.time（gameLoop 累计秒）
@@ -92,6 +94,7 @@ function drawCastleSmoke(ctx, state, cx, topY) {
   const ratio = state.castleHp / state.castleMaxHp;
   if (!(ratio < 0.5)) return;
   const t = state.time || 0, fire = ratio < 0.25, n = fire ? 3 : 2;
+  ctx.save();   // lineCap/strokeStyle 不外溢
   ctx.lineCap = 'round';
   for (let i = 0; i < n; i++) {
     const ph = t * 0.9 + i * 2.1;
@@ -105,4 +108,5 @@ function drawCastleSmoke(ctx, state, cx, topY) {
     ctx.bezierCurveTo(bx + sway, topY - C * 0.5, bx - sway, topY - C * 0.9, bx + sway * 1.4, topY - C * 1.3);
     ctx.stroke();
   }
+  ctx.restore();
 }
