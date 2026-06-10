@@ -16,6 +16,7 @@ const IDLE_K = 3.2;          // 待机浮动角速度（rad/s）
 const IDLE_AMP = C * 0.05;   // 待机浮动幅度（px）
 const FIRE_DUR = 0.18;       // 出手补间时长（s）
 const HIT_DUR = 0.12;        // 受击闪白时长（s）
+const UP_DUR = 0.5;          // [升级特效] 金光弹跳时长（s,读 t.upgradedAt;L3 时顺带掩护立绘换阶）
 
 // 0→1 衰减脉冲（now-since<dur 时 1→0，否则 0）。无时间戳字段 → 0（渐进增强：跳过补间）。
 function pulse(since, now, dur) {
@@ -41,7 +42,9 @@ export function drawTower(ctx, t, now = 0) {
   const phase = t.slot ? t.slot.x * 7 + t.slot.y * 13 : (t.id || 0);   // 每塔独立相位（不齐步浮动）
   const bob = Math.sin(now * IDLE_K + phase) * IDLE_AMP;
   const fire = pulse(t.lastFireAt, now, FIRE_DUR);                     // 出手脉冲 1→0
-  const pop = 1 + fire * 0.12;                                         // 出手缩放弹
+  const up = pulse(t.upgradedAt, now, UP_DUR);                         // 升级脉冲 1→0
+  const upArc = up > 0 ? Math.sin((1 - up) * Math.PI) : 0;             // 0→峰→0 弹跳弧
+  const pop = (1 + fire * 0.12) * (1 + upArc * 0.16);                  // 出手缩放弹 × 升级弹跳
   let lx = 0, ly = 0, tilt = 0;
   if (fire > 0) {
     const ax = t.aimX ?? t.px, ay = t.aimY ?? (t.py - C);
@@ -66,6 +69,15 @@ export function drawTower(ctx, t, now = 0) {
       ctx.drawImage(img, -w / 2, -h + footPad, w, h);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     }
+    if (up > 0) {                                                      // [升级特效] 金光罩体+立绘提亮(0.5s 渐隐)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = up * 0.45;
+      ctx.drawImage(img, -w / 2, -h + footPad, w, h);
+      const gr = ctx.createRadialGradient(0, -h * 0.45, 2, 0, -h * 0.45, h * 0.62);
+      gr.addColorStop(0, 'rgba(255,214,90,.85)'); gr.addColorStop(1, 'rgba(255,214,90,0)');
+      ctx.fillStyle = gr; ctx.fillRect(-w, -h * 1.15, w * 2, h * 1.4);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
     if (stunned) {                                                     // 震慑灰罩盖立绘
       ctx.globalAlpha = 0.55; ctx.fillStyle = '#12121a';
       ctx.fillRect(-w / 2, -h + footPad, w, h); ctx.globalAlpha = 1;
@@ -81,6 +93,10 @@ export function drawTower(ctx, t, now = 0) {
     ctx.fillStyle = '#3a2a08'; ctx.font = `bold ${C * 0.34}px system-ui`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText(g.name[0], 0, -C * 0.02);
+    if (up > 0) {                                                      // [升级特效] 回退色块:金框闪光
+      ctx.globalAlpha = up * 0.7; ctx.strokeStyle = '#ffd24d'; ctx.lineWidth = 3;
+      ctx.strokeRect(-s - 3, -s - 3, (s + 3) * 2, (s + 3) * 2); ctx.globalAlpha = 1;
+    }
     ctx.restore();
     if (stunned) { ctx.fillStyle = 'rgba(18,18,26,.55)'; ctx.fillRect(t.px - s, t.py - s, s * 2, s * 2); }
   }

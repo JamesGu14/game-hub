@@ -12,7 +12,7 @@ import { drawBoard } from './render/board.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, hudButtons, HUD_H } from './render/hud.js';
-import { spawnFloat } from './render/fx.js';
+import { spawnFloat, spawnRing } from './render/fx.js';
 import { drawBuildBar, hitBuildBar, buildBarLayout, HOTKEYS } from './ui/buildBar.js';
 import { unlockedGenerals, newlyUnlocked } from './data/unlocks.js';
 import { drawHeroCard } from './ui/heroCard.js';
@@ -279,7 +279,15 @@ function onPointerDown(ev) {
   if (pick) { selected = pick; selectedTower = null; audio.sfx('ui'); return; }
   if (selectedTower && state.towers.includes(selectedTower)) {
     const act = hitTowerPanel(view, selectedTower, sx, sy);
-    if (act === 'upgrade') { if (tryUpgrade(state, selectedTower)) audio.sfx('upgrade'); return; }
+    if (act === 'upgrade') {
+      if (tryUpgrade(state, selectedTower)) {
+        audio.sfx('upgrade');
+        selectedTower.upgradedAt = state.time;   // [升级特效] 0.5s 金光弹跳(drawTower 读此时间戳)
+        spawnRing(state, selectedTower.px, selectedTower.py, '#ffd24d', C * 0.95, 0.5);
+        spawnFloat(state, selectedTower.px, selectedTower.py - C * 1.3, 'L' + selectedTower.level + '!', '#ffd24d');
+      }
+      return;
+    }
     if (act === 'sell') { sellTower(state, selectedTower); audio.sfx('sell'); selectedTower = null; return; }
     if (act === 'mode') { cycleTowerMode(selectedTower); audio.sfx('ui'); return; }
     if (act === 'panel') return;
