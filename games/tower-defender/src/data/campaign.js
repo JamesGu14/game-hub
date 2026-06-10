@@ -45,6 +45,7 @@ const SAMPLES = {
       { who: 'guan', text: '三弟莫急，且看军师如何调兵遣将。' },
       { who: 'zhuge', text: '博望坡道路狭窄，两旁都是芦苇。待曹军进入，一把火便叫他有来无回！' },
       { who: 'liubei', text: '好计！众将听令，全凭军师调遣，不得有误！' },
+      { who: 'xiahoudun', text: '传我将令：全军加速，直取新野！谁敢挡路，杀无赦！' },
       { who: 'zhang', text: '俺张飞倒要看看，这把火烧不烧得起来！' },
       { who: 'zhuge', text: '关将军、张将军埋伏两侧，见火起便杀出。请主公安心守城！' },
       { who: 'zhongjiang', text: '（齐声）得令！' },
