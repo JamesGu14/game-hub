@@ -62,5 +62,10 @@ for (const lv of LEVELS) {
 // 6) numToCn 抽查
 assert.equal(numToCn(5), '五'); assert.equal(numToCn(10), '十');
 assert.equal(numToCn(13), '十三'); assert.equal(numToCn(26), '二十六');
+assert.equal(numToCn(100), '百'); assert.equal(numToCn(0), '零');
+
+// 7) 模板轮替反回归:同章相邻三关 script 不全相同(防 seed 轮替写死为常量)
+const [r2, r3, r4] = [2, 3, 4].map((id) => JSON.stringify(storyContentFor(LEVELS[id - 1], FULL).script));
+assert.ok(!(r2 === r3 && r3 === r4), '同章相邻三关轮替不全相同');
 
 console.log('ok storylines(50关×2roster 门禁全过)');

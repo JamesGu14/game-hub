@@ -19,6 +19,8 @@ export function rollcall(roster) {
 // 1..99 → 中文数字(兵力万数用)
 const D = ['零', '一', '二', '三', '四', '五', '六', '七', '八', '九'];
 export function numToCn(n) {
+  if (n <= 0) return D[0];                       // 兜底(wanOf 恒≥2,实际不触发)
+  if (n >= 100) return '百';                     // 封顶(波数/难度调参击穿时文案仍可读:"百万大军")
   if (n < 10) return D[n];
   const t = Math.floor(n / 10), o = n % 10;
   return (t > 1 ? D[t] : '') + '十' + (o ? D[o] : '');
@@ -183,7 +185,8 @@ const SCRIPTS = {
   ],
 };
 
-// 变量替换:text 模板({boss}/{lt}/{city}/{wan}/{g1..g3})
+// 变量替换:text 模板({boss}/{lt}/{city}/{wan}/{g1..g3})。vars 必须覆盖模板里全部占位符,
+// 漏填 → 字面 "undefined" 注入,由 storylines.test 门禁(/undefined/)拦截。
 function fill(text, vars) {
   return text.replace(/\{(\w+)\}/g, (_, k) => vars[k]);
 }
@@ -193,7 +196,7 @@ function fill(text, vars) {
 // roster = unlockedGenerals(save) 的 Set。
 export function storyContentFor(level, roster) {
   const st = level.story || {};
-  if (st.script && st.narration) return { narration: st.narration, script: st.script };
+  if (st.script && st.narration) return { narration: st.narration, script: st.script.map((l) => ({ ...l })) };   // 浅拷贝防消费方写穿 CAMPAIGN 单例
 
   const [g1, g2, g3] = rollcall(roster);
   const vars = {
