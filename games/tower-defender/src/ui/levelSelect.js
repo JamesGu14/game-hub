@@ -23,15 +23,21 @@ export function levelSelectLayout(view, levels, chapterIdx) {
   const ch = Math.max(92, Math.min(120, (view.h - 280) / rows - 16));
   const gap = 18;
   const gridW = cols * cw + (cols - 1) * gap;
-  const x0 = (view.w - gridW) / 2, y0 = 150;
+  const gridH = rows * ch + (rows - 1) * gap;
+  // 标题区(150) + 网格 + 导航行 作为整块在视口内垂直居中（小屏时贴顶，留 12px）
+  const HEADER_H = 150, GAP_NAV = 44;
+  const totalH = HEADER_H + gridH + GAP_NAV + NAV_H;
+  const top = Math.max(12, (view.h - totalH) / 2);
+  const x0 = (view.w - gridW) / 2, y0 = top + HEADER_H;
   const cards = list.map((it, k) => {
     const r = Math.floor(k / cols), c = k % cols;
     return { index: it.index, x: x0 + c * (cw + gap), y: y0 + r * (ch + gap), w: cw, h: ch };
   });
-  const navY = view.h - 70;
+  const header = { titleY: top + 50, chapterY: top + 100, subY: top + 126 };
+  const navY = y0 + gridH + GAP_NAV;
   const prev = chapterIdx > 0 ? { x: view.w / 2 - 160 - NAV_W, y: navY, w: NAV_W, h: NAV_H } : null;
   const next = chapterIdx < CHAPTERS.length - 1 ? { x: view.w / 2 + 160, y: navY, w: NAV_W, h: NAV_H } : null;
-  return { cards, prev, next };
+  return { cards, prev, next, header, navY };
 }
 
 export function hitLevelSelect(view, save, levels, chapterIdx, sx, sy) {
@@ -51,14 +57,14 @@ export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   backdrop(ctx, view.w, view.h);
   const chapter = CHAPTERS[chapterIdx];
 
-  title(ctx, '成都保卫战', view.w / 2, 50, 46);
-  ctx.fillStyle = PAL.gold; ctx.font = FONT.head(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`第 ${chapter.id} 章 · ${chapter.title}`, view.w / 2, 100);
-  ctx.fillStyle = PAL.dim; ctx.font = FONT.body(13);
-  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, 126);
-
   const nextIdx = nextPlayableIndex(save, levels.length);
   const L = levelSelectLayout(view, levels, chapterIdx);
+
+  title(ctx, '成都保卫战', view.w / 2, L.header.titleY, 46);
+  ctx.fillStyle = PAL.gold; ctx.font = FONT.head(22); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`第 ${chapter.id} 章 · ${chapter.title}`, view.w / 2, L.header.chapterY);
+  ctx.fillStyle = PAL.dim; ctx.font = FONT.body(13);
+  ctx.fillText('蜀汉守成都 · 六将御三方 —— 选择关卡', view.w / 2, L.header.subY);
   for (const card of L.cards) {
     const lv = levels[card.index];
     const unlocked = isUnlocked(save, card.index + 1);
@@ -105,5 +111,5 @@ export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   if (L.prev) button(ctx, L.prev, { label: '◀ 上一章', variant: 'wood' });
   if (L.next) button(ctx, L.next, { label: '下一章 ▶', variant: 'wood' });
   ctx.fillStyle = PAL.gold; ctx.font = FONT.head(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(`${chapter.id} / ${CHAPTERS.length}`, view.w / 2, view.h - 70 + NAV_H / 2);
+  ctx.fillText(`${chapter.id} / ${CHAPTERS.length}`, view.w / 2, L.navY + NAV_H / 2);
 }
