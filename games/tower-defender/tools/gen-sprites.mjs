@@ -71,6 +71,72 @@ const UNITS = [
   { cat: 'buildings', id: 'chengdu', desc: '三国蜀汉都城成都的雄伟城楼（玩家大本营）：金红配色的三层中式楼阁城楼，朱红色城门与立柱，金黄色瓦顶层层飞檐，浅色石砌城墙，多面赤红色纯色汉式旌旗（旗面无任何文字图案），比普通军镇城堡更高大宏伟。气质巍峨温暖、值得守护的家园。' },
 ];
 
+// —— [形象演进 spec §6.3] 12 将 × 3 阶。锚链:阶1 用黄忠风格锚;阶2 锚本将阶1;阶3 锚本将阶2(同一人换装)。
+// 渲染约束:人形为主、武器/小道具为辅,禁大型载具复杂场景(塔显示高仅 ~51px)。
+const PERSON = '【重要】保持与参考图同一人物的长相、肤色、发须与配色,只升级服装与装备。';
+const STAGED = [
+  { id: 'huang', stages: [
+    '三国蜀汉老将·黄忠(初出·寒微):年迈老猎户打扮,花白长须,粗布短衣,手持简朴木弓,精神矍铄。',
+    '三国蜀汉老将·黄忠(精进):花白长须,轻便皮甲铁护腕,手持铁胎强弓,背负箭壶,沉稳老练。' + PERSON,
+    '三国蜀汉五虎上将·黄忠(神兵):金色鳞甲披风,花白长须,手持华丽宝雕大弓,箭壶金饰,定军山老当益壮的气概。' + PERSON,
+  ] },
+  { id: 'zhang', stages: [
+    '三国蜀汉猛将·张飞(初出·寒微):屠户出身的壮汉,豹头环眼虬髯,粗布短打围裙,手持一杆朴素铁矛(普通直矛,不要蛇形曲刃)。',
+    '三国蜀汉猛将·张飞(精进):豹头环眼虬髯怒目,深色皮甲,手持「丈八蛇矛」——矛尖是青亮的蛇形波浪曲刃(蜿蜒如蛇),绝不是直枪尖。' + PERSON,
+    '三国蜀汉五虎上将·张飞(神兵):黑色重甲暗金纹,豹头环眼怒目圆睁如当阳桥断喝,手持华丽「丈八蛇矛」(蛇形波浪曲刃,绝非直枪尖),披风猎猎。' + PERSON,
+  ] },
+  { id: 'guan', stages: [
+    '三国蜀汉武将·关羽(初出·寒微):红脸长髯的布衣壮士,绿色头巾粗布劲装,手持一柄朴素的单手朴刀(短柄宽刃刀)。【不要】青龙偃月刀,【不要】长柄大刀,【不要】铠甲。',
+    '三国蜀汉武将·关羽(精进):面如重枣长髯及胸,绿袍配铁甲,手持长柄战刀(略宽刃,无龙纹无红缨)。' + PERSON,
+    '三国蜀汉五虎上将·关羽(神兵):面如重枣丹凤眼,长髯飘胸,绿袍金甲,骑枣红色骏马「赤兔马」,手持「青龙偃月刀」——长柄顶端宽大弯月形大刀刃,刀背青龙纹,柄端红缨。骑乘全身像,人马都完整。' + PERSON,
+  ] },
+  { id: 'zhao', stages: [
+    '三国蜀汉武将·赵云(初出·寒微):年轻俊朗的白袍枪兵,素白布袍无甲,手持普通长枪,英气内敛。',
+    '三国蜀汉武将·赵云(精进):年轻俊朗,白袍配银色鳞甲,手持长枪,腰悬佩剑,英姿飒爽。' + PERSON,
+    '三国蜀汉五虎上将·赵云(神兵):白袍银甲白盔缨,骑神骏白马,手持「龙胆亮银枪」(银亮长枪,枪缨雪白),长坂坡单骑救主的英姿。骑乘全身像,人马都完整。' + PERSON,
+  ] },
+  { id: 'ma', stages: [
+    '三国西凉武将·马超(初出·寒微):西凉轻骑装束,皮甲毡袍,手持短骑枪,剽悍英武的青年。',
+    '三国西凉武将·马超(精进):兽带轻铠配白袍,手持骑枪,腰挎弯刀,西凉铁骑统帅气度。' + PERSON,
+    '三国蜀汉五虎上将·马超(神兵):兽面狮盔银甲白袍「锦马超」,骑西凉白色战马,手持长枪,披风飞扬,英武剽悍。骑乘全身像,人马都完整。' + PERSON,
+  ] },
+  { id: 'zhuge', stages: [
+    '三国谋士·诸葛亮(初出·寒微):隆中布衣书生,青色素袍,手持普通竹扇,清瘦儒雅,目光睿智。',
+    '三国军师·诸葛亮(精进):八卦纹道袍,头戴纶巾(青色丝帛软头巾),一手明显握展开的白色羽毛扇,儒雅从容。' + PERSON,
+    '三国蜀汉丞相·诸葛亮(神兵):羽扇纶巾(青色软头巾+展开的白羽扇,两样缺一不可),华贵八卦纹鹤氅,端坐一辆简洁的四轮小车(素舆,木质小车,人物占画面主体、车体简洁低矮),仙风道骨。' + PERSON,
+  ] },
+  { id: 'liao', stages: [
+    '三国蜀汉先锋·廖化(初出·寒微):粗布短衣的精瘦汉子,手持简朴猎弓,背小箭壶,坚毅朴实。',
+    '三国蜀汉先锋·廖化(精进):轻便皮甲,手持军用强弓,箭壶满箭,先锋营老兵的干练。' + PERSON,
+    '三国蜀汉先锋官·廖化(神兵):铁甲披肩配先锋营红色令旗插背,手持精制强弓,神情果敢,「蜀中无大将廖化作先锋」的担当。' + PERSON,
+  ] },
+  { id: 'zhou', stages: [
+    '三国壮士·周仓(初出·寒微):黑面虬髯赤脚的魁梧大汉,粗布短打,手持柴刀,憨直忠勇。',
+    '三国壮士·周仓(精进):黑面虬髯,深色铁甲,双手持阔身大刀,魁梧威武。' + PERSON,
+    '三国蜀汉猛士·周仓(神兵):黑面虬髯黑甲,肩扛一柄「青龙偃月刀」(长柄弯月大刀刃带青龙纹红缨,为关公扛刀的刀僮形象),忠勇威风。' + PERSON,
+  ] },
+  { id: 'madai', stages: [
+    '三国西凉骑兵·马岱(初出·寒微):西凉布甲青年骑士,手持普通弯刀,沉稳干练。',
+    '三国西凉骑将·马岱(精进):轻骑皮铠配毡袍,手持骑兵长刀,腰挎弓囊,剽悍利落。' + PERSON,
+    '三国蜀汉将领·马岱(神兵):白袍铁甲,手持一柄寒光斩将大刀,沉稳果决(阵前斩魏延的名刀),西凉骑将风范。' + PERSON,
+  ] },
+  { id: 'guanping', stages: [
+    '三国少年·关平(初出·寒微):眉目英气的少年,粗布练功服,手持木刀,朝气蓬勃。',
+    '三国小将·关平(精进):轻甲白袍少年将,手持长刀,英姿初成。' + PERSON,
+    '三国蜀汉小将·关平(神兵):白袍银甲红披风,手持父传宝刀(精美长柄战刀),少年英雄气概。' + PERSON,
+  ] },
+  { id: 'zhangbao', stages: [
+    '三国少年·张苞(初出·寒微):浓眉虎目的壮实少年,粗布短打,手持普通短矛,虎虎生威。',
+    '三国小将·张苞(精进):深色皮甲,手持「丈八蛇矛」(蛇形波浪曲刃,绝非直枪尖),少年猛将。' + PERSON,
+    '三国蜀汉虎贲·张苞(神兵):虎贲铁甲暗金纹,手持家传华丽「丈八蛇矛」(蛇形波浪曲刃),怒目圆睁有乃父之风。' + PERSON,
+  ] },
+  { id: 'yueying', stages: [
+    '三国才女·黄月英(初出·寒微):布裙荆钗的年轻女子,清秀聪慧,手持一具小巧木制手弩,身旁散落图纸。',
+    '三国发明家·黄月英(精进):利落工装布裙,袖口束起,手持机关连弩(多管小弩),腰挂工具袋,巧思灵动。' + PERSON,
+    '三国蜀汉巧匠·黄月英(神兵):鹅黄色衣裙配轻便护甲,手持精巧「诸葛连弩」(多管连发弩,弩匣金饰),背负小型机关匣,弩箭带火羽,聪慧自信。人形为主,不要大型机械。' + PERSON,
+  ] },
+];
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 async function gen(unit, refDataUrl) {
@@ -92,7 +158,7 @@ async function gen(unit, refDataUrl) {
   if (!url) throw new Error('no image: ' + JSON.stringify(j).slice(0, 200));
   const buf = Buffer.from(url.split(',')[1], 'base64');
   const dir = path.join(OUT, unit.cat); fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, unit.id + '.png'); fs.writeFileSync(file, buf);
+  const file = path.join(dir, (unit.file || unit.id + '.png')); fs.writeFileSync(file, buf);
   return { file, bytes: buf.length };
 }
 
@@ -106,6 +172,26 @@ const list = only.length ? UNITS.filter((u) => only.includes(u.id)) : UNITS;
 let anchorUrl = null;
 const anchorFile = path.join(OUT, 'generals', 'huang.png');
 if (only.length && fs.existsSync(anchorFile)) anchorUrl = dataUrlOf(anchorFile);   // 复用已存黄忠当锚
+
+// —— 三阶模式:node tools/gen-sprites.mjs --stages [id...](无 id = 全 12 将)——
+if (process.argv.includes('--stages')) {
+  const ids = process.argv.slice(2).filter((a) => a !== '--stages');
+  const todo = ids.length ? STAGED.filter((u) => ids.includes(u.id)) : STAGED;
+  if (!anchorUrl && fs.existsSync(anchorFile)) anchorUrl = dataUrlOf(anchorFile);
+  for (const u of todo) {
+    let ref = anchorUrl;                          // 阶1:黄忠风格锚
+    for (let s = 1; s <= 3; s++) {
+      const file = `${u.id}_${s}.png`;
+      try {
+        const r = await gen({ cat: 'generals', id: u.id, file, desc: u.stages[s - 1] }, ref);
+        console.log(`✓ generals/${file}  (${(r.bytes / 1024).toFixed(0)} KB)`);
+        ref = dataUrlOf(r.file);                  // 锚链:下一阶锚本阶(同一人换装)
+        await sleep(1500);
+      } catch (e) { console.log(`✗ generals/${file} — ${e.message}`); break; }
+    }
+  }
+  process.exit(0);
+}
 
 const results = [];
 for (const unit of list) {
