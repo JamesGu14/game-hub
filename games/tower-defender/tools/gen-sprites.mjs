@@ -13,7 +13,7 @@ const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'google/gemini-2.5-flash-image';
 
 const STYLE = '近正俯视 3/4 视角的半写实卡通塔防游戏单位立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，全身站姿，角色居中，脚底位于画面底部中线，纯透明背景，无地面、无阴影、无文字、无边框。';
-const STYLE_BUILDING = '近正俯视 3/4 视角的半写实卡通塔防游戏建筑立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，建筑单体居中，底边贴画面底部中线，纯透明背景，无地面、无阴影、无任何文字，旗帜一律纯色无字。';
+const STYLE_BUILDING = '近正俯视 3/4 视角的半写实卡通塔防游戏建筑立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，建筑单体居中，底边贴画面底部中线，纯白背景。画面中只有建筑本体：不要任何底板、卡片、色块、画框、边框、地面、阴影，不要任何文字，旗帜一律纯色无字。';
 const styleOf = (u) => (u.cat === 'buildings' ? STYLE_BUILDING : STYLE);
 
 // v1 南蛮核心集：6 将（蜀汉，玩家方）+ 3 兵 + 2 BOSS（南蛮，敌方）。锚 = huang。
