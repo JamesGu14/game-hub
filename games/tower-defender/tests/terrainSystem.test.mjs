@@ -102,4 +102,50 @@ function makeState(level, enemies) {
   assert.equal(f2.hp, 70, '飞兵不踩火谷');
 }
 
+// —— rockfall:6s 周期/1s 前摇(state 可读)/落时按"当时在区内"格判定结算;确定性步进;killEnemy 通道 ——
+{
+  const lv = makeLevel([{ type: 'rockfall', cells: [{ x: 4, y: 5 }, { x: 5, y: 5 }] }]);
+  const inZone = createEnemy('footman', 'a', PATH, 1); inZone.gx = 4.4; inZone.gy = 5;
+  const outZone = createEnemy('footman', 'a', PATH, 1); outZone.gx = 9; outZone.gy = 5;
+  const s = makeState(lv, [inZone, outZone]);
+  // t=5.5:前摇窗口(nextStrikeAt=6,差 0.5 ≤ WARN=1) → 渲染可判,未结算
+  s.time = 5.5; terrainSystem(s);
+  assert.equal(s.terrain.rockfalls[0].nextStrikeAt, BAL.ROCKFALL_PERIOD, '未到点不结算');
+  assert.ok(s.terrain.rockfalls[0].nextStrikeAt - s.time <= BAL.ROCKFALL_WARN, '前摇窗口可判定');
+  // t=6.01:落石 → 区内敌挨 30×scale,区外无伤;计时推进到 12;lastStrikeAt 记录
+  s.time = 6.01; terrainSystem(s);
+  assert.equal(inZone.hp, 60 - BAL.ROCKFALL_DMG, '区内被砸 30');
+  assert.equal(outZone.hp, 60, '区外无伤');
+  assert.equal(s.terrain.rockfalls[0].nextStrikeAt, BAL.ROCKFALL_PERIOD * 2, '周期推进');
+  assert.ok(Math.abs(s.terrain.rockfalls[0].lastStrikeAt - 6) < 1e-9, 'lastStrikeAt=原nextStrikeAt(渲染落石动画窗口)');
+  // 落石可致死(走 killEnemy:掉金)
+  inZone.hp = 10; s.time = 12.01; terrainSystem(s);
+  assert.equal(inZone.alive, false, '落石致死');
+  assert.equal(s.gold, inZone.gold, '致死掉金(killEnemy 通道)');
+  // prep 相位也走表(计时推进),但无敌可砸
+  const s2 = makeState(lv, []); s2.phase = 'prep';
+  s2.time = 6.5; terrainSystem(s2);
+  assert.equal(s2.terrain.rockfalls[0].nextStrikeAt, BAL.ROCKFALL_PERIOD * 2, 'prep 也走表');
+  // 飞兵不被砸
+  const f = createEnemy('flyer', 'a', PATH, 1); f.gx = 4.4; f.gy = 5;
+  const s3 = makeState(lv, [f]);
+  s3.time = 6.01; terrainSystem(s3);
+  assert.equal(f.hp, 70, '飞兵豁免落石');
+  // 确定性:同序列两次模拟逐位一致
+  const run = () => {
+    const e = createEnemy('footman', 'a', PATH, 1); e.gx = 4.4; e.gy = 5;
+    const st = makeState(makeLevel([{ type: 'rockfall', cells: [{ x: 4, y: 5 }] }]), [e]);
+    const log = [];
+    for (let t = 0; t <= 13; t += 0.5) { st.time = t; terrainSystem(st); log.push(e.hp); }
+    return log.join(',');
+  };
+  assert.equal(run(), run(), '确定性步进');
+  // while 追赶:一次跨两周期(t 直接跳 13)补结算两次
+  const e5 = createEnemy('footman', 'a', PATH, 1); e5.gx = 4.4; e5.gy = 5;
+  const s5 = makeState(makeLevel([{ type: 'rockfall', cells: [{ x: 4, y: 5 }] }]), [e5]);
+  s5.time = 13; terrainSystem(s5);
+  assert.equal(e5.hp, 60 - BAL.ROCKFALL_DMG * 2, '跨周期 while 追赶补两砸');
+  assert.equal(s5.terrain.rockfalls[0].nextStrikeAt, BAL.ROCKFALL_PERIOD * 3, '追赶后计时=18');
+}
+
 console.log('ok terrainSystem');

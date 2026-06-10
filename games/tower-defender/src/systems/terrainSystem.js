@@ -3,6 +3,7 @@
 // 铁律:render-free;查询 O(1) 走 level.terrainAt(boardVariants 加载期烘焙)。
 import { BAL } from '../data/balance.js';
 import { applySlow } from './combat/statusEffects.js';
+import { killEnemy } from './combat/kill.js';
 
 // 格地形类型（无 level / 无 terrainAt 的合成关/测试关 → null，全部行为退化为平地）
 export function terrainTypeAt(level, x, y) {
@@ -31,7 +32,21 @@ export function terrainSystem(state) {
   const lvl = state.level;
   if (!lvl || !lvl.terrain || !lvl.terrain.length || !state.terrain) return;
   const now = state.time;
-  // —— rockfall 结算（落石任务填）——
+  // —— rockfall:每区独立计时,while 追赶(跨周期补结算,确定性不依赖帧率;prep 也走表供观察节奏)——
+  for (const rf of state.terrain.rockfalls) {
+    while (now >= rf.nextStrikeAt) {
+      const zone = lvl.terrain[rf.zoneIdx];
+      for (const e of state.enemies) {
+        if (!e.alive || e.flying) continue;                   // 砸"路面"敌人:飞兵豁免
+        if (!zone.cellSet.has(`${Math.round(e.gx)},${Math.round(e.gy)}`)) continue;
+        e.hp -= BAL.ROCKFALL_DMG * (lvl.scale || 1);
+        e.lastHitAt = now;                                    // 受击闪白(纯表现)
+        if (e.hp <= 0) killEnemy(state, e);
+      }
+      rf.lastStrikeAt = rf.nextStrikeAt;                      // 渲染落石动画窗口
+      rf.nextStrikeAt += BAL.ROCKFALL_PERIOD;
+    }
+  }
   if (state.phase !== 'combat') return;          // [P0-3] 相位守卫（效果只作用于交战中的敌）
   const disabled = state.terrain.disabled;
   for (const e of state.enemies) {
