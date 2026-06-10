@@ -28,6 +28,8 @@ const FIX = {
   assert.deepEqual(hh, FIX, 'h∘h = id');
   const vv = mirrorBoard(mirrorBoard(FIX, 'v'), 'v');
   assert.deepEqual(vv, FIX, 'v∘v = id');
+  const hvhv = mirrorBoard(mirrorBoard(FIX, 'hv'), 'hv');
+  assert.deepEqual(hvhv, FIX, 'hv∘hv = id');
 }
 // 2) mode='none' 返回深等副本且不是同一引用(防原板被改)
 {

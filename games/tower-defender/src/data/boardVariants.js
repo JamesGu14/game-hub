@@ -39,7 +39,7 @@ export function mirrorBoard(board, mode) {
   return out;
 }
 
-// —— 三维变体映射(写死公式,加载期零随机;spec §3.2)——
+// —— 三维变体映射(写死公式,加载期零随机;spec §3.2)。k = 章内关序 0..9 ——
 export function variantFor(chapter, k) {
   return {
     boardId: `ch${chapter}${k < 5 ? 'A' : 'B'}`,
@@ -53,6 +53,7 @@ export function variantFor(chapter, k) {
 export function pathSubsetFor(chapter, k, pathIds) {
   if (k === 0 || k >= 5) return null;
   const m = SUBSET_SIZE[chapter], n = pathIds.length;
+  if (!m) throw new Error(`pathSubsetFor: 未知 chapter ${chapter}`);
   const start = (k - 1) % n;
   return Array.from({ length: m }, (_, i) => pathIds[(start + i) % n]);
 }
@@ -63,7 +64,13 @@ export function expandTerrain(board) {
   const terrain = (board.terrain || []).map((z) => {
     const seen = new Set();
     const cells = [];
-    const push = (x, y) => { const key = `${x},${y}`; if (!seen.has(key)) { seen.add(key); cells.push({ x, y }); } };
+    const push = (x, y) => {
+      if (x < 0 || x >= board.cols || y < 0 || y >= board.rows) {
+        throw new Error(`expandTerrain: ${z.type} 格 (${x},${y}) 超出 ${board.id || '?'} 板界 [${board.cols}×${board.rows}]`);
+      }
+      const key = `${x},${y}`;
+      if (!seen.has(key)) { seen.add(key); cells.push({ x, y }); }
+    };
     for (const c of z.cells || []) push(c.x, c.y);
     for (const r of z.rects || []) {
       for (let x = r.x; x < r.x + r.w; x++) for (let y = r.y; y < r.y + r.h; y++) push(x, y);
