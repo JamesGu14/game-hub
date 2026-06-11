@@ -1376,6 +1376,25 @@ cd /Users/james/Projects/game-hub && git add -A games/tower-defender && git comm
 
 **对 spec 的两处计划级落地细化**(不改设计语义):① LANDMARK_COLORS 扩 bambooA/bambooB/ash 3 键(竹排/焦营帐用料,守零字面量铁律);② 新增 `theme.accentPatch`——首拼块强制为该章可动拼块(ch1 花田/ch2 芦苇/ch3 竹林),保证 §5.7 动效数量下限的达标率(否则 ch2/ch3 有 20-44% 概率抽不到可动拼块致该关 0 动效)。
 
+---
+
+## 实施期修订记录(2026-06-11 subagent-driven 执行,主会话逐项裁决)
+
+**Task 3 布点算法 5 轮修法**(计划原文在稠密板上空间稀缺,hit 36→44→50/50):
+1. smokeRise 改"狼烟保底先行+蕨丛进池补足"(原 if/else 堵死蕨丛候选,ch4 恒 1 动效)
+2. reedSway/bambooSway 每瓣 2 个确定性偏移候选(±0.35rx,防同点叠画)
+3. 拼块锚三级 fallback:严格池→free 池(放开软禁区)→单自由格小锚(small:格中心/rx0.49/距边≥1)
+4. `!pool.length && !free.length` 才弃 + 空池守卫(根因:稠密板 strictFree 可为空,早 continue 跳过全部 fallback)
+5. 瓣全灭终防线:锚格自身单格小瓣(锚已验 free+未占,数学上必不触禁)——锚成立≠瓣成立的补丁
+
+**质量审落地**(各任务双阶段审查产物):hardBanSet 敌营名牌格盘内校验(底行营越界 key×56)/chapterThemes 跨章 painter 用色契约断言+themeOf(0)/hit 阈值 rng 流敏感警示注释/drawVignette save-restore+渐变单 ctx 假设注释/reedAt·fernAt·各地标 painter 末尾线状态复位/stoneTower lineWidth 复位/smokeDy 推导注释/road 鸭子型开关注释。
+
+**驳回记录**(均有书面理由):rng 条件化消耗(违背 Task 3 既定保流对齐纪律,且 pickAccents 是末位消费者)/暗角逐帧渐变重建(渐变对象已进关缓存,每帧 1 次填充<现有火苗梯度)/board.js 单行双语句(文件既有惯用)/bambooSway lineCap 复位(外层 save/restore 兜底)。
+
+**勘误**:本文散文多处写"12 种拼块 painter",实为 **14 种**(代码块清单为准;12 是小景 painter 数)。
+
+**验收实录**:test.sh 全门禁绿(56 单测+verify 50 关+check-imports);6 关 smoke 五章配色肉眼可辨;同章 L2/3/4 种子差异可辨;动效活性=同关两时刻板区像素 diff 31px(L1 野花闪);L50 雨夜火谷无火苗+雨幕压暗;回滚开关双向(段1+段2 各一轮)旧观感像素级复原。
+
 
 
 
