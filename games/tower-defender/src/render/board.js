@@ -29,6 +29,7 @@ export function drawBoard(ctx, state) {
   drawTerrainBase(ctx, state);   // [地形] 基底层：路压河上=渡口浮桥视觉天然成立(spec §5 顺序)
 
   // 弯曲蜀道:四层(缘/面/芯/磨损虚线;spec §2);回滚开关=旧两层 faction tint
+  // themeOf=常量引用查表零新建;回退对象缺 edge/worn → 下方 if 短路跳过(鸭子型开关,勿补 null 字段)
   const road = BAL.GROUND_THEMES ? themeOf(state.level.chapter).road : { outer: tint.road, inner: tint.road2 };
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const id in paths) {

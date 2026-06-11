@@ -482,6 +482,8 @@ export function drawVignette(ctx, state) {
   const lvl = state.level;
   const entry = bakeGround(lvl);
   const W = lvl.cols * C, H = lvl.rows * C;
+  // 渐变缓存假设:全游戏单 canvas 单 ctx(main.js 加载期 getContext 一次,resize 只改宽高不重建)——
+  // CanvasGradient 绑定创建它的 ctx,若未来重建 canvas 元素须在此清 entry.vignette。
   if (!entry.vignette) {
     const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.45, W / 2, H * 0.45, Math.max(W, H) * 0.72);
     g.addColorStop(0, 'rgba(0,0,0,0)');
