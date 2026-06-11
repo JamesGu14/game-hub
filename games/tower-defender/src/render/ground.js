@@ -500,6 +500,127 @@ const DECOR_PAINTERS = {
   leaf(ctx, x, y, v, col) { leafAt(ctx, x, y, col, v * 0.6); },
 };
 
+// —— 地标(spec §2 各章 landmarks ×2 共10种):跨章统一质感,取色只准经 LANDMARK_COLORS ——
+export const LANDMARK_COLORS = {
+  wood: '#6b4e30', woodDark: '#4a3520', stone: '#8d887a', stoneDark: '#5f5a4e',
+  cloth: '#b3a079', clothDark: '#7a6a4a', flag: '#a8323a', fire: '#e08a3c',
+  smoke: '#9a9aa2', char: '#3f352c', ash: '#6e645a', bambooA: '#8ab368', bambooB: '#9ec07a',
+};
+export const LANDMARK_META = { stoneTower: { smokeDy: -1.2 } };   // accent 锚点偏移(C 单位;spec §5.7)
+const LK = LANDMARK_COLORS;
+
+// 签名 (ctx, cx, footY):cx=2×2 块中心x,footY=块底边像素(投影/立面同建筑 billboard 规)
+const LANDMARK_PAINTERS = {
+  beacon(ctx, cx, footY) {       // 烽火台:石基梯形+木台+火点+静态烟丝
+    shadowAt(ctx, cx, footY, C * 0.45);
+    ctx.fillStyle = LK.stone; ctx.strokeStyle = LK.stoneDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 13, footY); ctx.lineTo(cx + 13, footY); ctx.lineTo(cx + 10, footY - 22); ctx.lineTo(cx - 10, footY - 22); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 8, footY - 8); ctx.lineTo(cx + 8, footY - 8); ctx.stroke();
+    ctx.fillStyle = LK.wood; ctx.strokeStyle = LK.woodDark;
+    ctx.beginPath(); ctx.roundRect(cx - 13, footY - 31, 26, 9, 2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = LK.fire; ctx.beginPath(); ctx.arc(cx, footY - 34, 3, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = LK.smoke; ctx.lineWidth = 2.5; ctx.globalAlpha = 0.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, footY - 38); ctx.quadraticCurveTo(cx + 3, footY - 45, cx, footY - 51); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  tent(ctx, cx, footY) {         // 军帐:三角帐+门帘+小旗
+    shadowAt(ctx, cx, footY, C * 0.5);
+    ctx.fillStyle = LK.cloth; ctx.strokeStyle = LK.clothDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 16, footY); ctx.lineTo(cx + 16, footY); ctx.lineTo(cx, footY - 24); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = LK.clothDark;
+    ctx.beginPath(); ctx.moveTo(cx - 4, footY); ctx.lineTo(cx, footY - 8); ctx.lineTo(cx + 4, footY); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = LK.woodDark; ctx.beginPath(); ctx.moveTo(cx, footY - 24); ctx.lineTo(cx, footY - 32); ctx.stroke();
+    ctx.fillStyle = LK.flag;
+    ctx.beginPath(); ctx.moveTo(cx, footY - 32); ctx.lineTo(cx + 9, footY - 29); ctx.lineTo(cx, footY - 26); ctx.closePath(); ctx.fill();
+  },
+  watchtower(ctx, cx, footY) {   // 木瞭望塔:斜腿+横撑+平台+布棚
+    shadowAt(ctx, cx, footY, C * 0.45);
+    ctx.strokeStyle = LK.wood; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 10, footY); ctx.lineTo(cx - 6, footY - 26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 10, footY); ctx.lineTo(cx + 6, footY - 26); ctx.stroke();
+    ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 9, footY - 8); ctx.lineTo(cx + 9, footY - 8); ctx.stroke();
+    ctx.fillStyle = LK.wood; ctx.strokeStyle = LK.woodDark;
+    ctx.beginPath(); ctx.roundRect(cx - 10, footY - 30, 20, 6, 1.5); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = LK.clothDark;
+    ctx.beginPath(); ctx.moveTo(cx - 11, footY - 30); ctx.lineTo(cx + 11, footY - 30); ctx.lineTo(cx, footY - 38); ctx.closePath(); ctx.fill();
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  stele(ctx, cx, footY) {        // 石碑:底座+碑身+刻痕三道
+    shadowAt(ctx, cx, footY, C * 0.35);
+    ctx.fillStyle = LK.stone; ctx.strokeStyle = LK.stoneDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(cx - 10, footY - 5, 20, 5, 1.5); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(cx - 6, footY - 26, 12, 21, 3); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(cx - 2, footY - 21 + i * 5); ctx.lineTo(cx + 2, footY - 21 + i * 5); ctx.stroke(); }
+  },
+  pavilion(ctx, cx, footY) {     // 孤亭:石台基+双柱+暗红翘檐
+    shadowAt(ctx, cx, footY, C * 0.5);
+    ctx.fillStyle = LK.stone; ctx.strokeStyle = LK.stoneDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(cx - 14, footY - 4, 28, 4, 1); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = LK.wood; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(cx - 9, footY - 4); ctx.lineTo(cx - 9, footY - 18); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 9, footY - 4); ctx.lineTo(cx + 9, footY - 18); ctx.stroke();
+    ctx.fillStyle = LK.flag; ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 16, footY - 18); ctx.quadraticCurveTo(cx, footY - 30, cx + 16, footY - 18);
+    ctx.quadraticCurveTo(cx, footY - 24, cx - 16, footY - 18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.lineWidth = 1;
+  },
+  raft(ctx, cx, footY) {         // 竹排:5 竹并排+两道横绑
+    shadowAt(ctx, cx, footY - 4, C * 0.5);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      ctx.strokeStyle = i % 2 ? LK.bambooB : LK.bambooA; ctx.lineWidth = 3.5;
+      ctx.beginPath(); ctx.moveTo(cx - 14 + i * 7, footY - 14); ctx.lineTo(cx - 10 + i * 7, footY + 2); ctx.stroke();
+    }
+    ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 15, footY - 9); ctx.lineTo(cx + 15, footY - 7); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx - 14, footY - 2); ctx.lineTo(cx + 16, footY); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  stoneTower(ctx, cx, footY) {   // 石塔:双层塔身+檐+窗(狼烟 accent 自塔顶,见 LANDMARK_META)
+    shadowAt(ctx, cx, footY, C * 0.4);
+    ctx.fillStyle = LK.stone; ctx.strokeStyle = LK.stoneDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(cx - 11, footY - 16, 22, 16, 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(cx - 8, footY - 30, 16, 14, 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.roundRect(cx - 11, footY - 33, 22, 3, 1); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = LK.char; ctx.fillRect(cx - 2, footY - 27, 4, 5);
+  },
+  trestle(ctx, cx, footY) {      // 栈道木架:X 腿+横板+三短柱
+    shadowAt(ctx, cx, footY, C * 0.45);
+    ctx.strokeStyle = LK.wood; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 12, footY); ctx.lineTo(cx + 8, footY - 20); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 12, footY); ctx.lineTo(cx - 8, footY - 20); ctx.stroke();
+    ctx.fillStyle = LK.wood; ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(cx - 14, footY - 24, 28, 5, 1); ctx.fill(); ctx.stroke();
+    for (let i = -1; i <= 1; i++) { ctx.beginPath(); ctx.moveTo(cx + i * 8, footY - 24); ctx.lineTo(cx + i * 8, footY - 19); ctx.stroke(); }
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  brokenFlag(ctx, cx, footY) {   // 残旗:斜杆+撕裂旗面+碎石两粒
+    shadowAt(ctx, cx, footY, C * 0.35);
+    ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx - 3, footY); ctx.lineTo(cx + 6, footY - 26); ctx.stroke();
+    ctx.fillStyle = LK.flag; ctx.strokeStyle = LK.char; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(cx + 6, footY - 26); ctx.lineTo(cx + 20, footY - 22);
+    ctx.lineTo(cx + 14, footY - 19); ctx.lineTo(cx + 17, footY - 15); ctx.lineTo(cx + 5, footY - 18);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = LK.char;
+    ctx.beginPath(); ctx.arc(cx - 6, footY - 2, 2, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 2, footY + 2, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.lineCap = 'butt';
+  },
+  burntCamp(ctx, cx, footY) {    // 焦营帐:坍塌帐+断梁+余烬+烬点
+    shadowAt(ctx, cx, footY, C * 0.5);
+    ctx.fillStyle = LK.char; ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx - 16, footY); ctx.lineTo(cx + 16, footY); ctx.lineTo(cx + 6, footY - 14); ctx.lineTo(cx - 4, footY - 18); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = LK.char; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 4, footY - 18); ctx.lineTo(cx - 8, footY - 24); ctx.stroke();
+    ctx.fillStyle = LK.fire; ctx.beginPath(); ctx.arc(cx + 9, footY - 3, 1.8, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = LK.ash; ctx.beginPath(); ctx.arc(cx - 8, footY - 4, 1.5, 0, Math.PI * 2); ctx.fill();
+    ctx.lineWidth = 1;
+  },
+};
+
 // —— 烘焙(spec §3):2× 板像素一次性离屏;只持当前关 1 张(防 50 关全缓存 OOM) ——
 let cache = { id: -1, canvas: null, layout: null, vignette: null };
 
@@ -523,6 +644,10 @@ export function bakeGround(level) {
   for (const d of layout.decors) {
     const painter = DECOR_PAINTERS[d.kind];
     if (painter) painter(ctx, (d.x + 0.5) * C, (d.y + 0.6) * C, d.variant, theme.colors);
+  }
+  if (layout.landmark) {
+    const painter = LANDMARK_PAINTERS[layout.landmark.kind];
+    if (painter) painter(ctx, (layout.landmark.x + 1) * C, (layout.landmark.y + 2) * C - 4);
   }
   cache = { id: level.id, canvas: cv, layout, vignette: null };
   const ms = performance.now() - t0;
