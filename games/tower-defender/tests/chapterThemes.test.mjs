@@ -22,8 +22,14 @@ for (let ch = 1; ch <= 5; ch++) {
   assert.ok(Object.keys(t.colors).length >= 6, `章${ch} colors 非空`);
   for (const k in t.colors) assert.match(t.colors[k], HEX, `章${ch} colors.${k}`);
   assert.ok(Array.isArray(t.waterAffinity), `章${ch} waterAffinity 数组`);
+  // 跨章共用 painter 的取色契约(meadow 被 ch1/ch4 用、grove 系下游 treeAt 用)
+  if (t.patches.includes('meadow')) assert.ok(t.colors.meadow && t.colors.meadowHi, `章${ch} meadow colors`);
+  if (t.patches.includes('grove')) assert.ok(t.colors.groveBase && t.colors.crownA && t.colors.crownB && t.colors.crownOutline && t.colors.crownHi && t.colors.trunk && t.colors.trunkOutline, `章${ch} grove colors`);
+  if (t.decors.includes('stone')) assert.ok(t.colors.stone && t.colors.stoneHi && t.colors.stoneOutline, `章${ch} stone colors`);
+  if (t.decors.includes('tuft')) assert.ok(t.colors.tuft, `章${ch} tuft color`);
 }
 assert.equal(themeOf(99), CHAPTER_THEMES[1], 'themeOf 越界回退章1');
 assert.equal(themeOf(undefined), CHAPTER_THEMES[1], 'themeOf 缺参回退');
 assert.equal(themeOf(3), CHAPTER_THEMES[3], 'themeOf 正常');
+assert.equal(themeOf(0), CHAPTER_THEMES[1], 'themeOf 0 回退');
 console.log('ok chapterThemes');
