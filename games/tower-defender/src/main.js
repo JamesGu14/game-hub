@@ -84,6 +84,7 @@ function storyPlayLine(i) {
 function enterStoryReview() {
   storyReview = true; pendingLevel = curIndex(); pendingResume = null;
   storyState = makeStoryState(curIndex(), { hasResume: false, review: true });
+  audio.stopBgm();   // [演绎段2] 重看也语音独占(spec §5);回对局时 fromStory review 分支恢复
   screen = 'story';
   storyPlayNarration();
 }
@@ -139,7 +140,7 @@ function applyResume(snap) {
 // 故事屏「继续/续上次/重头」终路由(演绎两幕走完/跳过后也汇于此)。[段2 已接] stopVoice 在函数首行。
 function fromStory(act) {
   audio.stopVoice();
-  if (storyReview) { screen = 'playing'; storyReview = false; if (state.paused) state.paused = false; return; }
+  if (storyReview) { screen = 'playing'; storyReview = false; audio.startBgm(audio.bgmTrackForLevel(state.level.id)); if (state.paused) state.paused = false; return; }   // [演绎段2] 重看返回恢复战斗 BGM(对称 enterStoryReview 的 stopBgm)
   if (act === 'resume' && pendingResume) { applyResume(pendingResume); browserClearResume(); screen = 'playing'; audio.startBgm(); }   // 续玩成功即清档（防下次/刷新读到旧波）
   else { browserClearResume(); enterLevel(pendingLevel); }   // continue / restart 都重头
   pendingResume = null;
