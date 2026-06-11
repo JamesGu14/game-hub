@@ -21,6 +21,7 @@ import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.j
 import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
 import { newStoryState, hitStoryScene, drawStoryScene, toDialogue, advanceDialogue, storySceneLayout } from './ui/storyScene.js';
 import { storyContentFor } from './data/storylines.js';
+import { loadVoiceRegistry, voiceSrcFor } from './core/voiceRegistry.js';
 import { CHAPTERS } from './data/campaign.js';
 import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
@@ -62,11 +63,29 @@ function curIndex() { return LEVELS.indexOf(state.level); }
 function makeStoryState(n, { hasResume, review }) {
   return newStoryState(storyContentFor(LEVELS[n], unlockedGenerals(save)), { hasResume, review });
 }
+// [演绎段2] 语音:进屏自动播旁白+预热幕2首句;registry 惰性加载,晚到且仍在幕1才补播(防 race 串台)
+function storyPlayNarration() {
+  loadVoiceRegistry().then(() => {
+    if (screen !== 'story' || !storyState || storyState.act !== 'narration') return;
+    audio.playVoice(voiceSrcFor('narrator', storyState.content.narration));
+    const first = storyState.content.script[0];
+    if (first) audio.preloadVoice(voiceSrcFor(first.who, first.text));
+  });
+}
+// 幕2 第 i 句:切播 + 预热下一句(spec §4 即点即播,无整关预载)
+function storyPlayLine(i) {
+  const line = storyState.content.script[i];
+  if (!line) return;
+  audio.playVoice(voiceSrcFor(line.who, line.text));
+  const next = storyState.content.script[i + 1];
+  if (next) audio.preloadVoice(voiceSrcFor(next.who, next.text));
+}
 // [演绎] 暂停菜单「重看故事」建态(DRY:Step7 暂停分支 + __td.reviewStory 共用)
 function enterStoryReview() {
   storyReview = true; pendingLevel = curIndex(); pendingResume = null;
   storyState = makeStoryState(curIndex(), { hasResume: false, review: true });
   screen = 'story';
+  storyPlayNarration();
 }
 
 // [P4] 进关(原地换关,循环持同一 state 引用)。enterLevel 不校验解锁(供 retry/调试);startLevel 校验。
@@ -87,6 +106,7 @@ function startLevel(n) {
   pendingResume = (snap && snap.levelId === LEVELS[n].id) ? snap : null;
   storyState = makeStoryState(n, { hasResume: !!pendingResume, review: false });
   screen = 'story'; audio.stopBgm();
+  storyPlayNarration();
   return true;
 }
 function toSelect() { screen = 'select'; selectedTower = null; audio.stopBgm(); }
@@ -116,8 +136,9 @@ function applyResume(snap) {
   });
   return true;
 }
-// 故事屏「继续/续上次/重头」终路由(演绎两幕走完/跳过后也汇于此)。[段2] 进战斗前在此 stopVoice()。
+// 故事屏「继续/续上次/重头」终路由(演绎两幕走完/跳过后也汇于此)。[段2 已接] stopVoice 在函数首行。
 function fromStory(act) {
+  audio.stopVoice();
   if (storyReview) { screen = 'playing'; storyReview = false; if (state.paused) state.paused = false; return; }
   if (act === 'resume' && pendingResume) { applyResume(pendingResume); browserClearResume(); screen = 'playing'; audio.startBgm(); }   // 续玩成功即清档（防下次/刷新读到旧波）
   else { browserClearResume(); enterLevel(pendingLevel); }   // continue / restart 都重头
@@ -265,9 +286,13 @@ function onPointerDown(ev) {
   if (screen === 'story') {
     const act = hitStoryScene(view, storyState, sx, sy);
     if (act === 'resume') fromStory('resume');                                    // 续上次=跳过演绎直接恢复(spec §5)
-    else if (act === 'continue' || act === 'restart') toDialogue(storyState, performance.now());   // 幕1→幕2(重头的快照在进战斗时清)
+    else if (act === 'continue' || act === 'restart') { toDialogue(storyState, performance.now()); storyPlayLine(0); }   // 幕1点击=打断旁白并进幕2(单击单语义,spec 边缘②;playVoice 内自停旧声)
     else if (act === 'skip') fromStory('continue');                               // 跳过演绎→直接开战/回对局(review)
-    else if (act === 'tap') { if (advanceDialogue(storyState, performance.now()) === 'done') fromStory('continue'); }   // 末句点击→开战
+    else if (act === 'tap') {
+      const r = advanceDialogue(storyState, performance.now());
+      if (r === 'next') storyPlayLine(storyState.lineIdx);      // 切句:停旧播新
+      else if (r === 'done') fromStory('continue');             // reveal:语音继续念完,不打断
+    }
     if (act) audio.sfx('ui');
     return;
   }
@@ -382,6 +407,7 @@ async function boot() {
     storyLayout() { return storyState ? storySceneLayout(view, storyState) : null; },
     persistResume,
     reviewStory() { enterStoryReview(); },
+    voiceSrc: () => audio.currentVoiceSrc(),
   };
   bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音

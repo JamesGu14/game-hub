@@ -15,7 +15,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800 });
 page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !m.text().startsWith('Failed to load resource')) errors.push('console: ' + m.text()); });
-page.on('response', (r) => { if (r.status() === 404 && !r.url().endsWith('/favicon.ico') && !r.url().endsWith('liubei.png')) errors.push('http404: ' + r.url()); });
+page.on('response', (r) => { if (r.status() === 404 && !r.url().endsWith('/favicon.ico') && !r.url().includes('/assets/voice/')) errors.push('http404: ' + r.url()); });
 await page.goto(URL, { waitUntil: 'networkidle2' });
 // QA:解锁全部关卡(写 localStorage save,reload 让游戏重读)
 await page.evaluate(() => {
@@ -43,6 +43,22 @@ while ((await page.evaluate(() => window.__td.screen)) === 'story' && guard++ < 
 }
 if ((await page.evaluate(() => window.__td.screen)) !== 'playing') errors.push('两幕走完未进战斗');
 await shot('L1-battle');
+
+// ①b 语音接线断言(段2):重进 L1 幕1 → 旁白 src;进幕2 → 句1;next → 句2 变化;跳过 → stopVoice
+await page.evaluate(() => { window.__td.toSelect(); window.__td.showStory(0); });
+await sleep(600);   // 等 registry fetch + playVoice
+const vNarr = await page.evaluate(() => window.__td.voiceSrc());
+if (!vNarr || !vNarr.includes('assets/voice/')) errors.push('幕1 旁白语音未接: ' + vNarr);
+await clickBtn('continue'); await sleep(200);
+const v1 = await page.evaluate(() => window.__td.voiceSrc());
+await page.mouse.click(640, 500); await sleep(120);   // reveal(语音不换)
+await page.mouse.click(640, 500); await sleep(200);   // next → 句2
+const v2 = await page.evaluate(() => window.__td.voiceSrc());
+if (!v1 || !v2 || v1 === v2) errors.push(`幕2 切句语音未变化: ${v1} → ${v2}`);
+const skipB = await page.evaluate(() => window.__td.storyLayout().skip);
+await page.mouse.click(skipB.x + skipB.w / 2, skipB.y + skipB.h / 2); await sleep(200);
+const vAfterSkip = await page.evaluate(() => window.__td.voiceSrc());
+if (vAfterSkip !== null) errors.push('跳过后未 stopVoice: ' + vAfterSkip);
 
 // ② 跳过路径(L2 生成关:模板文案+点将名单可见)
 await page.evaluate(() => { window.__td.toSelect(); window.__td.showStory(1); });
