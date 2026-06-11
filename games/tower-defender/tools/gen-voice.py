@@ -3,6 +3,8 @@
 # 用法:
 #   python3 tools/gen-voice.py                # 全 50 关:增量生成缺失 mp3 + 全量重写 registry.json
 #   python3 tools/gen-voice.py --levels 1     # 仅指定关(逗号分隔;样片定音色用)
+#                                             # ⚠ registry 按"本次枚举范围"全量重写:--levels 产出只含指定关键,
+#                                             #   段2B 全量 --check 前必须先无参全量重跑(mp3 增量不重生,只补 registry)
 #   python3 tools/gen-voice.py --check [--levels 1]   # 门禁:枚举键 ⊆ registry 且文件齐,缺失列清单 exit 1
 #   python3 tools/gen-voice.py --bitrate 24k  # 体积超 20MB 时降码率重跑(默认 32k;无 ffmpeg 保留原始 48k)
 # 依赖:edge-tts(James 机已装)、node(枚举台词)、ffmpeg(可选转码)。
@@ -59,8 +61,9 @@ def gen_one(voice, text, dest, bitrate, has_ffmpeg):
     hz = pitch_to_hz(voice.get('pitch'))
     if hz: cmd += [f'--pitch={hz}']
     r = subprocess.run(cmd, capture_output=True, text=True)
-    if r.returncode != 0 or not os.path.getsize(tmp):
-        os.unlink(tmp); return f'edge-tts 失败: {r.stderr[:200]}'
+    if r.returncode != 0 or not os.path.exists(tmp) or not os.path.getsize(tmp):
+        if os.path.exists(tmp): os.unlink(tmp)
+        return f'edge-tts 失败: {r.stderr[:200]}'
     if has_ffmpeg:
         r2 = subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp, '-ac', '1', '-b:a', bitrate, dest],
                             capture_output=True, text=True)
