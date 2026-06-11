@@ -245,6 +245,7 @@ function pickAccents(theme, rng, patches, decors, landmark) {
   if (theme.accent === 'smokeRise' && landmark && landmark.kind === 'stoneTower') {
     accents.push({ kind: 'smokeRise', x: landmark.x + 1, y: landmark.y + 1, phase: rng() * Math.PI * 2 });   // 狼烟保底(地标卖点不进抽样池)
   }
+  // want 可为 0(狼烟保底已占预算);负不可达——保底恒≤1。
   const want = Math.min(2 + Math.floor(rng() * 2) - accents.length, cands.length);   // 总量仍 2-3,不足减量,0 合法
   for (let i = 0; i < want; i++) {
     const idx = Math.floor(rng() * cands.length);

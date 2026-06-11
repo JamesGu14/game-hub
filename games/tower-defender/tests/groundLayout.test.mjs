@@ -65,6 +65,7 @@ import { CHAPTER_THEMES } from '../src/data/chapterThemes.js';
     for (const ac of a.accents) assert.ok(typeof ac.phase === 'number' && ac.kind, `L${lv.id} accent 形状`);
     if (a.patches.length >= 2 && a.decors.length >= 10 && a.accents.length >= 2 && a.landmark) hit++;
   }
+  // 注:hit 依赖 rng 消耗顺序;改 computeGroundLayout 内 rng 调用次数/顺序会整体漂移——红了先 diff rng 流,勿放宽阈值(当前实际 50/50,裕度5关)。
   assert.ok(hit >= 45, `≥90% 关达到数量下限(实际 ${hit}/50)`);
 }
 
