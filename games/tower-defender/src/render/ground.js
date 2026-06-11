@@ -326,6 +326,7 @@ function reedAt(ctx, x, y, col, sway) {                // 芦苇(sway=苇顶 x �
   ctx.beginPath(); ctx.moveTo(x + 4, y); ctx.quadraticCurveTo(x + 5 + sway, y - 8, x + 8 + sway, y - 12); ctx.stroke();
   ctx.fillStyle = col.reedHead;
   ctx.beginPath(); ctx.ellipse(x + sway, y - 16, 1.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.lineCap = 'butt'; ctx.lineWidth = 1;             // 复位中性值,防下游首笔串扰(质量审 M-2)
 }
 
 // —— 拼块 painter 注册表(spec §2/§4):签名 (ctx, patch, theme.colors, blurOk);取色只准经 colors ——
@@ -487,6 +488,8 @@ export function drawVignette(ctx, state) {
     g.addColorStop(1, themeOf(lvl.chapter).vignette);
     entry.vignette = g;
   }
+  ctx.save();   // 主战斗 ctx:fillStyle 不外溢(项目惯例,质量审 I-1)
   ctx.fillStyle = entry.vignette;
   ctx.fillRect(0, 0, W, H);
+  ctx.restore();
 }
