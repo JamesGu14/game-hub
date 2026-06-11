@@ -52,4 +52,7 @@ export const BAL = {
   ROCKFALL_DMG: 30,           // 落石伤害 30×scale（落石时刻按"当时在区内"格判定;spec §4 语义,无锁定不追击）
   FIREGULLY_DPS: 6,           // 火谷灼烧 6×scale/s（独立环境槽,不占塔灼烧 3 层栈）
   FIREGULLY_LINGER: 1.5,      // 出区残留秒数（until = now + LINGER,区内每帧按需刷新）
+
+  // —— 背景特色化(背景spec §3/§10)——
+  GROUND_THEMES: true,        // false=回滚:旧棋盘格+faction tint 路色,ground.js 整体不触达
 };

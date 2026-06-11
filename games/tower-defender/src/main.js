@@ -10,6 +10,7 @@ import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, r
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
 import { rangeBonusFor } from './systems/terrainSystem.js';
 import { drawBoard, drawWeather } from './render/board.js';
+import { bakeGround } from './render/ground.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
 import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, hudButtons, HUD_H } from './render/hud.js';
@@ -93,6 +94,7 @@ function enterStoryReview() {
 function enterLevel(n) {
   if (n < 0 || n >= LEVELS.length) return false;
   Object.assign(state, newGameState(LEVELS[n], { unlocked: unlockedGenerals(save) }));
+  if (BAL.GROUND_THEMES) bakeGround(state.level);   // [背景spec §3] 进关预烘(applyResume 内部走本函数,同口;drawGround 仍有懒烘兜底)
   recorded = false; unlockNotice = null; selected = 'liao'; selectedTower = null;
   lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
   resize(); screen = 'playing';

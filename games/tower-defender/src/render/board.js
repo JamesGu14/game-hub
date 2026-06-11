@@ -5,6 +5,8 @@ import { tintOf } from '../data/factions.js';
 import { assets } from '../core/assets.js';
 import { aspect } from './entityRenderer.js';
 import { plateRect } from './plate.js';
+import { drawGround, drawVignette } from './ground.js';
+import { themeOf } from '../data/chapterThemes.js';
 
 const C = BAL.CELL;
 
@@ -12,28 +14,43 @@ export function drawBoard(ctx, state) {
   const { cols, rows, paths, slots, castle, camps } = state.level;
   const tint = tintOf(state.level.faction);     // [P3] 势力盘面色调(南蛮绿/东吴青/曹魏冷灰)
 
-  // 棋盘格草地
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      ctx.fillStyle = ((r + c) & 1) ? tint.grassA : tint.grassB;
-      ctx.fillRect(c * C, r * C, C, C);
+  // [背景spec] 章节化地表(烘焙图);开关关闭=旧棋盘格(回滚分支,勿删)
+  if (BAL.GROUND_THEMES) {
+    drawGround(ctx, state);
+  } else {
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx.fillStyle = ((r + c) & 1) ? tint.grassA : tint.grassB;
+        ctx.fillRect(c * C, r * C, C, C);
+      }
     }
   }
 
   drawTerrainBase(ctx, state);   // [地形] 基底层：路压河上=渡口浮桥视觉天然成立(spec §5 顺序)
 
-  // 弯曲蜀道（沿 waypoint 画粗线）
+  // 弯曲蜀道:四层(缘/面/芯/磨损虚线;spec §2);回滚开关=旧两层 faction tint
+  const road = BAL.GROUND_THEMES ? themeOf(state.level.chapter).road : { outer: tint.road, inner: tint.road2 };
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const id in paths) {
     const wp = paths[id];
     ctx.beginPath();
     ctx.moveTo(wp[0].x * C + C / 2, wp[0].y * C + C / 2);
     for (let i = 1; i < wp.length; i++) ctx.lineTo(wp[i].x * C + C / 2, wp[i].y * C + C / 2);
-    ctx.strokeStyle = tint.road; ctx.lineWidth = C * 0.72; ctx.stroke();
-    ctx.strokeStyle = tint.road2; ctx.lineWidth = C * 0.58; ctx.stroke();
+    if (road.edge) { ctx.strokeStyle = road.edge; ctx.lineWidth = C * 0.80; ctx.stroke(); }
+    ctx.strokeStyle = road.outer; ctx.lineWidth = C * 0.72; ctx.stroke();
+    ctx.strokeStyle = road.inner; ctx.lineWidth = C * 0.58; ctx.stroke();
+    if (road.worn) {
+      ctx.save();
+      ctx.strokeStyle = road.worn; ctx.lineWidth = C * 0.14;
+      ctx.setLineDash([C * 0.28, C * 0.39]); ctx.globalAlpha = 0.8;
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   drawTerrainFx(ctx, state);   // [地形] 特效层：压在路上(落石警示圈/落石尘圈/火谷火苗/浅滩波光;spec §5 顺序)
+
+  if (BAL.GROUND_THEMES) drawVignette(ctx, state);   // [背景spec §3] 暗角:路之后才能压住路的边角(段2在此前插 accents)
 
   // 将位（未占用 = 虚线绿框）
   ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = '#9be07a';
