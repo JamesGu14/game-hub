@@ -430,6 +430,76 @@ const PATCH_PAINTERS = {
   },
 };
 
+// —— 小景 painter(spec §2 各章 decors):签名 (ctx, px, py, variant, colors);variant 0-2 控大小/数量 ——
+function fernAt(ctx, x, y, col, sway) {                // 蕨丛(sway 供动效;烘焙传 0)
+  ctx.strokeStyle = col.fern; ctx.lineWidth = 1.8; ctx.lineCap = 'round';
+  for (const k of [-1, 0, 1]) {
+    ctx.beginPath(); ctx.moveTo(x, y);
+    ctx.quadraticCurveTo(x + k * 5 + sway, y - 7, x + k * 8 + sway, y - 10 + Math.abs(k) * 3);
+    ctx.stroke();
+  }
+  ctx.lineCap = 'butt'; ctx.lineWidth = 1;             // 复位中性值(同 reedAt 惯例,防下游首笔串扰)
+}
+function leafAt(ctx, x, y, col, rot) {                 // 单片红叶(rot 弧度;动效复用)
+  ctx.save(); ctx.translate(x, y); ctx.rotate(rot);
+  ctx.fillStyle = col.leaf;
+  ctx.beginPath(); ctx.ellipse(0, 0, 3, 1.8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+const DECOR_PAINTERS = {
+  tuft(ctx, x, y, v, col) {
+    const s = 0.85 + v * 0.15;
+    ctx.strokeStyle = col.tuft; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 3 * s, y - 6 * s, x - 6 * s, y - 8 * s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 12 * s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 3 * s, y - 6 * s, x + 6 * s, y - 8 * s); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  flower(ctx, x, y, v, col) { flowerAt(ctx, x, y, col); },
+  haystack(ctx, x, y, v, col) {
+    const r = 7 + v;
+    shadowAt(ctx, x, y + 2, r);
+    ctx.fillStyle = col.haystack; ctx.strokeStyle = col.haystackOutline; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x, y); ctx.stroke();
+  },
+  stone(ctx, x, y, v, col) {
+    shadowAt(ctx, x + 2, y + 4, 8);
+    ctx.fillStyle = col.stone; ctx.strokeStyle = col.stoneOutline; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(x, y, 7, 5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (v > 0) { ctx.beginPath(); ctx.ellipse(x + 9, y + 3, 5, 3.5, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
+    ctx.fillStyle = col.stoneHi; ctx.beginPath(); ctx.arc(x - 2, y - 2, 1.5, 0, Math.PI * 2); ctx.fill();
+  },
+  deadBranch(ctx, x, y, v, col) {
+    ctx.strokeStyle = col.deadBranch; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(x - 7, y + 3); ctx.lineTo(x + 7, y - 4); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 4, y + 4); ctx.stroke();
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  },
+  lotus(ctx, x, y, v, col) {
+    ctx.fillStyle = col.lotus; ctx.strokeStyle = col.lotusOutline; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(x, y, 5 + v, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x + 9, y + 3, 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 4, y - 2); ctx.stroke();   // 叶脉缺口
+  },
+  bambooShoot(ctx, x, y, v, col) {
+    ctx.fillStyle = col.shoot; ctx.strokeStyle = col.bambooBase; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - 3, y + 4); ctx.lineTo(x + 3, y + 4); ctx.lineTo(x, y - 7 - v); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  },
+  lonePine(ctx, x, y, v, col) { pineAt(ctx, x, y, C * (0.5 + v * 0.1), col.pineA, col); },
+  rock(ctx, x, y, v, col) { rockAt(ctx, x, y, C * (0.22 + v * 0.05), col); },
+  fern(ctx, x, y, v, col) { fernAt(ctx, x, y, col, 0); },
+  charStump(ctx, x, y, v, col) {
+    shadowAt(ctx, x, y + 5, 6);
+    ctx.fillStyle = col.charStump;
+    ctx.fillRect(x - 3, y - 6 - v, 6, 11 + v);
+    ctx.beginPath(); ctx.ellipse(x, y - 6 - v, 3, 1.5, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = col.ash; ctx.beginPath(); ctx.arc(x + 5, y + 4, 1.5, 0, Math.PI * 2); ctx.fill();
+  },
+  leaf(ctx, x, y, v, col) { leafAt(ctx, x, y, col, v * 0.6); },
+};
+
 // —— 烘焙(spec §3):2× 板像素一次性离屏;只持当前关 1 张(防 50 关全缓存 OOM) ——
 let cache = { id: -1, canvas: null, layout: null, vignette: null };
 
@@ -449,6 +519,10 @@ export function bakeGround(level) {
   for (const p of layout.patches) {
     const painter = PATCH_PAINTERS[p.kind];
     if (painter) painter(ctx, p, theme.colors, blurOk);
+  }
+  for (const d of layout.decors) {
+    const painter = DECOR_PAINTERS[d.kind];
+    if (painter) painter(ctx, (d.x + 0.5) * C, (d.y + 0.6) * C, d.variant, theme.colors);
   }
   cache = { id: level.id, canvas: cv, layout, vignette: null };
   const ms = performance.now() - t0;
