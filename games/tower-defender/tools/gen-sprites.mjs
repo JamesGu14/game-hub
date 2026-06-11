@@ -12,7 +12,9 @@ const OUT = path.resolve('assets/sprites');
 const ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL = 'google/gemini-2.5-flash-image';
 
-const STYLE = '近正俯视 3/4 视角的半写实卡通塔防游戏单位立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，全身站姿，角色居中，脚底位于画面底部中线，纯透明背景，无地面、无阴影、无文字、无边框。';
+// [防黑卡硬化] 人物背景从「纯透明」改「纯白+禁底板」(同建筑版 6227594):Nano Banana 不会真透明,
+// 偶发黑底/底板卡片让 debg 近白管线失效;白底 → debg-pil.py 一次干净。
+const STYLE = '近正俯视 3/4 视角的半写实卡通塔防游戏单位立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，全身站姿，角色居中，脚底位于画面底部中线，纯白背景。画面中只有角色本体：不要任何底板、卡片、色块、画框、边框、地面、阴影，不要任何文字。';
 const STYLE_BUILDING = '近正俯视 3/4 视角的半写实卡通塔防游戏建筑立绘，厚描边，暖色调，类似《王国保卫战 Kingdom Rush》的精细卡通游戏美术。正方形构图，建筑单体居中，底边贴画面底部中线，纯白背景。画面中只有建筑本体：不要任何底板、卡片、色块、画框、边框、地面、阴影，不要任何文字，旗帜一律纯色无字。';
 const styleOf = (u) => (u.cat === 'buildings' ? STYLE_BUILDING : STYLE);
 
