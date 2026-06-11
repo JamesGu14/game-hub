@@ -24,6 +24,7 @@ let bgmOn = false;         // BGM 总开关（startBgm↔stopBgm 之间为 true�
 export function _setAudioContextFactory(f) { ACFactory = f; }   // 注入假 AudioContext
 export function _reset() {                                       // 复位内部（多用例隔离）
   try { stopBgm(); } catch { /* ignore */ }
+  stopVoice();
   for (const e of bgmEls) { if (e) { try { e.pause(); } catch { /* ignore */ } } }
   ctx = null; master = null; muted = false; bgmStep = 0;
   bgmEls.length = 0; bgmEl = null;
@@ -215,3 +216,30 @@ export function setMuted(m) {
   return muted;
 }
 export function isMuted() { return muted; }
+
+// —— [演绎段2] 剧情语音(与 SFX/BGM 的 WebAudio 无关,走 HTMLAudio 流式,本地 mp3 即点即播)——
+// 单实例:切句即停旧播新;muted 复用本模块静音态(静音≠跳过,字幕流程由调用方照走);
+// 缺文件/autoplay 拒绝(无手势的 __td.showStory)→ .catch 静默,绝不影响演绎推进。
+// preloadVoice:建 preload='auto' 实例交给浏览器 HTTP 缓存即弃(spec §4:逐句预热,无整关预载管理)。
+let AudioFactory = typeof Audio !== 'undefined' ? (src) => new Audio(src) : null;
+export function _setAudioFactory(f) { AudioFactory = f; }       // 单测注入
+let voiceEl = null, voiceSrcNow = null;
+
+export function playVoice(src) {
+  stopVoice();
+  if (!src || muted || !AudioFactory) return;
+  try {
+    voiceEl = AudioFactory(src); voiceSrcNow = src;
+    const p = voiceEl.play();
+    if (p && p.catch) p.catch(() => {});
+  } catch { voiceEl = null; voiceSrcNow = null; }
+}
+export function stopVoice() {
+  if (voiceEl) { try { voiceEl.pause(); } catch { /* 已释放 */ } }
+  voiceEl = null; voiceSrcNow = null;
+}
+export function preloadVoice(src) {
+  if (!src || !AudioFactory) return;
+  try { const a = AudioFactory(src); a.preload = 'auto'; } catch { /* 静默 */ }
+}
+export function currentVoiceSrc() { return voiceSrcNow; }       // QA/冒烟断言

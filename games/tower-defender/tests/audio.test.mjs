@@ -101,5 +101,51 @@ function makeFakeAC() {
   assert.equal(audio.bgmTrackForLevel(50), 4, '终关 L50→E');
 }
 
+// —— [演绎段2] 剧情语音:playVoice/stopVoice/preloadVoice(stub Audio 工厂,零 DOM)——
+{
+  audio._reset();
+  const made = [];
+  function FakeAudio(src) {
+    const a = { src, preload: '', paused: false, playCalls: 0, pauseCalls: 0,
+      play() { this.playCalls++; return Promise.resolve(); },
+      pause() { this.pauseCalls++; this.paused = true; } };
+    made.push(a); return a;
+  }
+  audio._setAudioFactory(FakeAudio);
+
+  audio.setMuted(false);
+  audio.playVoice('assets/voice/aaa.mp3');
+  assert.equal(made.length, 1, 'playVoice 建实例');
+  assert.equal(audio.currentVoiceSrc(), 'assets/voice/aaa.mp3', 'currentVoiceSrc');
+  assert.equal(made[0].playCalls, 1, '已 play');
+
+  audio.playVoice('assets/voice/bbb.mp3');                  // 切句:停旧播新
+  assert.equal(made[0].pauseCalls, 1, '旧句已停');
+  assert.equal(audio.currentVoiceSrc(), 'assets/voice/bbb.mp3');
+
+  audio.stopVoice();
+  assert.equal(made[1].pauseCalls, 1, 'stopVoice 停当前');
+  assert.equal(audio.currentVoiceSrc(), null, '停后无 src');
+  audio.stopVoice();                                         // 幂等不抛
+
+  audio.setMuted(true);
+  audio.playVoice('assets/voice/ccc.mp3');                   // muted:不建不播,流程语义由调用方保证
+  assert.equal(made.length, 2, 'muted 不建实例');
+  assert.equal(audio.currentVoiceSrc(), null, 'muted 无 src');
+  audio.setMuted(false);
+
+  audio.preloadVoice('assets/voice/ddd.mp3');                // 预热:建实例置 preload,不播
+  assert.equal(made.length, 3);
+  assert.equal(made[2].preload, 'auto', 'preload=auto');
+  assert.equal(made[2].playCalls, 0, '预热不播');
+  audio.preloadVoice(null);                                  // null 容错
+  assert.equal(made.length, 3);
+
+  // play() 拒绝(autoplay 策略/缺文件)静默:不抛、src 保留(冒烟断言用)
+  audio._setAudioFactory((src) => ({ src, preload: '', play() { return Promise.reject(new Error('autoplay')); }, pause() {} }));
+  audio.playVoice('assets/voice/eee.mp3');
+  assert.equal(audio.currentVoiceSrc(), 'assets/voice/eee.mp3', '拒绝后 src 仍可查');
+}
+
 audio._reset();   // 清理：停 BGM 计时器，避免进程挂起
 console.log('ok audio');
