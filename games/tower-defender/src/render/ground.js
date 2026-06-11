@@ -253,3 +253,240 @@ function pickAccents(theme, rng, patches, decors, landmark) {
   }
   return accents;
 }
+
+// —— 元素小件(拼块 painter 与段2小景/动效共用;描边+投影规格与建筑同族,spec 精修②) ——
+const SHADOW = 'rgba(0,0,0,.18)';
+function ellipseFill(ctx, x, y, rx, ry, fill, alpha = 1) {
+  ctx.globalAlpha = alpha; ctx.fillStyle = fill;
+  ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 1;
+}
+function shadowAt(ctx, x, y, rx) { ellipseFill(ctx, x, y, rx, rx * 0.32, SHADOW); }
+// 软边椭圆:优先 ctx.filter(只在烘焙用);不支持(旧 iPad Safari<17.4)→ 同心三层退化(spec §3)
+function softEllipse(ctx, x, y, rx, ry, fill, blurOk) {
+  if (blurOk) {
+    ctx.filter = 'blur(3px)';
+    ellipseFill(ctx, x, y, rx, ry, fill, 0.9);
+    ctx.filter = 'none';
+  } else {
+    ellipseFill(ctx, x, y, rx * 1.15, ry * 1.15, fill, 0.25);
+    ellipseFill(ctx, x, y, rx * 1.07, ry * 1.07, fill, 0.35);
+    ellipseFill(ctx, x, y, rx, ry, fill, 0.85);
+  }
+}
+function softLobes(ctx, p, fills, blurOk) {   // fills:单色 [c] 或按瓣交替 [c1,c2]
+  p.lobes.forEach((lb, i) =>
+    softEllipse(ctx, (p.cx + lb.dx) * C, (p.cy + lb.dy) * C, lb.rx * C, lb.ry * C, fills[i % fills.length], blurOk));
+}
+// 瓣内确定性散点 k 个:角度黄金角递进+半径分层(零 rng → 烘焙可复现;像素坐标)
+function lobeSpots(p, lb, k) {
+  const spots = [];
+  for (let i = 0; i < k; i++) {
+    const ang = i * 2.4 + p.cx * 0.7 + p.cy * 1.3;
+    const rad = 0.25 + 0.55 * ((i % 3) / 2);
+    spots.push({ x: (p.cx + lb.dx + Math.cos(ang) * lb.rx * rad) * C, y: (p.cy + lb.dy + Math.sin(ang) * lb.ry * rad) * C });
+  }
+  return spots;
+}
+function flowerAt(ctx, x, y, col) {
+  ctx.strokeStyle = col.stem; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y); ctx.stroke();
+  ctx.fillStyle = col.petal;
+  for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) { ctx.beginPath(); ctx.arc(x + dx, y + dy, 1.6, 0, Math.PI * 2); ctx.fill(); }
+  ctx.fillStyle = col.flowerCore; ctx.beginPath(); ctx.arc(x, y, 1.3, 0, Math.PI * 2); ctx.fill();
+}
+function crownAt(ctx, x, y, r, fill, outline) {
+  ctx.fillStyle = fill; ctx.strokeStyle = outline; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+}
+function treeAt(ctx, x, y, r, crownFill, col) {        // 圆冠树(grove/孤树)
+  shadowAt(ctx, x, y + r * 1.5, r * 1.3);
+  ctx.fillStyle = col.trunk; ctx.strokeStyle = col.trunkOutline; ctx.lineWidth = 1;
+  ctx.fillRect(x - 2, y + r * 0.5, 4, r * 0.9); ctx.strokeRect(x - 2, y + r * 0.5, 4, r * 0.9);
+  crownAt(ctx, x, y, r, crownFill, col.crownOutline);
+  ellipseFill(ctx, x - r * 0.3, y - r * 0.4, r * 0.4, r * 0.32, col.crownHi, 0.85);
+}
+function pineAt(ctx, x, y, h, fill, col) {             // 松(三角冠)
+  shadowAt(ctx, x, y + h * 0.55, h * 0.45);
+  ctx.fillStyle = col.trunk; ctx.fillRect(x - 1.5, y + h * 0.35, 3, h * 0.2);
+  ctx.fillStyle = fill; ctx.strokeStyle = col.pineOutline; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(x - h * 0.32, y + h * 0.4); ctx.lineTo(x + h * 0.32, y + h * 0.4); ctx.lineTo(x, y - h * 0.5); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+}
+function rockAt(ctx, x, y, r, col) {                   // 岩块(三角面)
+  shadowAt(ctx, x, y + r * 0.5, r);
+  ctx.fillStyle = col.rock; ctx.strokeStyle = col.rockOutline; ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(x - r, y + r * 0.5); ctx.lineTo(x - r * 0.2, y - r * 0.7); ctx.lineTo(x + r * 0.9, y + r * 0.5); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+}
+function reedAt(ctx, x, y, col, sway) {                // 芦苇(sway=苇顶 x 偏移;烘焙传 0,动效传 sin)
+  ctx.strokeStyle = col.reed; ctx.lineWidth = 2; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + sway, y - 14); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x - 4, y); ctx.quadraticCurveTo(x - 5 + sway, y - 8, x - 8 + sway, y - 12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 4, y); ctx.quadraticCurveTo(x + 5 + sway, y - 8, x + 8 + sway, y - 12); ctx.stroke();
+  ctx.fillStyle = col.reedHead;
+  ctx.beginPath(); ctx.ellipse(x + sway, y - 16, 1.5, 4, 0, 0, Math.PI * 2); ctx.fill();
+}
+
+// —— 拼块 painter 注册表(spec §2/§4):签名 (ctx, patch, theme.colors, blurOk);取色只准经 colors ——
+const PATCH_PAINTERS = {
+  meadow(ctx, p, col, blurOk) {                        // ch1/ch4 共用(各章 colors.meadow 不同)
+    softLobes(ctx, p, [col.meadow], blurOk);
+    const lb = p.lobes[0];
+    softEllipse(ctx, (p.cx + lb.dx - lb.rx * 0.25) * C, (p.cy + lb.dy - lb.ry * 0.3) * C, lb.rx * 0.5 * C, lb.ry * 0.45 * C, col.meadowHi, blurOk);
+  },
+  flowerField(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.field, col.fieldB], blurOk);
+    for (const lb of p.lobes) for (const s of lobeSpots(p, lb, 4)) flowerAt(ctx, s.x, s.y, col);
+  },
+  grove(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.groveBase], blurOk);
+    for (const lb of p.lobes) {
+      const s = lobeSpots(p, lb, 2);
+      treeAt(ctx, s[0].x, s[0].y, C * 0.30, col.crownA, col);
+      treeAt(ctx, s[1].x, s[1].y, C * 0.24, col.crownB, col);
+    }
+  },
+  sandbar(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.sandbar], blurOk);
+    const lb = p.lobes[0];
+    softEllipse(ctx, (p.cx + lb.dx) * C, (p.cy + lb.dy - lb.ry * 0.3) * C, lb.rx * 0.6 * C, lb.ry * 0.4 * C, col.sandbarHi, blurOk);
+  },
+  reedCluster(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.reedBase], blurOk);
+    for (const lb of p.lobes) for (const s of lobeSpots(p, lb, 3)) reedAt(ctx, s.x, s.y, col, 0);
+  },
+  dryField(ctx, p, col) {                              // 旱田:瓣外接盒转圆角矩形+横垄
+    for (const lb of p.lobes) {
+      const x = (p.cx + lb.dx - lb.rx) * C, y = (p.cy + lb.dy - lb.ry) * C, w = lb.rx * 2 * C, h = lb.ry * 2 * C;
+      ctx.fillStyle = col.dryField;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+      ctx.strokeStyle = col.furrow; ctx.lineWidth = 2;
+      for (let fy = y + 6; fy < y + h - 3; fy += 7) { ctx.beginPath(); ctx.moveTo(x + 5, fy); ctx.lineTo(x + w - 5, fy); ctx.stroke(); }
+    }
+  },
+  bamboo(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.bambooBase], blurOk);
+    ctx.strokeStyle = col.stalk; ctx.lineCap = 'round';
+    for (const lb of p.lobes) for (const s of lobeSpots(p, lb, 4)) {
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y + C * 0.4); ctx.lineTo(s.x, s.y - C * 0.45); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(s.x, s.y - C * 0.3); ctx.lineTo(s.x + 6, s.y - C * 0.42); ctx.stroke();
+    }
+  },
+  paddy(ctx, p, col) {                                 // 稻田:圆角矩形+水线+苗点
+    for (const lb of p.lobes) {
+      const x = (p.cx + lb.dx - lb.rx) * C, y = (p.cy + lb.dy - lb.ry) * C, w = lb.rx * 2 * C, h = lb.ry * 2 * C;
+      ctx.fillStyle = col.paddy;
+      ctx.beginPath(); ctx.roundRect(x, y, w, h, 6); ctx.fill();
+      ctx.strokeStyle = col.waterLine; ctx.lineWidth = 2; ctx.globalAlpha = 0.8;
+      for (let fy = y + 8; fy < y + h - 4; fy += 10) { ctx.beginPath(); ctx.moveTo(x + 5, fy); ctx.lineTo(x + w - 5, fy); ctx.stroke(); }
+      ctx.globalAlpha = 1; ctx.fillStyle = col.sprout;
+      for (const s of lobeSpots(p, lb, 4)) { ctx.beginPath(); ctx.arc(s.x, s.y, 1.4, 0, Math.PI * 2); ctx.fill(); }
+    }
+  },
+  wetland(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.wetland], blurOk);
+    ctx.fillStyle = col.wetDot; ctx.globalAlpha = 0.7;
+    for (const lb of p.lobes) for (const s of lobeSpots(p, lb, 3)) { ctx.beginPath(); ctx.arc(s.x, s.y, 1.6, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+  },
+  pineWood(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.pineWoodBase], blurOk);
+    for (const lb of p.lobes) {
+      const s = lobeSpots(p, lb, 2);
+      pineAt(ctx, s[0].x, s[0].y, C * 0.55, col.pineA, col);
+      pineAt(ctx, s[1].x, s[1].y, C * 0.42, col.pineB, col);
+    }
+  },
+  rockSlope(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.rockSlope], blurOk);
+    for (const lb of p.lobes) {
+      const s = lobeSpots(p, lb, 2);
+      rockAt(ctx, s[0].x, s[0].y, C * 0.3, col);
+      rockAt(ctx, s[1].x, s[1].y, C * 0.22, col);
+    }
+  },
+  mapleWood(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.mapleBase], blurOk);
+    for (const lb of p.lobes) {
+      const s = lobeSpots(p, lb, 3);
+      crownAt(ctx, s[0].x, s[0].y, C * 0.28, col.crownA, col.crownOutline);
+      crownAt(ctx, s[1].x, s[1].y, C * 0.33, col.crownB, col.crownOutline);
+      crownAt(ctx, s[2].x, s[2].y, C * 0.24, col.crownC, col.crownOutline);
+    }
+  },
+  scorch(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.scorch], blurOk);
+    ctx.fillStyle = col.ash;
+    for (const lb of p.lobes) for (const s of lobeSpots(p, lb, 4)) { ctx.beginPath(); ctx.arc(s.x, s.y, 1.5, 0, Math.PI * 2); ctx.fill(); }
+  },
+  dryGrass(ctx, p, col, blurOk) {
+    softLobes(ctx, p, [col.dryGrass], blurOk);
+    const lb = p.lobes[0];
+    softEllipse(ctx, (p.cx + lb.dx) * C, (p.cy + lb.dy - lb.ry * 0.25) * C, lb.rx * 0.55 * C, lb.ry * 0.4 * C, col.dryGrassHi, blurOk);
+  },
+};
+
+// —— 烘焙(spec §3):2× 板像素一次性离屏;只持当前关 1 张(防 50 关全缓存 OOM) ——
+let cache = { id: -1, canvas: null, layout: null, vignette: null };
+
+export function bakeGround(level) {
+  if (cache.id === level.id && cache.canvas) return cache;
+  const t0 = performance.now();
+  const layout = computeGroundLayout(level);
+  const theme = themeOf(level.chapter);
+  const cv = document.createElement('canvas');
+  cv.width = level.cols * C * 2; cv.height = level.rows * C * 2;
+  const ctx = cv.getContext('2d');
+  ctx.scale(2, 2);
+  ctx.filter = 'blur(1px)';                            // 软边能力检测(spec §3 兼容退化)
+  const blurOk = ctx.filter === 'blur(1px)';
+  ctx.filter = 'none';
+  paintBase(ctx, level, theme, layout);
+  for (const p of layout.patches) {
+    const painter = PATCH_PAINTERS[p.kind];
+    if (painter) painter(ctx, p, theme.colors, blurOk);
+  }
+  cache = { id: level.id, canvas: cv, layout, vignette: null };
+  const ms = performance.now() - t0;
+  if (ms > 30) console.warn(`[ground] bake L${level.id} ${ms.toFixed(1)}ms > 30ms 预算`);
+  return cache;
+}
+
+function paintBase(ctx, level, theme, layout) {        // 弱格子 + 种子色抖动
+  const [gA, gB] = theme.grass;
+  for (let r = 0; r < level.rows; r++) for (let c = 0; c < level.cols; c++) {
+    ctx.fillStyle = ((r + c) & 1) ? gA : gB;
+    ctx.fillRect(c * C, r * C, C, C);
+  }
+  ctx.globalAlpha = 0.3;
+  for (const j of layout.jitterCells) {
+    ctx.fillStyle = theme.jitter[j.colorIdx];
+    ctx.fillRect(j.x * C, j.y * C, C, C);
+  }
+  ctx.globalAlpha = 1;
+}
+
+// 战斗帧:贴 1 张烘焙图(板坐标;比旧版每帧 336 个 fillRect 快)
+export function drawGround(ctx, state) {
+  const lvl = state.level;
+  const { canvas } = bakeGround(lvl);                  // 兜底懒烘(enterLevel 已预烘则直接命中)
+  ctx.drawImage(canvas, 0, 0, lvl.cols * C, lvl.rows * C);
+}
+
+// 暗角:帧内 1 次填充;渐变对象进关缓存(spec §3,画在路之后压住路的边角)
+export function drawVignette(ctx, state) {
+  const lvl = state.level;
+  const entry = bakeGround(lvl);
+  const W = lvl.cols * C, H = lvl.rows * C;
+  if (!entry.vignette) {
+    const g = ctx.createRadialGradient(W / 2, H * 0.45, Math.min(W, H) * 0.45, W / 2, H * 0.45, Math.max(W, H) * 0.72);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, themeOf(lvl.chapter).vignette);
+    entry.vignette = g;
+  }
+  ctx.fillStyle = entry.vignette;
+  ctx.fillRect(0, 0, W, H);
+}
