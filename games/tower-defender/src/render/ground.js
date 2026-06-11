@@ -506,7 +506,9 @@ export const LANDMARK_COLORS = {
   cloth: '#b3a079', clothDark: '#7a6a4a', flag: '#a8323a', fire: '#e08a3c',
   smoke: '#9a9aa2', char: '#3f352c', ash: '#6e645a', bambooA: '#8ab368', bambooB: '#9ec07a',
 };
-export const LANDMARK_META = { stoneTower: { smokeDy: -1.2 } };   // accent 锚点偏移(C 单位;spec §5.7)
+// accent 锚点偏移(C 单位;spec §5.7)。smokeDy 推导:accent 锚 y=(landmark.y+1)C=块中心,塔顶≈footY-33px
+// =(landmark.y+2)C-4-33≈(landmark.y+0.97)C → 中心上移 ~1.2C 即略高于塔顶(烟起点);改塔高须同步调。
+export const LANDMARK_META = { stoneTower: { smokeDy: -1.2 } };
 const LK = LANDMARK_COLORS;
 
 // 签名 (ctx, cx, footY):cx=2×2 块中心x,footY=块底边像素(投影/立面同建筑 billboard 规)
