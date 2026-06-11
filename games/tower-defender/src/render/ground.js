@@ -585,6 +585,7 @@ const LANDMARK_PAINTERS = {
     ctx.beginPath(); ctx.roundRect(cx - 8, footY - 30, 16, 14, 2); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.roundRect(cx - 11, footY - 33, 22, 3, 1); ctx.fill(); ctx.stroke();
     ctx.fillStyle = LK.char; ctx.fillRect(cx - 2, footY - 27, 4, 5);
+    ctx.lineWidth = 1;   // 复位(质量审:残留1.5)
   },
   trestle(ctx, cx, footY) {      // 栈道木架:X 腿+横板+三短柱
     shadowAt(ctx, cx, footY, C * 0.45);
