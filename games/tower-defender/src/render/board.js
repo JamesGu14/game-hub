@@ -5,7 +5,7 @@ import { tintOf } from '../data/factions.js';
 import { assets } from '../core/assets.js';
 import { aspect } from './entityRenderer.js';
 import { plateRect } from './plate.js';
-import { drawGround, drawVignette } from './ground.js';
+import { drawGround, drawVignette, drawGroundAccents } from './ground.js';
 import { themeOf } from '../data/chapterThemes.js';
 
 const C = BAL.CELL;
@@ -51,7 +51,7 @@ export function drawBoard(ctx, state) {
 
   drawTerrainFx(ctx, state);   // [地形] 特效层：压在路上(落石警示圈/落石尘圈/火谷火苗/浅滩波光;spec §5 顺序)
 
-  if (BAL.GROUND_THEMES) drawVignette(ctx, state);   // [背景spec §3] 暗角:路之后才能压住路的边角(段2在此前插 accents)
+  if (BAL.GROUND_THEMES) { drawGroundAccents(ctx, state); drawVignette(ctx, state); }   // [背景spec §3] 层序:地形特效→轻动效→暗角→将位
 
   // 将位（未占用 = 虚线绿框）
   ctx.setLineDash([4, 3]); ctx.lineWidth = 2; ctx.strokeStyle = '#9be07a';

@@ -695,3 +695,47 @@ export function drawVignette(ctx, state) {
   ctx.fillRect(0, 0, W, H);
   ctx.restore();
 }
+
+// —— 轻动效(spec §6):time 驱动零随机;叠加式覆画(烘焙底不动);每关 ≤3 处,帧开销远低于地形特效 ——
+export function drawGroundAccents(ctx, state) {
+  const entry = bakeGround(state.level);
+  const accents = entry.layout.accents;
+  if (!accents.length) return;
+  const col = themeOf(state.level.chapter).colors;
+  const t = state.time || 0;
+  ctx.save();
+  for (const a of accents) {
+    const px = a.x * C, py = a.y * C;
+    if (a.kind === 'flowerTwinkle') {                  // alpha = .6+.4·sin(t·2+phase)
+      ctx.globalAlpha = Math.max(0, 0.6 + 0.4 * Math.sin(t * 2 + a.phase));
+      ctx.fillStyle = col.petal;
+      ctx.beginPath(); ctx.arc(px, py, 2.2, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = col.flowerCore;
+      ctx.beginPath(); ctx.arc(px, py, 1.1, 0, Math.PI * 2); ctx.fill();
+      ctx.globalAlpha = 1;
+    } else if (a.kind === 'reedSway') {                // 苇顶 x 偏移 sin(t·1.5+phase)·3px
+      reedAt(ctx, px, py, col, Math.sin(t * 1.5 + a.phase) * 3);
+    } else if (a.kind === 'bambooSway') {              // 竹端小幅旋摆(顶端偏移近似 ±8°)
+      const sway = Math.sin(t * 1.2 + a.phase) * 4;
+      ctx.strokeStyle = col.stalk; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(px, py + C * 0.4);
+      ctx.quadraticCurveTo(px, py - C * 0.1, px + sway, py - C * 0.5); ctx.stroke();
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(px + sway * 0.7, py - C * 0.35); ctx.lineTo(px + sway * 0.7 + 6, py - C * 0.47); ctx.stroke();
+    } else if (a.kind === 'smokeRise') {               // 狼烟:城堡烟雾同式细灰白版,自塔顶(LANDMARK_META)
+      const top = py + LANDMARK_META.stoneTower.smokeDy * C;
+      const sway = Math.sin(t * 0.9 + a.phase) * C * 0.18;
+      ctx.strokeStyle = LANDMARK_COLORS.smoke; ctx.lineWidth = C * 0.14; ctx.lineCap = 'round';
+      ctx.globalAlpha = 0.3 + 0.12 * Math.sin(t * 1.7 + a.phase);
+      ctx.beginPath(); ctx.moveTo(px, top);
+      ctx.bezierCurveTo(px + sway, top - C * 0.5, px - sway, top - C * 0.9, px + sway * 1.4, top - C * 1.3);
+      ctx.stroke(); ctx.globalAlpha = 1;
+    } else if (a.kind === 'fernSway') {                // 蕨丛微动(狼烟降级/补足项)
+      fernAt(ctx, px, py, col, Math.sin(t * 1.4 + a.phase) * 2.5);
+    } else if (a.kind === 'leafDrift') {               // 红叶绕锚点椭圆轨迹缓漂(rx12,ry6,θ=t·0.3+phase)
+      const th = t * 0.3 + a.phase;
+      leafAt(ctx, px + Math.cos(th) * 12, py + Math.sin(th) * 6, col, th);
+    }
+  }
+  ctx.restore();
+}
