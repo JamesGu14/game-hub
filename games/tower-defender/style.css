@@ -1,6 +1,28 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
-html, body { width: 100%; height: 100%; overflow: hidden; background: #1a120b; font-family: system-ui, sans-serif; }
-#game { display: block; width: 100vw; height: 100vh; touch-action: none; cursor: pointer; }
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #1a120b;
+  font-family: system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: none;
+}
+
+#game {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+  touch-action: none;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
 #back-to-hub {
   position: fixed; top: 10px; left: 10px; z-index: 10; color: #ffe0a8;
   background: rgba(0, 0, 0, .45); padding: 6px 12px; border-radius: 8px;
