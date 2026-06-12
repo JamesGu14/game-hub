@@ -3,7 +3,8 @@
 // 用法:`node tools/verify-levels.mjs`(CLI,有问题 exit 1);单测 import { verifyLevel }。
 import { LEVELS } from '../src/data/levels.js';
 import { ENEMIES } from '../src/data/enemies.js';
-import { samplePathCells } from '../src/data/boardVariants.js';
+import { samplePathCells, samplePathPoints, SLOT_MAX_DIST } from '../src/data/boardVariants.js';
+import { BAL } from '../src/data/balance.js';
 
 export const MIN_RANGE = 2.5;       // 将塔最小射程(格);§17.4
 const SAMPLE_STEP = 0.25;           // 沿段采样步长(格)
@@ -64,6 +65,29 @@ export function verifyLevel(level) {
     if (castleCells.has(`${s.x},${s.y}`)) errors.push(`L${id}: 将位 (${s.x},${s.y}) 落在成都上`);
   }
 
+  // ⑤ [将位贴路] 每将位距活跃路 ≤ SLOT_MAX_DIST(高台 +PLATEAU_RANGE_BONUS)。
+  // 与 resolveBoard 将位过滤同源(samplePathPoints),防"被排除路旁的悬空将位"回归。
+  const pathPts = samplePathPoints(level.paths || {});
+  const plateauCells = new Set();
+  if (Array.isArray(level.terrain)) {
+    for (const z of level.terrain) {
+      if (z.type === 'plateau') for (const c of z.cells) plateauCells.add(`${c.x},${c.y}`);
+    }
+  }
+  const minPathDist = (x, y) => {
+    let best = Infinity;
+    for (const p of pathPts) {
+      const d = Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y);
+      if (d < best) best = d;
+    }
+    return best;
+  };
+  for (const s of level.slots || []) {
+    const lim = SLOT_MAX_DIST + (plateauCells.has(`${s.x},${s.y}`) ? BAL.PLATEAU_RANGE_BONUS : 0);
+    const d = minPathDist(s.x, s.y);
+    if (d > lim + 1e-9) errors.push(`L${id}: 将位 (${s.x},${s.y}) 离活跃路 ${d.toFixed(2)} 格 (>${lim})`);
+  }
+
   // wave 引用合法
   for (const w of level.waves || []) {
     for (const sp of w.spawns || []) {
@@ -93,12 +117,15 @@ export function verifyLevel(level) {
       if (!['shallow', 'rockfall', 'firegully'].includes(z.type)) continue;
       if (!z.cells.some((c) => pathCells.has(cellKey(c)))) errors.push(`L${id}: ${z.type} 区未覆盖任何路径格`);
     }
-    // ④ plateau:不含路径格(高台上不走兵) + 每区至少含 1 个将位格(否则机制无感)
+    // ④ plateau:不含路径格(高台上不走兵) + 每区至少含 1 个将位格(否则机制无感)。
+    // [将位贴路] 放宽:高台距活跃路超出可及范围(SLOT_MAX_DIST+加成)时豁免——
+    // 路子集关该高台俯瞰的路被排除,其将位已被 resolveBoard 剔除,本关高台纯装饰。
     const slotSet = new Set((level.slots || []).map((s) => `${s.x},${s.y}`));
     for (const z of level.terrain) {
       if (z.type !== 'plateau') continue;
       if (z.cells.some((c) => pathCells.has(cellKey(c)))) errors.push(`L${id}: plateau 区压住路径格`);
-      if (!z.cells.some((c) => slotSet.has(cellKey(c)))) errors.push(`L${id}: plateau 区不含任何将位格(机制无感)`);
+      const reachable = z.cells.some((c) => minPathDist(c.x, c.y) <= SLOT_MAX_DIST + BAL.PLATEAU_RANGE_BONUS + 1e-9);
+      if (reachable && !z.cells.some((c) => slotSet.has(cellKey(c)))) errors.push(`L${id}: plateau 区不含任何将位格(机制无感)`);
     }
   }
 

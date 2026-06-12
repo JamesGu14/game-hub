@@ -1,7 +1,8 @@
 // tests/boardVariants.test.mjs — 变体引擎纯函数性质 + (后续任务起)基板全组合 verify
 // 运行:node games/tower-defender/tests/boardVariants.test.mjs
 import assert from 'node:assert';
-import { mirrorBoard, variantFor, pathSubsetFor, expandTerrain } from '../src/data/boardVariants.js';
+import { mirrorBoard, variantFor, pathSubsetFor, expandTerrain, resolveBoard, samplePathPoints, SLOT_MAX_DIST } from '../src/data/boardVariants.js';
+import { BAL } from '../src/data/balance.js';
 import { verifyLevel } from '../tools/verify-levels.mjs';
 import { genWaves } from '../src/data/waveGen.js';
 import { BASE_BOARDS } from '../src/data/baseBoards.js';
@@ -154,6 +155,32 @@ assert.ok(fixLevel([{ type: 'rockfall', cells: [{ x: 20, y: 0 }] }]).errors.some
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 5, y: 5 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 压路报错');
 assert.ok(fixLevel([{ type: 'plateau', cells: [{ x: 20, y: 0 }] }]).errors.some((e) => e.includes('plateau')), '④plateau 无将位报错');
 assert.equal(fixLevel([{ type: 'plateau', cells: [{ x: 6, y: 10 }] }]).errors.length, 0, '④plateau 含将位通过');
+
+// —— [将位贴路] resolveBoard 将位过滤:子集关剔除"被排除路旁"的悬空将位 ——
+{
+  const minD = (pts, s) => {
+    let best = Infinity;
+    for (const p of pts) { const d = Math.hypot(s.x + 0.5 - p.x, s.y + 0.5 - p.y); if (d < best) best = d; }
+    return best;
+  };
+  // 子集关(ch1 k=1:仅 a/b 两路激活,c 被排除)→ 有剔除,且余位全部贴活跃路
+  const sub = resolveBoard(1, 1);
+  const subFull = BASE_BOARDS.ch1A.slotsVariants[variantFor(1, 1).slotsIdx].length;
+  assert.ok(sub.slots.length < subFull, `子集关应有剔除(${sub.slots.length} < ${subFull})`);
+  const pts = samplePathPoints(sub.paths);
+  for (const s of sub.slots) {
+    const lim = SLOT_MAX_DIST + (sub.terrainAt[s.y][s.x] === 'plateau' ? BAL.PLATEAU_RANGE_BONUS : 0);
+    assert.ok(minD(pts, s) <= lim + 1e-9, `子集关余位 (${s.x},${s.y}) 距活跃路 ${minD(pts, s).toFixed(2)} 应 ≤${lim}`);
+  }
+  // 全路关(k=0)零剔除:将位套按全路设计,全部天然贴路
+  const full = resolveBoard(1, 0);
+  assert.equal(full.slots.length, BASE_BOARDS.ch1A.slotsVariants[variantFor(1, 0).slotsIdx].length, '全路关不剔除');
+  // samplePathPoints:单段路 4 格长 → 0.25 步 17 点,首末点=格中心
+  const sp = samplePathPoints({ a: [{ x: 0, y: 0 }, { x: 4, y: 0 }] });
+  assert.equal(sp.length, 17, '0.25 步采样点数');
+  assert.deepEqual(sp[0], { x: 0.5, y: 0.5 }, '首点=格中心');
+  assert.deepEqual(sp[sp.length - 1], { x: 4.5, y: 0.5 }, '末点=格中心');
+}
 
 // —— 真实基板全组合:每板 × 4 镜像 × 3 将位套 全过 verifyLevel + 镜像指纹去重(防对称基板撞图)——
 const fp = (paths, slots) => JSON.stringify(paths) + '|' + JSON.stringify(slots);

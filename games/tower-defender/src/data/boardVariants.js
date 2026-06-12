@@ -2,6 +2,11 @@
 // 三维变体:镜像(×4) × 将位套(×3) × 路子集(前半窗口轮换) → 50 关路线或将位全部唯一。
 // 铁律:本文件不 import campaign(防环);resolveBoard 是 levels.js 的唯一取板入口。
 import { BASE_BOARDS } from './baseBoards.js';
+import { BAL } from './balance.js';
+
+// [将位贴路] 将位距活跃路的最大距离(格):≤3.5 时 L1 黄忠(3.5)即可及、视觉贴路;
+// 高台位放宽 +PLATEAU_RANGE_BONUS。resolveBoard 过滤与 verify-levels ⑤ 共用(同源铁律)。
+export const SLOT_MAX_DIST = 3.5;
 
 const MIRRORS = ['none', 'h', 'v', 'hv'];
 const SLOTS_VARIANTS = 3;                       // 每板固定 3 套(2 套时章内后半 (mirror,slotsIdx) 会撞车,已推演)
@@ -101,6 +106,26 @@ export function samplePathCells(paths) {
   return cells;
 }
 
+// —— 路径连续采样点(格中心坐标):0.25 步插值,无出生豁免。
+// [将位贴路] resolveBoard 将位过滤与 verify-levels ⑤ 共用(两处判定"将位离路多远"必须同一算法防漂移)。
+export function samplePathPoints(paths) {
+  const pts = [];
+  for (const pid of Object.keys(paths || {})) {
+    const wp = paths[pid];
+    if (!Array.isArray(wp)) continue;
+    for (let i = 0; i < wp.length - 1; i++) {
+      const a = wp[i], b = wp[i + 1];
+      const L = Math.hypot(b.x - a.x, b.y - a.y) || 1e-6;
+      const steps = Math.max(1, Math.ceil(L / 0.25));
+      for (let step = 0; step <= steps; step++) {
+        const t = step / steps;
+        pts.push({ x: a.x + (b.x - a.x) * t + 0.5, y: a.y + (b.y - a.y) * t + 0.5 });
+      }
+    }
+  }
+  return pts;
+}
+
 // —— 总装:查板 → 镜像 → 选将位套 → 路子集过滤 → terrain 展开(levels.js 唯一入口)——
 export function resolveBoard(chapter, k) {
   const { boardId, mirror, slotsIdx } = variantFor(chapter, k);
@@ -127,10 +152,22 @@ export function resolveBoard(chapter, k) {
       for (const c of z.cells) terrainAt[c.y][c.x] = null;
     }
   }
+  // [将位贴路] 路子集关将位过滤:为被排除道路设计的将位(距活跃路 > SLOT_MAX_DIST)剔除,
+  // 与上方动态地形过滤同理。被剔位距活跃路 >3.5 > MIN_RANGE(2.5),对"无漏怪"覆盖判定贡献恒为 0
+  // → 数学上不可能新增漏怪、不伤 winnable;高台位 +PLATEAU_RANGE_BONUS 放宽(塔在高台射程更远)。
+  const pp = samplePathPoints(paths);
+  const slots = b.slotsVariants[slotsIdx].filter((s) => {
+    const plateau = terrainAt[s.y] && terrainAt[s.y][s.x] === 'plateau';
+    const lim = SLOT_MAX_DIST + (plateau ? BAL.PLATEAU_RANGE_BONUS : 0) + 1e-9;
+    for (const p of pp) {
+      if (Math.hypot(s.x + 0.5 - p.x, s.y + 0.5 - p.y) <= lim) return true;
+    }
+    return false;
+  });
   return {
     id: boardId, mirror, slotsIdx,
     cols: b.cols, rows: b.rows, castle: b.castle,
-    camps, paths, slots: b.slotsVariants[slotsIdx],
+    camps, paths, slots,
     terrain, terrainAt,
   };
 }
