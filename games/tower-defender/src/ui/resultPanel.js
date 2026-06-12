@@ -26,7 +26,7 @@ export function hitResult(view, state, total, sx, sy) {
 export function drawResult(ctx, view, state, total, opts = {}) {
   const won = state.phase === 'won';
   const cx = view.w / 2, cy = view.h / 2;
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);   // [C5] 屏幕坐标含 dpr
   ctx.fillStyle = 'rgba(8,6,4,.66)'; ctx.fillRect(0, 0, view.w, view.h);   // 压暗
 
   // 居中木匾底板（宽度容纳按钮组）

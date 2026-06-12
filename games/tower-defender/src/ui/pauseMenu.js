@@ -36,7 +36,7 @@ export function hitPause(view, sx, sy) {
 
 // state 可选：传入则显示「第 N 关 · 关名」副标题。muted：静音项 label 动态显示。
 export function drawPause(ctx, view, state, muted = false) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);   // [C5] 屏幕坐标含 dpr
   ctx.fillStyle = 'rgba(8,6,4,.62)'; ctx.fillRect(0, 0, view.w, view.h);   // 压暗
 
   const P = panelRect(view);

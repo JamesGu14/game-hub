@@ -36,7 +36,7 @@ const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
 const bannerEl = document.getElementById('banner');
 
-const view = { w: 0, h: 0, scale: 1, ox: 0, oy: 0 };
+const view = { w: 0, h: 0, scale: 1, ox: 0, oy: 0, dpr: 1 };   // [C5] dpr：渲染变换乘子；w/h 恒为逻辑像素(布局/命中不变)
 let state = null;
 let save = null;
 let screen = 'select';        // [P4/检查点A] 'select' | 'story' | 'playing'
@@ -171,8 +171,13 @@ function drawFsButton() {
 const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
 
 function resize() {
-  view.w = canvas.width = window.innerWidth;
-  view.h = canvas.height = window.innerHeight;
+  // [C5] Retina/DPI：backing store = 逻辑像素 × dpr（封顶 2× 平衡清晰度与 GPU/内存）；
+  // CSS 尺寸由 #game{100vw/100vh} 钉在逻辑像素，浏览器降采样 → 清晰。view.w/h 仍是逻辑像素。
+  view.dpr = Math.min(window.devicePixelRatio || 1, 2);
+  view.w = window.innerWidth;
+  view.h = window.innerHeight;
+  canvas.width = Math.round(view.w * view.dpr);
+  canvas.height = Math.round(view.h * view.dpr);
   const bw = state.level.cols * C, bh = state.level.rows * C;
   const TOP = HUD_H + 6, BOT = 76, availH = view.h - TOP - BOT;
   view.scale = Math.min(view.w / bw, availH / bh);
@@ -194,13 +199,14 @@ function render(s) {
   if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); drawFsButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
+  ctx.setTransform(d, 0, 0, d, 0, 0);
   backdrop(ctx, view.w, view.h);
   // [P5] 棋盘木框托盘（屏幕坐标，使战场与 UI 统一）
   const bpw = s.level.cols * C * view.scale, bph = s.level.rows * C * view.scale;
   panel(ctx, view.ox - 7, view.oy - 7, bpw + 14, bph + 14, { variant: 'wood', r: 8 });
 
-  ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
+  ctx.setTransform(view.scale * d, 0, 0, view.scale * d, view.ox * d, view.oy * d);
   drawBoard(ctx, s);
 
   if (hover) {
@@ -245,7 +251,7 @@ function render(s) {
     sfxPhase = s.phase;
   }
 
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(d, 0, 0, d, 0, 0);
   vignette(ctx, view.w, view.h);
   drawHud(ctx, s, view, fsState());
   drawBuildBar(ctx, s, view, selected);

@@ -49,7 +49,7 @@ export function drawHeroCard(ctx, view, generalId, anchor) {
   const g = GENERALS[generalId];
   if (!g) return;
   const lore = HERO_LORE[generalId] || { bio: '', trait: '' };
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);   // [C5] 屏幕坐标含 dpr
 
   ctx.font = FONT.body(12);
   const bioLines = wrap(ctx, lore.bio, CW - PAD * 2 - PORT - 10);

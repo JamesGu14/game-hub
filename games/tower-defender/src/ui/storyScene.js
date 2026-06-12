@@ -105,7 +105,7 @@ function wrapLines(ctx, text, maxW) {
 
 // —— draw ——
 export function drawStoryScene(ctx, view, st, level, nowMs) {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);   // [C5] 屏幕坐标含 dpr
   backdrop(ctx, view.w, view.h);
   if (st.act === 'narration') drawNarration(ctx, view, st, level);
   else drawDialogue(ctx, view, st, level, nowMs);
