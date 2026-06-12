@@ -10,7 +10,9 @@ import { pathSubsetFor } from './boardVariants.js';
 
 export const CHAPTERS = [
   { id: 1, title: '天下大乱·诸侯并起', faction: 'wei', templates: ['ch1A', 'ch1B'], tiers: ['footman', 'wolf'], bossPool: ['huaxiong', 'lvbu', 'menghuo'], lieutenantPool: ['lidian', 'yujin', 'yuejin', 'caohong'], diffLo: 0.0, diffHi: 0.8 },
-  { id: 2, title: '官渡之争·以弱胜强', faction: 'wei', templates: ['ch2A', 'ch2B'], tiers: ['footman', 'wolf', 'heavy'], bossPool: ['yanliang', 'wenchou', 'zhangliao'], lieutenantPool: ['yuejin', 'caohong', 'caoxiu', 'niujin'], diffLo: 0.8, diffHi: 1.6 },
+  // [2026-06-13 平衡] ch2 去 heavy:重甲克制(诸葛/关羽)L21 才解锁,L18-20 重甲=无解题(实测墙);
+  // 官渡主题=兵海以弱胜强,难度靠 diffK 数量曲线给。heavy 首秀顺延至 ch3 骨架带(L25,克制已到手)。
+  { id: 2, title: '官渡之争·以弱胜强', faction: 'wei', templates: ['ch2A', 'ch2B'], tiers: ['footman', 'wolf'], bossPool: ['yanliang', 'wenchou', 'zhangliao'], lieutenantPool: ['yuejin', 'caohong', 'caoxiu', 'niujin'], diffLo: 0.8, diffHi: 1.6 },
   { id: 3, title: '火烧赤壁·三分天下', faction: 'wu', templates: ['ch3A', 'ch3B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'], bossPool: ['caocao', 'ganning', 'sunquan'], lieutenantPool: ['zhoutai', 'jiangqin', 'dingfeng', 'xusheng'], diffLo: 1.6, diffHi: 2.4 },
   { id: 4, title: '进取西川·汉中之战', faction: 'wei', templates: ['ch4A', 'ch4B'], tiers: ['footman', 'wolf', 'heavy', 'tengjia'], bossPool: ['xiahouyuan', 'zhangren', 'caoren'], lieutenantPool: ['lidian', 'yujin', 'caoxiu', 'niujin'], diffLo: 2.4, diffHi: 3.2 },
   { id: 5, title: '夷陵之火·六出祁山', faction: 'wu', templates: ['ch5A', 'ch5B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'], bossPool: ['luxun', 'zhuran', 'zhanghe', 'xuchu'], lieutenantPool: ['dingfeng', 'xusheng', 'panzhang', 'handang'], diffLo: 3.2, diffHi: 4.0 },
@@ -54,7 +56,7 @@ const SAMPLES = {
     },
   },
   11: {
-    name: '长坂坡之战', faction: 'wei', templateId: 'ch2A', pathSubset: ['a', 'b', 'c', 'd'], enemyTiers: ['footman', 'wolf', 'heavy'],
+    name: '长坂坡之战', faction: 'wei', templateId: 'ch2A', pathSubset: ['a', 'b', 'c', 'd'], enemyTiers: ['footman', 'wolf'],   // [平衡] 章首=该章最易:tiers 对齐位置带(heavy 章内 L18 登场;旧挂全章池致第15波重甲墙)
     boss: { id: 'zhangliao', name: '张辽', hpMult: 1.0 },
     lieutenants: ['yuejin', 'caohong'],   // 乐进、曹洪
     story: { hook: '赵云七进七出，怀里护着小阿斗！', year: '公元208年', place: '当阳·长坂坡', sides: '刘备军 vs 曹操追兵', result: '赵云单骑救主', idiom: '单骑救主', portrait: 'zhao',
@@ -74,7 +76,7 @@ const SAMPLES = {
     },
   },
   21: {
-    name: '赤壁之战', faction: 'wu', templateId: 'ch3A', pathSubset: ['a', 'b', 'c', 'd', 'e'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'],
+    name: '赤壁之战', faction: 'wu', templateId: 'ch3A', pathSubset: ['a', 'b', 'c', 'd', 'e'], enemyTiers: ['footman', 'wolf'],   // [平衡] 同 L11:heavy/flyer/shaman 由章内骨架渐进引入(L26/L27/L29)
     boss: { id: 'caocao', name: '曹操', hpMult: 1.3 },
     lieutenants: ['caohong', 'caoxiu'],   // 曹洪、曹休
     story: { hook: '借东风一把火，烧退曹操八十万大军！', year: '公元208年', place: '长江·赤壁', sides: '孙刘联军 vs 曹操', result: '曹操大败，三分天下', idiom: '火烧赤壁', portrait: 'zhuge',
@@ -95,7 +97,7 @@ const SAMPLES = {
     },
   },
   31: {
-    name: '定军山之战', faction: 'wei', templateId: 'ch4A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f'], enemyTiers: ['footman', 'wolf', 'heavy', 'tengjia'],
+    name: '定军山之战', faction: 'wei', templateId: 'ch4A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f'], enemyTiers: ['footman', 'wolf'],   // [平衡] 同 L11:heavy/tengjia 由章内骨架渐进引入
     boss: { id: 'xiahouyuan', name: '夏侯渊', hpMult: 1.1 },
     lieutenants: ['yujin', 'niujin'],   // 于禁、牛金
     story: { hook: '老将黄忠一刀斩下夏侯渊！', year: '公元219年', place: '汉中·定军山', sides: '刘备军 vs 夏侯渊', result: '黄忠斩将夺山', idiom: '老当益壮', portrait: 'huang',
@@ -116,7 +118,7 @@ const SAMPLES = {
     },
   },
   41: {
-    name: '夷陵之战', faction: 'wu', templateId: 'ch5A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'],
+    name: '夷陵之战', faction: 'wu', templateId: 'ch5A', pathSubset: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], enemyTiers: ['footman', 'wolf'],   // [平衡] 同 L11:进阶兵种由章内骨架渐进引入(L50 终关全量)
     boss: { id: 'luxun', name: '陆逊', hpMult: 1.2 },
     lieutenants: ['handang', 'xusheng'],   // 韩当、徐盛（夷陵吴将）
     story: { hook: '陆逊火烧连营七百里！', year: '公元222年', place: '夷陵·猇亭', sides: '刘备军 vs 陆逊', result: '蜀军连营被焚', idiom: '火烧连营', portrait: null,

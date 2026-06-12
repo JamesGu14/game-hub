@@ -57,6 +57,15 @@ for (let i = 1; i < CAMPAIGN.length; i++) {
   assert.ok(CAMPAIGN[i].difficulty >= CAMPAIGN[i - 1].difficulty, `L${i + 1} difficulty 不低于 L${i}`);
 }
 
+// [2026-06-13 平衡] 兵种池 ≤ 章内位置带（floor 2 留变化性）：堵"章首样板关挂全章兵种池"漂移——
+// 旧 L11 挂 heavy（L12-17 反而没有）→ James 实玩第15波重甲墙;章首=该章最易（§6 注释），tiers 必须随位置渐进。
+for (const c of CAMPAIGN) {
+  const C = CHAPTERS[c.chapter - 1];
+  const k = (c.id - 1) % 10;
+  const band = Math.max(2, 1 + Math.round((k / 9) * (C.tiers.length - 1)));
+  assert.ok(c.enemyTiers.length <= band, `L${c.id} 兵种数 ${c.enemyTiers.length} ≤ 位置带 ${band}（章首勿挂全章池）`);
+}
+
 // [演绎段1] 样板关精写剧本:narration(2-3句讲解)+ script(8-12句对话),无占位、句长≤60
 for (const id of sampleIds) {
   const st = CAMPAIGN[id - 1].story;

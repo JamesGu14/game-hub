@@ -7,6 +7,10 @@ import { makeRng } from '../core/rng.js';
 
 const lerp = (a, b, t) => a + (b - a) * t;
 
+// [2026-06-13 平衡] 装甲系兵种的数量折扣（heavy 抗物理0.6×HP200 / tengjia 抗物理0.5×HP180）：
+// 单兵有效HP≈步卒4-6倍,等量出=断崖;0.45 实测把装甲波压回「该波最重但相邻波≤2.5×」带内。
+const ARMOR_COUNT_W = { heavy: 0.45, tengjia: 0.45 };
+
 // Fisher-Yates（注入 rng，确定性）
 function shuffle(arr, rng) {
   const a = arr.slice();
@@ -50,6 +54,16 @@ export function genWaves(template, params, seed) {
       if (last) count = Math.max(2, Math.round(count * 0.5));             // boss 波减量聚焦主将（防满级塔被淹 + 终 boss 震慑叠加打崩）
       return { campId: lane, pathId: lane, enemyType: type, count, spawnInterval, leadDelay: k };
     });
+    // [2026-06-13 平衡] 装甲整形（rng 之后纯后处理，零新增 rng 调用 → 保确定性纪律）。
+    // 装甲单兵有效 HP（高血×抗物理）≈ 步卒 4-6 倍：①数量打折（同 boss 波×0.5 思路），打折后仍是
+    // 该波最重压力但打得动（James 实玩 L11 第15波整路重甲完全无法通关）；②每波最多 1 路装甲，
+    // 多路同滚（L28 w19 曾三路40只重甲齐发）降级为步卒、数量保留——兵海压力不变，断崖削平。
+    let armorSeen = false;
+    for (const sp of spawns) {
+      if (!ARMOR_COUNT_W[sp.enemyType]) continue;
+      if (armorSeen) sp.enemyType = tiers[0];   // 降级保数量（tiers[0] 恒 footman，campaign 门禁保证）
+      else { armorSeen = true; sp.count = Math.max(2, Math.round(sp.count * ARMOR_COUNT_W[sp.enemyType])); }
+    }
 
     // 末波：主将压轴；副将落末波前 lieutenants.length 波（越靠后 wave 将领越多 → 收尾成名将关）。
     if (last) {
