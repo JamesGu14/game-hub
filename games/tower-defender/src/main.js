@@ -1,7 +1,7 @@
 // main.js — 装配:读档 → 选关/游戏 屏幕状态机 → 循环(仅游戏态推进)→ 渲染 + 输入。仅 import 本游戏路径(自含铁律)。
 import { BAL } from './data/balance.js';
 import { LEVELS } from './data/levels.js';
-import { preload } from './core/assets.js';
+import { preload, MANIFEST } from './core/assets.js';
 import * as audio from './core/audio.js';
 import { newGameState, toggleFreeze, cycleSpeed } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
@@ -29,6 +29,7 @@ import { hitResult, drawResult } from './ui/resultPanel.js';
 import { GENERALS, towerStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
 import { button, panel, backdrop, vignette } from './ui/theme.js';
+import { createLoadingScreen, updateLoadingScreen, fadeOutLoadingScreen, showRetryDialog } from './ui/loadingScreen.js';
 
 
 const C = BAL.CELL;
@@ -385,7 +386,26 @@ function onKey(ev) {
 }
 
 async function boot() {
-  await preload();
+  const loadingEl = createLoadingScreen();
+  let lastFailed = 0;
+
+  await preload(undefined, MANIFEST, ({ percent, stage, failed }) => {
+    lastFailed = failed;
+    updateLoadingScreen(loadingEl, { percent, stage });
+  });
+
+  if (lastFailed > 0) {
+    showRetryDialog({
+      onContinue: async () => {
+        await new Promise((r) => setTimeout(r, 200));
+        await fadeOutLoadingScreen(loadingEl);
+      },
+    });
+  } else {
+    await new Promise((r) => setTimeout(r, 200));
+    await fadeOutLoadingScreen(loadingEl);
+  }
+
   save = browserLoad();
   audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
   state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: unlockedGenerals(save) });   // 预建有效 state(供 resize/loop)
