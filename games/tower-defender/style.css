@@ -35,3 +35,101 @@ html, body {
   text-shadow: 0 4px 16px rgba(0, 0, 0, .8); background: rgba(0, 0, 0, .45); pointer-events: none;
 }
 .banner.show { display: flex; }
+
+/* 加载屏 */
+.loading-screen {
+  position: fixed; inset: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: center;
+  background: #1a120b;
+  color: #ffe0a8;
+  transition: opacity 0.4s ease-out;
+}
+.loading-screen.loading-fade-out { opacity: 0; }
+
+.loading-scroll {
+  width: min(420px, 86vw);
+  padding: 32px;
+  background: #24180f;
+  border: 2px solid #6b4c35;
+  border-radius: 8px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+}
+
+.loading-title {
+  font: 800 22px system-ui, sans-serif;
+  color: #d4a574;
+  letter-spacing: 6px;
+  margin-bottom: 28px;
+}
+
+.loading-bar {
+  width: 100%; height: 10px;
+  background: #3e2b1f;
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 14px;
+}
+
+.loading-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #c49a6c, #ffe0a8);
+  border-radius: 5px;
+  transition: width 0.15s ease-out;
+}
+
+.loading-meta {
+  display: flex; justify-content: space-between;
+  font: 600 14px system-ui, sans-serif;
+}
+
+.loading-stage { color: #d4a574; }
+.loading-percent { color: #ffe0a8; }
+
+/* 加载失败提示 */
+.loading-retry-dialog {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,.6);
+}
+
+.loading-retry-box {
+  width: min(320px, 80vw);
+  padding: 24px;
+  background: #24180f;
+  border: 2px solid #6b4c35;
+  border-radius: 8px;
+  color: #ffe0a8;
+  text-align: center;
+}
+
+.loading-retry-title {
+  font: 800 18px system-ui, sans-serif;
+  color: #d4a574;
+  margin-bottom: 12px;
+}
+
+.loading-retry-box p { margin: 0 0 20px; font-size: 14px; }
+
+.loading-retry-actions {
+  display: flex; gap: 12px; justify-content: center;
+}
+
+.loading-retry-actions button {
+  padding: 8px 16px;
+  border: none; border-radius: 6px;
+  font: 600 14px system-ui, sans-serif;
+  cursor: pointer;
+}
+
+.loading-retry-continue {
+  background: #c49a6c;
+  color: #1a120b;
+}
+
+.loading-retry-retry {
+  background: #3e2b1f;
+  color: #ffe0a8;
+  border: 1px solid #6b4c35;
+}
