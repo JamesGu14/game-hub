@@ -1,7 +1,7 @@
 // tests/resume.test.mjs — 中断续玩快照 写/读/清（注入假 storage，§5.4）
 // 运行：node games/tower-defender/tests/resume.test.mjs
 import assert from 'node:assert';
-import { resumeSnapshot, writeResume, loadResume, clearResume } from '../src/core/save.js';
+import { resumeSnapshot, writeResume, loadResume, clearResume, RESUME_VERSION } from '../src/core/save.js';
 
 function fakeStore() {
   return {
@@ -29,7 +29,7 @@ function fakeStore() {
 // 写 → 读往返一致
 {
   const s = fakeStore();
-  const snap = { levelId: 7, waveIndex: 3, gold: 250, castleHp: 14, phase: 'combat', prepTimer: 0, towers: [], seed: 7 };
+  const snap = { version: RESUME_VERSION, levelId: 7, waveIndex: 3, gold: 250, castleHp: 14, phase: 'combat', prepTimer: 0, towers: [], seed: 7 };
   writeResume(s, snap);
   assert.deepEqual(loadResume(s), snap, '续玩往返一致');
 }
@@ -48,7 +48,7 @@ function fakeStore() {
 // 清除
 {
   const s = fakeStore();
-  writeResume(s, { levelId: 1, waveIndex: 0, gold: 0, castleHp: 20, phase: 'prep', prepTimer: 30, towers: [], seed: 1 });
+  writeResume(s, { version: RESUME_VERSION, levelId: 1, waveIndex: 0, gold: 0, castleHp: 20, phase: 'prep', prepTimer: 30, towers: [], seed: 1 });
   clearResume(s);
   assert.equal(loadResume(s), null, '清除后 → null');
 }
