@@ -47,4 +47,22 @@ const fakeImg = (src) => ({ src, width: 100, height: 130 });
   }
 }
 
+// 6) onProgress 回调：进度递增到 100，且阶段标签存在
+{
+  const stages = [];
+  const progress = [];
+  await preload(
+    (src) => Promise.resolve(fakeImg(src)),
+    MANIFEST,
+    ({ loaded, total, stage, percent, failed }) => {
+      progress.push({ loaded, total, percent, failed });
+      if (!stages.includes(stage)) stages.push(stage);
+    }
+  );
+  assert.equal(progress.length, Object.keys(MANIFEST).length, '每张图完成都触发回调');
+  assert.equal(progress.at(-1).percent, 100, '最终 percent=100');
+  assert.equal(progress.at(-1).failed, 0, '全成功时 failed=0');
+  assert.ok(stages.length >= 1, '至少有一个阶段标签');
+}
+
 console.log('ok assets');

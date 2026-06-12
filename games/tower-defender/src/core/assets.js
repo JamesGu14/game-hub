@@ -79,6 +79,18 @@ export const MANIFEST = {
   building_chengdu: 'assets/sprites/buildings/chengdu.png',
 };
 
+const STAGES = [
+  { label: '加载武将立绘…', match: (id) => id.startsWith('gen_') },
+  { label: '加载敌军图鉴…', match: (id) => id.startsWith('enemy_') },
+  { label: '加载名将 Boss…', match: (id) => id.startsWith('boss_') },
+  { label: '加载建筑城防…', match: (id) => id.startsWith('building_') },
+];
+
+function stageFor(id) {
+  for (const s of STAGES) if (s.match(id)) return s.label;
+  return '加载资源中…';
+}
+
 // 默认浏览器加载器：返回 Promise<Image|null>；onload→图、onerror→null（缺图不 throw、不阻塞）。
 function defaultLoadImage(src) {
   return new Promise((resolve) => {
@@ -96,15 +108,37 @@ function defaultLoadImage(src) {
 
 // 并行预加载。loadImage / manifest 可注入（单测 mock）。装配前 await（main boot）。
 // 任一图失败仅该 id 缺席（assets.images 无此键），整体仍 ready=true。
-export async function preload(loadImage = defaultLoadImage, manifest = MANIFEST) {
+export async function preload(loadImage = defaultLoadImage, manifest = MANIFEST, onProgress = null) {
   assets.images = {};                 // 幂等：重复 preload 覆盖（生产仅调一次）
+  assets.ready = false;
   const entries = Object.entries(manifest);
-  const results = await Promise.allSettled(entries.map(([, src]) => loadImage(src)));
-  results.forEach((r, i) => {
-    const id = entries[i][0];
-    const img = r.status === 'fulfilled' ? r.value : null;
-    if (img) assets.images[id] = img;   // 仅成功者入库；缺图 → undefined（渲染回退）
-  });
+  const total = entries.length;
+  let loaded = 0;
+  let failed = 0;
+
+  await Promise.allSettled(
+    entries.map(async ([id, src]) => {
+      let img = null;
+      try {
+        img = await loadImage(src);
+      } catch {
+        img = null;
+      }
+      if (img) assets.images[id] = img; // 仅成功者入库；缺图 → undefined（渲染回退）
+      else failed++;
+      loaded++;
+      if (onProgress) {
+        onProgress({
+          loaded,
+          total,
+          stage: stageFor(id),
+          percent: Math.round((loaded / total) * 100),
+          failed,
+        });
+      }
+    })
+  );
+
   assets.ready = true;
   return assets;
 }
