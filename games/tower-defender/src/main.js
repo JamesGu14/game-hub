@@ -179,7 +179,8 @@ function resize() {
   canvas.width = Math.round(view.w * view.dpr);
   canvas.height = Math.round(view.h * view.dpr);
   const bw = state.level.cols * C, bh = state.level.rows * C;
-  const TOP = HUD_H + 6, BOT = 76, availH = view.h - TOP - BOT;
+  // [实测②] BOT=单行建造栏整高(70)+底边距(12)+呼吸(6):建造栏永不压棋盘(旧两行布局在 iPad 上盖住底排将位)
+  const TOP = HUD_H + 6, BOT = 88, availH = view.h - TOP - BOT;
   view.scale = Math.min(view.w / bw, availH / bh);
   view.ox = (view.w - bw * view.scale) / 2;
   view.oy = TOP + (availH - bh * view.scale) / 2;

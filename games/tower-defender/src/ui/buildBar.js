@@ -1,4 +1,5 @@
-// ui/buildBar.js — [P5/重排spec §5] 底部建造栏:单行(第1章新6将)/两行(解锁五虎后,上排五虎+诸葛)。
+// ui/buildBar.js — [P5/重排spec §5/实测②] 底部建造栏:永远单行横排——
+// 廉价6将在左(热键1-6),五虎+诸葛解锁后接在右(QWERTY);两行布局曾在 iPad 上盖住棋盘,已废弃。
 // 木牌=头像+楷体将名+金价;锁定将灰底🔒。layout/hit 单一来源;热键映射 HOTKEYS 供 main 消费。
 import { GENERALS } from '../data/generals.js';
 import { generalSprite } from '../core/assets.js';
@@ -13,23 +14,28 @@ export const HOTKEYS = {
 const KEY_OF = Object.fromEntries(Object.entries(HOTKEYS).map(([k, id]) => [id, String(k).toUpperCase()]));
 const UNLOCK_HINT = { huang: '过30关', zhang: '过10关', guan: '过20关', ma: '过30关', zhuge: '过20关', zhao: '过10关' };
 
-const BW = 74, BH = 70, GAP = 8, ROW_GAP = 6;
+const BW = 74, BH = 70, GAP = 8, MIN_GAP = 5, SIDE = 12;
 
-// 布局:返回 [{id,x,y,w,h,row:'cheap'|'premium',locked,key}]。
-// unlocked=null → 全解锁;上排仅在「任一五虎已解锁」后出现(第1章=单行,spec §5)。
+// 布局:返回 [{id,x,y,w,h,row:'cheap'|'premium',locked,key}](row 字段保留段位语义)。
+// unlocked=null → 全解锁;五虎段仅在「任一五虎已解锁」后出现(第1章=6牌,spec §5)。
+// 自适应:满宽放不下时先压 gap 再缩牌宽(iPad 竖屏 768 → 约56px,仍 >44px 触控底线);牌高不变。
 export function buildBarLayout(view, state) {
   const unlocked = state && state.unlocked;
   const has = (id) => !unlocked || unlocked.has(id);
   const showPremium = ROW_PREMIUM.some(has);
-  const rowX = (n) => (view.w - (n * (BW + GAP) - GAP)) / 2;
+  const ids = showPremium ? [...ROW_CHEAP, ...ROW_PREMIUM] : ROW_CHEAP;
+  const n = ids.length;
+  let gap = GAP, bw = BW;
+  if (n * (bw + gap) - gap > view.w - SIDE * 2) {
+    gap = MIN_GAP;
+    bw = Math.min(BW, Math.floor((view.w - SIDE * 2 - (n - 1) * gap) / n));
+  }
+  const y = view.h - BH - 12;
+  let x = (view.w - (n * (bw + gap) - gap)) / 2;
   const out = [];
-  const cheapY = view.h - BH - 12;
-  let x = rowX(ROW_CHEAP.length);
-  for (const id of ROW_CHEAP) { out.push({ id, x, y: cheapY, w: BW, h: BH, row: 'cheap', locked: !has(id), key: KEY_OF[id] }); x += BW + GAP; }
-  if (showPremium) {
-    const py = cheapY - BH - ROW_GAP;
-    x = rowX(ROW_PREMIUM.length);
-    for (const id of ROW_PREMIUM) { out.push({ id, x, y: py, w: BW, h: BH, row: 'premium', locked: !has(id), key: KEY_OF[id] }); x += BW + GAP; }
+  for (const id of ids) {
+    out.push({ id, x, y, w: bw, h: BH, row: ROW_PREMIUM.includes(id) ? 'premium' : 'cheap', locked: !has(id), key: KEY_OF[id] });
+    x += bw + gap;
   }
   return out;
 }
@@ -82,8 +88,8 @@ export function drawBuildBar(ctx, state, view, selected) {
     ctx.restore();
 
     if (b.locked) {
-      // 锁定:🔒+解锁条件(给娃可见的收集目标,spec §5)
-      ctx.fillStyle = 'rgba(232,222,200,.92)'; ctx.font = FONT.body(11, 700);
+      // 锁定:🔒+解锁条件(给娃可见的收集目标,spec §5);窄牌(自适应缩宽后)降一号字防溢出
+      ctx.fillStyle = 'rgba(232,222,200,.92)'; ctx.font = FONT.body(b.w < 64 ? 10 : 11, 700);
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillText('🔒 ' + (UNLOCK_HINT[b.id] || ''), b.x + b.w / 2, b.y + b.h - 11);
     } else {
