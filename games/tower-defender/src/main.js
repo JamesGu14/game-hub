@@ -3,7 +3,7 @@ import { BAL } from './data/balance.js';
 import { LEVELS } from './data/levels.js';
 import { preload } from './core/assets.js';
 import * as audio from './core/audio.js';
-import { newGameState } from './core/gameState.js';
+import { newGameState, toggleFreeze, cycleSpeed } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
 import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
@@ -316,10 +316,11 @@ function onPointerDown(ev) {
   }
 
   // —— 游戏中 ——
-  // [P5] HUD 可点 ⏸/⏩（木匾按钮，任何相位可点）
+  // [P5] HUD 可点 ⏸/0×/⏩（木匾按钮，任何相位可点）
   const hud = hitHud(view, sx, sy);
   if (hud === 'pause') { state.paused = !state.paused; return; }
-  if (hud === 'speed') { if (!state.paused) state.speed = state.speed === 1 ? 2 : 1; return; }
+  if (hud === 'freeze') { if (!state.paused) toggleFreeze(state); return; }   // [0×/实测④] 战术冻结,建/升/拆照常
+  if (hud === 'speed') { if (!state.paused) cycleSpeed(state); return; }
   // [P5] 暂停菜单优先消费（paused 时整屏拦截，防穿透建塔）
   if (state.paused) {
     const act = hitPause(view, sx, sy);
@@ -371,7 +372,8 @@ function onKey(ev) {
     return;
   }
   if (ev.code === 'Space') { state.paused = !state.paused; ev.preventDefault(); }
-  else if (ev.key === 'f' || ev.key === 'F') { state.speed = state.speed === 1 ? 2 : 1; }
+  else if (ev.key === 'f' || ev.key === 'F') { cycleSpeed(state); }
+  else if (ev.key === '0') { toggleFreeze(state); }   // [0×/实测④] 0 键=战术冻结(1-6 已被建造热键占用,0 空闲)
   else if (ev.key === 'Enter') { if (state.phase === 'prep') state.earlyRequested = true; }
   else if (ev.key === 'Escape') { if (selectedTower) selectedTower = null; else state.paused = !state.paused; }
   else if (HOTKEYS[ev.key.toLowerCase()]) {

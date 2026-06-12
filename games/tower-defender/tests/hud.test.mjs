@@ -12,12 +12,14 @@ const mid = (r) => [r.x + r.w / 2, r.y + r.h / 2];
 
 // 点暂停按钮中心 → 'pause'
 assert.equal(hitHud(view, ...mid(b.pause)), 'pause', '点 ⏸ → pause');
+// [0×/实测④] 点冻结按钮中心 → 'freeze'(位于 ⏸ 与速度钮之间)
+assert.equal(hitHud(view, ...mid(b.freeze)), 'freeze', '点 0× → freeze');
 // 点速度按钮中心 → 'speed'
 assert.equal(hitHud(view, ...mid(b.speed)), 'speed', '点速度 → speed');
 // 点全屏按钮中心 → 'fs'(最右,⛶)
 assert.equal(hitHud(view, ...mid(b.fs)), 'fs', '点 ⛶ → fs');
-// 右起 fs > speed > pause,互不重叠且不出界
-assert.ok(b.pause.x + b.pause.w < b.speed.x && b.speed.x + b.speed.w < b.fs.x, '三钮不重叠');
+// 右起 fs > speed > freeze > pause,互不重叠且不出界
+assert.ok(b.pause.x + b.pause.w < b.freeze.x && b.freeze.x + b.freeze.w < b.speed.x && b.speed.x + b.speed.w < b.fs.x, '四钮不重叠且 0× 在 ⏸ 与速度之间');
 assert.ok(b.fs.x + b.fs.w <= view.w, 'fs 不出界');
 // 屏幕中央空白 → null
 assert.equal(hitHud(view, 640, 400), null, '空白 → null');

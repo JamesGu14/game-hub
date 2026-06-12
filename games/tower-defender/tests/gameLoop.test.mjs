@@ -21,6 +21,15 @@ import { createEnemy } from '../src/entities/enemy.js';
   assert.equal(advance(st, BAL.FIXED_DT, () => n++), 2, '2x → 2 步');
 }
 
+// [0×/实测④] 速度 0 → 模拟停摆:巨帧也零步,且 _acc 残量冻结不消耗
+{
+  let n = 0;
+  const st = { speed: 0, _acc: 0.01 };
+  assert.equal(advance(st, 10, () => n++), 0, '0x → 0 步');
+  assert.equal(n, 0);
+  assert.equal(st._acc, 0.01, '_acc 冻结');
+}
+
 // [P0-3] lost 时 step 不推进敌
 {
   const path = [{ x: 0, y: 0 }, { x: 5, y: 0 }];
