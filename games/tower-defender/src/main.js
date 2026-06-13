@@ -339,10 +339,13 @@ function onPointerDown(ev) {
     const act = hitTowerPanel(view, selectedTower, sx, sy);
     if (act === 'upgrade') {
       if (tryUpgrade(state, selectedTower)) {
+        const t = selectedTower;
         audio.sfx('upgrade');
-        selectedTower.upgradedAt = state.time;   // [升级特效] 0.5s 金光弹跳(drawTower 读此时间戳)
-        spawnRing(state, selectedTower.px, selectedTower.py, '#ffd24d', C * 0.95, 0.5);
-        spawnFloat(state, selectedTower.px, selectedTower.py - C * 1.3, 'L' + selectedTower.level + '!', '#ffd24d');
+        t.upgradedAt = state.time;   // [升级特效] 0.5s 金光弹跳(drawTower 读此时间戳)
+        spawnRing(state, t.px, t.py, '#ffd24d', C * 0.95, 0.5);          // 内环
+        spawnRing(state, t.px, t.py, '#ffe9a8', C * 1.35, 0.7);          // 外环(更大更慢→扩张感)
+        spawnFloat(state, t.px, t.py - C * 1.3, 'Lv.' + t.level + ' ↑', '#ffd24d');
+        selectedTower = null;        // [实测④改进] 升级后弹窗消失(James 要求);连升需重新点选(第8点修好命中后跟手)
       }
       return;
     }
