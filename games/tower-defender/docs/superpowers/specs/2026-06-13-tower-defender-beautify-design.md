@@ -103,6 +103,8 @@ export function effectiveStats(tower) {
 
 > `main.js:224`（**空将位**建造预览光圈）保留 `rangeBonusFor`（无塔实例，仅需射程预览）。
 
+**⚠ 迁移验证（防 range 双计）**：`effectiveStats(tower).range` **已含** `+ tower.rangeBonus`。若某调用点改用 `effectiveStats` 却漏删原来的 `+ (tower.rangeBonus||0)`，plateau 射程会翻倍成 +1.0。`grep towerStats(` 抓不到这种残留 → **必须另跑 `grep -rn "\.rangeBonus" src/` 核对**：迁移后该 grep 应只剩 ①两处写入（`economySystem.js`、`main.js:140`）②`towerPanel` 的 `⛰`/营/塔 presence 角标判断 ③`effectiveStats` 内部那一处 `|| 0`——**不得再有任何"求和进 stats"的读取点**（须删的求和读取：targeting:11 / combat:26 / attacks:35 / main:232 / towerPanel:65，共 5 处）。
+
 ### 4.3 字段与写入
 
 `entities/tower.js` 新增两字段（紧随现有 `rangeBonus`）：
@@ -138,14 +140,23 @@ export function terrainBonuses(level, slot) {
 
 `data/baseBoards.js`：每块基板补 `{ type:'barracks', rects:[...] }` 与 `{ type:'archtower', rects:[...] }` 各 ~1 处（2×2），压在交战口将位上（参照现有 plateau 注释式选点），镜像+变体感知（rects 在 boardVariants 自动镜像）。选点须落在某 slot variant 的将位格上才有意义。
 
-`data/boardVariants.js`：把 `barracks`/`archtower` 加入"永不过滤"白名单（现 `plateau/river/mountain` 永不过滤；不压路的增益区否则会被按路径覆盖过滤掉）。slot 可达性放宽（line 159–161）仅 plateau 需要（带 +range），营/塔 无射程加成走基础 `SLOT_MAX_DIST`，**不**纳入放宽。
+`data/boardVariants.js`（**已核实：地形过滤无需改动**）：该处是**黑名单**机制——`terrain.filter(z => !['shallow','rockfall','firegully'].includes(z.type) ? true : 覆盖路)`。`barracks`/`archtower` 不在危害名单内 → **自动保留**，无须改任何"白名单"（代码里并不存在白名单结构，line 142 注释只是描述效果）。
 
-### 4.6 平衡门禁
+**⚠ 可达性死区风险 + 验收**：将位可达性过滤（boardVariants 约 line 159–161）会剔除"距活跃路 > `SLOT_MAX_DIST`"的将位，且**仅 plateau 享受 +range 放宽**，营/塔无放宽。若某 barracks/archtower rect 恰好落在被剔除的将位上 → 该 buff 区**有地形无将位 = 玩家建不上的死区**。因此铺设须满足：每个 rect 压住的将位，须在**该基板所有 mirror×slotsIdx 变体**中都存活（未被 reachability 剔除）。此条进单测断言（见 §7）。
 
-地形为玩家增益 → winnable 不会被打破（玩家只会更易通关），重点防"过强使关卡变水"。改完：
-1. 跑 `node tools/sim-economy.mjs`（真实经济模拟器）复验 50 关仍 winnable 50/50。
-2. 跑 balance-report，确认 +25% 增益未使难度坍塌（哨戒位威胁基不应大幅跌穿地板）。
-3. 若任一关变水：调低该常量或减该基板铺设，再复验。
+### 4.6 平衡门禁（**门禁能力有边界，须诚实标定**）
+
+**已核实 sim 局限**：`tools/sim-economy.mjs` 的选位启发式（`coverageTable`，R=3.0）**只按路径覆盖分排序，完全不感知地形/buff 位**。`tools/balance-report.mjs:43` 与 `play-through.mjs:52,110` 也用**原始** `towerStats`（不带地形增益）。因此：
+
+- **tools 一律保留原始 `towerStats`，不迁移到 `effectiveStats`** —— 它们测的是**无地形增益的基础平衡基线**，正是我们要的难度地板/天花板参照。
+- `sim-economy` 的 winnable 50/50 本质是**基础难度非回归**检查（玩家增益只会更易过关，winnable 不可能被买回打破）。它**不直接度量 buff 强度**。
+- 缓解：营/塔 rects 压在**高覆盖交战口**（正是 sim AI 偏好的高分位）→ AI 实际会**经常**占到 buff 位，sim 因而**部分**感知增益，但非确定性逐关感知。
+
+**门禁分工**：
+1. `node --test tests/` + `node tools/sim-economy.mjs`：确认 50 关基础难度无回归（winnable 50/50 不掉）。
+2. balance-report：基础数值基线不变（tools 不带增益，预期数字与改前一致 → 反证 `effectiveStats` 迁移没污染基础公式）。
+3. **buff 实战强度靠浏览器冒烟直接观察**（在 buff 位建塔，比对面板数值与击杀速度）；如需严格量化，**可选**加 sim 变体：强制 AI 在 buff 位建塔，对比清关余量增幅是否 ≈+25% 量级。
+4. 若实测某关因 buff 明显变水：调低常量或减该基板铺设，复验。
 
 ---
 
@@ -154,9 +165,10 @@ export function terrainBonuses(level, slot) {
 **文件**：`tools/gen-sprites.mjs`（prompt + 循环上限）、`src/core/assets.js`（MANIFEST + `generalSprite` 封顶）。
 
 ### 5.1 生成管线（沿用现有锚链）
-- `gen-sprites.mjs` 的 `STAGED` 数组：12 将各 `stages` 由 3 条扩到 5 条；`--stages` 循环 `s <= 3` → `s <= 5`。
+- `gen-sprites.mjs` 的 `STAGED` 数组：12 将各 `stages` 由 3 条扩到 5 条（**已核实现为 3 条/将**，逐将统计确认）；`--stages` 循环 `s <= 3` → `s <= 5`。
 - 锚链续接：L4 锚 L3、L5 锚 L4（`PERSON` 约束"同一人只升装备"），保整套画风 + 人物一致。
 - **L5 白底铁律**：封神效果（金光/神兵能量/光晕）**画在角色身上、维持纯白背景**，不画背景场景 —— 兼容 `debg` 去白底管线（产图后跑 `tools/debg-*.py` 去白）。
+- **产图量化校验**（比纯肉眼可靠）：封神光晕易渗出浅金底使 debg 失效 → 去底后抽检 4 角像素，亮度 < 250（非近白）即标记该图重生成；逐张过此卡再入库。
 - 执行：`OPENROUTER_API_KEY=sk-or-... node tools/gen-sprites.mjs --stages`（仅生成 12 将 = 24 张新图；James 跑）。
 
 ### 5.2 L4/L5 概念表（per-general，尊重人设；待 review）
@@ -200,11 +212,13 @@ ARCHTOWER_INTERVAL_MULT: 0.8, // 塔·攻速加成（间隔乘子=攻速×1.25�
 - `tests/terrainSystem.test.mjs`（或 `plateau.test.mjs` 镜像）：`terrainBonuses` 对 plateau/barracks/archtower/无地形 返回值正确。
 - `tests/assets.test.mjs`：`generalSprite` 封顶 5 + 回退链（L5 缺 → L4 → L3）。
 - `tests/baseBoards.test.mjs` / `boardVariants.test.mjs` / `levels-integrity.test.mjs`：新增 barracks/archtower rects 后结构校验仍绿（按需更新断言）。
+- `tests/boardVariants.test.mjs`（**防死区，对应 §4.5**）：断言每个 barracks/archtower rect 压住的将位，在该基板所有 mirror×slotsIdx 变体中都**存活**（未被 reachability 剔除）→ 杜绝"画了 buff 区却建不上"。
 
 ### 门禁
-- `node --test tests/` 全绿。
-- Seg A：`tools/sim-economy.mjs` + balance-report 复验 winnable 50/50、难度未坍塌。
-- 浏览器冒烟：在 营/塔/高台 各建塔 → 升 L4/L5 → 确认①立绘换阶 ②加成生效（面板数值 + 实战）③角标渲染可读（含 iPad 触屏）。
+- `node --test tests/` 全绿（含 §7 新增的死区断言）。
+- Seg A：`tools/sim-economy.mjs` 复验基础难度无回归（winnable 50/50）；balance-report 基础基线不变（**门禁分工/局限见 §4.6**）。
+- 浏览器冒烟（buff 实战强度的**主**验收）：在 营/塔/高台 各建塔 → 升 L4/L5 → 确认①立绘换阶 ②加成生效（面板数值 + 击杀速度 + 实战）③角标渲染可读（含 iPad 触屏）。
+- Seg B：L4/L5 去底图逐张过 §5.1 的 4 角亮度校验。
 
 ## 8. 风险与缓解
 
@@ -214,12 +228,14 @@ ARCHTOWER_INTERVAL_MULT: 0.8, // 塔·攻速加成（间隔乘子=攻速×1.25�
 | L5 金光特效带出背景/黑底，debg 失效 | prompt 强约束"效果画在角色身上、纯白背景"；产图后 debg + 抽检 |
 | 营/塔 角标被立绘头部遮挡 | 取左下/右下贴脚部角；冒烟核对，必要时微调位置/底板 |
 | +25% 增益使个别关变水 | sim 门禁；超标则降常量或减铺设 |
-| `effectiveStats` 迁移漏改某调用点 | 全量 grep `towerStats(` 核对（仅 8 处）；combat 单测覆盖伤害/射程 |
+| `effectiveStats` 迁移漏改某调用点 | grep `towerStats(` 核对（src/ 内 **7 处**调用）；combat 单测覆盖伤害/射程 |
+| **range 双计**（漏删 `+rangeBonus` 求和） | 另跑 `grep "\.rangeBonus" src/`，确认无求和读取残留（见 §4.2）；`plateau.test` 断言射程恰为 +0.5 |
+| buff 区落在被剔除将位 → 死区 | §7 死区断言：每 rect 将位在所有变体存活（见 §4.5）|
 | 命名冲突（营 vs 敌营 camps、塔 vs 将塔） | 内部 id 用 barracks/archtower，与 `level.camps` 字段、将塔概念物理隔离 |
 
 ## 9. 实施顺序（建议）
 
-1. **Seg A-1 地形机制**：常量 + tower 字段 + `terrainBonuses` + `effectiveStats` + 迁移 8 调用点 + 续玩重算 → 单测绿。
+1. **Seg A-1 地形机制**：常量 + tower 字段 + `terrainBonuses` + `effectiveStats` + 迁移 7 调用点（+ 删 5 处 `+rangeBonus` 求和，grep 核对防双计）+ 续玩重算 → 单测绿。
 2. **Seg A-2 地形渲染**：plateau 美化 + 营/塔 fill + 角标 helper。
 3. **Seg A-3 铺设**：10 基板补 rects + boardVariants 白名单 → 结构测试绿。
 4. **Seg A-4 平衡门禁**：sim + balance-report 复验。
