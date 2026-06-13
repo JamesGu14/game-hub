@@ -9,7 +9,7 @@ import { bus } from './core/eventBus.js';
 import { towerAtPixel } from './core/hit.js';
 import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
-import { rangeBonusFor } from './systems/terrainSystem.js';
+import { rangeBonusFor, terrainBonuses } from './systems/terrainSystem.js';
 import { drawBoard, drawWeather } from './render/board.js';
 import { bakeGround } from './render/ground.js';
 import { drawTower, drawEnemy, drawProjectile, drawFx } from './render/entityRenderer.js';
@@ -137,7 +137,8 @@ function applyResume(snap) {
   state.towers = (snap.towers || []).map((ts) => {
     const t = createTower(ts.generalId, ts.slot);
     t.level = ts.level; t.mode = ts.mode; t.totalInvested = investedFor(ts.generalId, ts.level);
-    t.rangeBonus = rangeBonusFor(state.level, ts.slot);   // [地形] 按 slot 重算（快照零迁移）
+    const tb = terrainBonuses(state.level, ts.slot);      // [地形] 按 slot 重算三字段（快照零迁移）
+    t.rangeBonus = tb.rangeBonus; t.dmgMult = tb.dmgMult; t.intervalMult = tb.intervalMult;
     return t;
   });
   return true;

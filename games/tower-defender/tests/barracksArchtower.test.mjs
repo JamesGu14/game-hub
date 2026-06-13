@@ -26,4 +26,11 @@ const flat = build(1, 5);
 assert.equal(effectiveStats(flat).dmg, b1.dmg, '平地 基础 dmg');
 assert.equal(effectiveStats(flat).range, b1.range, '平地 基础射程');
 
+// Task 4 后：tryBuild 写 dmgMult/intervalMult → 营加伤、塔加速
+const camp = build(3, 2), tower = build(5, 2);
+assert.ok(Math.abs(effectiveStats(camp).dmg - b1.dmg * BAL.BARRACKS_DMG_MULT) < 1e-9, '营 dmg+25%');
+assert.equal(effectiveStats(camp).range, b1.range, '营 不改射程');
+assert.ok(Math.abs(effectiveStats(tower).interval - b1.interval * BAL.ARCHTOWER_INTERVAL_MULT) < 1e-9, '塔 攻速+25%');
+assert.equal(effectiveStats(tower).dmg, b1.dmg, '塔 不改攻击');
+
 console.log('ok barracksArchtower');
