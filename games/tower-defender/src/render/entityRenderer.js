@@ -141,6 +141,7 @@ export function drawEnemy(ctx, e, now = 0) {
   const R = (ENEMY_R[e.type] || 0.26) * C;
   const img = e.isBoss ? assets.images['boss_' + e.bossId] : assets.images['enemy_' + e.type];
   const flash = pulse(e.lastHitAt, now, HIT_DUR);               // 受击闪白脉冲
+  const crit = pulse(e.critFlashAt, now, 0.25);                 // [改进④] 暴击闪红脉冲(比受击白更久更醒目)
 
   // 投影（地面 e.py，不随抬升/浮动）
   shadow(ctx, e.px, e.py + R * 0.55, R * 0.7, R * 0.28);
@@ -160,6 +161,11 @@ export function drawEnemy(ctx, e, now = 0) {
     if (flash > 0) {                                            // 受击提亮（白罩感）
       ctx.globalAlpha = flash * 0.6; ctx.globalCompositeOperation = 'lighter';
       ctx.drawImage(img, -w / 2, R + footPad - h, w, h);
+      ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
+    }
+    if (crit > 0) {                                            // [改进④] 暴击闪红(覆盖立绘区,lighter 染亮红)
+      ctx.globalAlpha = crit * 0.6; ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = '#ff3020'; ctx.fillRect(-w / 2, R + footPad - h, w, h);
       ctx.globalCompositeOperation = 'source-over'; ctx.globalAlpha = 1;
     }
     ctx.restore();
@@ -189,6 +195,10 @@ export function drawEnemy(ctx, e, now = 0) {
     }
     if (flash > 0) {                       // 受击白罩
       ctx.globalAlpha = flash * 0.7; ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(e.px, cy, R, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+    }
+    if (crit > 0) {                        // [改进④] 暴击闪红
+      ctx.globalAlpha = crit * 0.75; ctx.fillStyle = '#ff3020';
       ctx.beginPath(); ctx.arc(e.px, cy, R, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
     }
   }

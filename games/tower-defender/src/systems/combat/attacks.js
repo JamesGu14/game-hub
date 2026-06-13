@@ -7,15 +7,19 @@ import { calcDamage } from './damageCalc.js';
 import { applySlow, applyBurn } from './statusEffects.js';
 import { killEnemy } from './kill.js';
 import { spawnTracer } from './projectileManager.js';
-import { spawnRing } from '../../render/fx.js';
+import { spawnRing, spawnFloat } from '../../render/fx.js';
 
 const CELL = BAL.CELL;
 
 // 一次直伤命中：算伤→扣血→tracer→（致死则）killEnemy。返回是否击杀。
 function hitOnce(state, tower, g, enemy, rng) {
-  const { dmg } = calcDamage(tower, g, enemy, rng);
+  const { dmg, isCrit } = calcDamage(tower, g, enemy, rng);
   enemy.hp -= dmg;
   enemy.lastHitAt = state.time;                   // [P6] 受击时间戳（纯表现：entityRenderer 受击闪白）
+  if (isCrit) {                                   // [改进④] 黄忠百步穿杨暴击：头顶飘字 + 闪红（数值零改，纯特效）
+    enemy.critFlashAt = state.time;
+    spawnFloat(state, enemy.px, enemy.py - CELL * 0.6, '暴击!', '#ff5a3a');
+  }
   spawnTracer(state, tower, enemy, g.color, g.attack);
   if (enemy.hp <= 0) return killEnemy(state, enemy);
   return false;

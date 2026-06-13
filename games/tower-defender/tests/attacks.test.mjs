@@ -137,4 +137,23 @@ const rng = () => 0.99;   // 不暴击
   }
 }
 
+// [改进④] 黄忠 L3 百步穿杨暴击 → 头顶「暴击!」飘字 + critFlashAt 置位（数值零改，纯特效）
+{
+  const t = newTower('huang', 100, 100); t.level = 3;
+  const e = enemy('footman', 100, 100);     // hp60，黄忠L3暴击≈50不秒，留活验 critFlashAt
+  const state = { enemies: [e], projectiles: [], fx: [], gold: 0, time: 1.0 };
+  runAttack(state, t, GENERALS.huang, e, 0, () => 0);   // rng()<0.25 → 必暴
+  assert.ok(state.fx.some((f) => f.text === '暴击!'), '暴击弹「暴击!」飘字');
+  assert.equal(e.critFlashAt, 1.0, '暴击置 critFlashAt=state.time');
+}
+// 不暴击（rng=0.99）→ 无暴击特效（守门：非暴击不误触）
+{
+  const t = newTower('huang', 100, 100); t.level = 3;
+  const e = enemy('footman', 100, 100);
+  const state = { enemies: [e], projectiles: [], fx: [], gold: 0, time: 1.0 };
+  runAttack(state, t, GENERALS.huang, e, 0, () => 0.99);
+  assert.ok(!state.fx.some((f) => f.text === '暴击!'), '不暴击无暴击飘字');
+  assert.equal(e.critFlashAt, undefined, '不暴击不置 critFlashAt');
+}
+
 console.log('ok attacks');
