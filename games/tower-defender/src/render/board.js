@@ -116,7 +116,23 @@ function drawPlate(ctx, text, cx, footY, gold = false) {
 const TERRAIN_FILL = {
   river: '#3d6e9e', shallow: '#5da7c9', plateau: '#c9a85c',
   mountain: '#4a4640', firegully: '#8a3a24', rockfall: '#6e645a',
+  barracks: '#b07a3c', archtower: '#7c8a9c',
 };
+
+// 地形角标：zone 包围盒指定角画小字 + 深色圆底（左下 'bl' / 右下 'br'）
+function terrainGlyph(ctx, cells, corner, char, tint) {
+  let minX = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const c of cells) { minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x); maxY = Math.max(maxY, c.y); }
+  const px = (corner === 'bl' ? minX : maxX) * C + (corner === 'bl' ? 4 : C - 4);
+  const py = maxY * C + C - 4;
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,16,10,.55)';
+  ctx.beginPath(); ctx.arc(px + (corner === 'bl' ? 5 : -5), py - 6, 8, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = tint; ctx.font = `bold ${Math.round(C * 0.34)}px system-ui`;
+  ctx.textAlign = corner === 'bl' ? 'left' : 'right'; ctx.textBaseline = 'alphabetic';
+  ctx.fillText(char, px, py);
+  ctx.restore();
+}
 
 function drawTerrainBase(ctx, state) {
   const zones = state.level.terrain;
@@ -139,12 +155,24 @@ function drawTerrainBase(ctx, state) {
         ctx.stroke();
       }
     } else if (z.type === 'plateau') {
-      // 黄土台：亮顶边+暗底边的"抬升"描边
+      // 黄土台：双层 bevel（顶亮+顶内高光 / 底暗），凸显抬升
       for (const c of z.cells) {
-        ctx.strokeStyle = 'rgba(255,235,180,.5)'; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(c.x * C + 1, c.y * C + 1); ctx.lineTo(c.x * C + C - 1, c.y * C + 1); ctx.stroke();
-        ctx.strokeStyle = 'rgba(70,50,20,.55)';
-        ctx.beginPath(); ctx.moveTo(c.x * C + 1, c.y * C + C - 1); ctx.lineTo(c.x * C + C - 1, c.y * C + C - 1); ctx.stroke();
+        const x = c.x * C, y = c.y * C;
+        ctx.strokeStyle = 'rgba(255,238,190,.65)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + 1, y + 1); ctx.lineTo(x + C - 1, y + 1); ctx.stroke();
+        ctx.strokeStyle = 'rgba(255,250,225,.4)'; ctx.lineWidth = 1;
+        ctx.beginPath(); ctx.moveTo(x + 2, y + 3); ctx.lineTo(x + C - 2, y + 3); ctx.stroke();
+        ctx.strokeStyle = 'rgba(60,42,16,.6)'; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x + 1, y + C - 1); ctx.lineTo(x + C - 1, y + C - 1); ctx.stroke();
+      }
+    } else if (z.type === 'barracks' || z.type === 'archtower') {
+      // 增益地形：暖/冷底已由 TERRAIN_FILL 铺；此处加轻纹理（营=帐影斜纹 / 塔=砖横线）
+      for (const c of z.cells) {
+        const x = c.x * C, y = c.y * C;
+        ctx.strokeStyle = z.type === 'barracks' ? 'rgba(90,55,20,.45)' : 'rgba(40,55,70,.45)';
+        ctx.lineWidth = 1.5;
+        if (z.type === 'barracks') { ctx.beginPath(); ctx.moveTo(x + 6, y + C - 5); ctx.lineTo(x + C / 2, y + 6); ctx.lineTo(x + C - 6, y + C - 5); ctx.stroke(); }
+        else { for (let yy = y + 8; yy < y + C - 4; yy += 8) { ctx.beginPath(); ctx.moveTo(x + 5, yy); ctx.lineTo(x + C - 5, yy); ctx.stroke(); } }
       }
     } else if (z.type === 'mountain') {
       // 岩壁棱线：对角短笔触
@@ -172,6 +200,9 @@ function drawTerrainBase(ctx, state) {
         ctx.beginPath(); ctx.arc(c.x * C + C * 0.66, c.y * C + C * 0.34, 2, 0, Math.PI * 2); ctx.fill();
       }
     }
+    if (z.type === 'plateau') terrainGlyph(ctx, z.cells, 'bl', '山', '#ffeec0');
+    else if (z.type === 'barracks') terrainGlyph(ctx, z.cells, 'br', '营', '#ffd9a8');
+    else if (z.type === 'archtower') terrainGlyph(ctx, z.cells, 'br', '塔', '#cfe0ff');
   }
   ctx.restore();
 }
