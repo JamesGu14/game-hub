@@ -6,6 +6,7 @@ import * as audio from './core/audio.js';
 import { newGameState, toggleFreeze, cycleSpeed } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
+import { towerAtPixel } from './core/hit.js';
 import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
 import { rangeBonusFor } from './systems/terrainSystem.js';
@@ -355,10 +356,11 @@ function onPointerDown(ev) {
     if (act === 'panel') return;
   }
   if (state.phase === 'prep' && inBtn(EARLY_BTN(), sx, sy)) { state.earlyRequested = true; return; }
-  const cell = screenToCell(sx, sy);
-  const t = towerAt(cell);
+  const bx = (sx - view.ox) / view.scale, by = (sy - view.oy) / view.scale;   // [改进⑧] 屏幕→棋盘像素
+  const t = towerAtPixel(state.towers, bx, by);                                // 按像素取最近塔(覆盖立绘主体,修"点头选不中")
   if (t) { selectedTower = t; return; }
   selectedTower = null;
+  const cell = screenToCell(sx, sy);
   const slot = slotAt(cell);
   if (slot && tryBuild(state, slot, selected)) audio.sfx('build');
 }
