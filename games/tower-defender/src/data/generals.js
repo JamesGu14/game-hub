@@ -8,7 +8,7 @@ import { BAL } from './balance.js';
 export const GENERALS = {
   huang: {
     id: 'huang', name: '黄忠',
-    cost: 90, range: 3.5, interval: 0.7, dmg: 9,
+    cost: 90, range: 4.5, interval: 0.7, dmg: 7,   // [改进⑩] 远程消耗位:射程3.5→4.5,攻9→7
     dmgType: 'physical', targets: 'both',   // 单体速射·可空·单发最轻（武力⑤）
     attack: 'single', attackParams: {},
     signature: { id: 'baibu', name: '百步穿杨', type: 'passive', params: {} }, // 25% 暴击 ×2.5 无视护甲（见 damageCalc）
@@ -57,7 +57,7 @@ export const GENERALS = {
   // —— 新 6 将（廉价起步，师门传承，无招牌技；spec §2.2）——
   liao: {
     id: 'liao', name: '廖化',
-    cost: 40, range: 3.0, interval: 0.8, dmg: 6,
+    cost: 40, range: 4.0, interval: 0.8, dmg: 5,   // [改进⑩] 远程消耗位:射程3.0→4.0,攻6→5
     dmgType: 'physical', targets: 'both',   // 师承黄忠：单体速射·可空·最便宜入门将
     attack: 'single', attackParams: {},
     signature: null,

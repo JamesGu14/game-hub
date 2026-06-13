@@ -5,7 +5,7 @@ import { createTower } from '../src/entities/tower.js';
 import { createEnemy } from '../src/entities/enemy.js';
 import { combatSystem } from '../src/systems/combatSystem.js';
 
-// 黄忠 dmg 9 × 7 = 63 ≥ 60 → 第 7 发致死；死即 +5 金
+// 黄忠 dmg 7 × 9 = 63 ≥ 60 → 第 9 发致死（[改进⑩]9→7）；死即 +5 金
 const t = createTower('huang', { x: 2, y: 2 });    // px,py = 100,100
 const e = createEnemy('footman', 'p', [{ x: 0, y: 0 }, { x: 1, y: 0 }], 1);
 e.px = 100; e.py = 100;                              // 同点 → 必在射程
@@ -15,7 +15,7 @@ const state = { phase: 'combat', time: 0, rng: () => 0.99, gold: 0, towers: [t],
 
 let shots = 0;
 while (e.alive && shots < 20) { combatSystem(state, 1.0); shots++; } // dt>interval → 每次一发
-assert.equal(shots, 7, '7 发致死');
+assert.equal(shots, 9, '9 发致死');
 assert.equal(e.alive, false, '步卒死亡');
 assert.equal(state.gold, 5, '死于 combat 掉 5 金（N5）');
 assert.ok(state.projectiles.length >= 1, '产生纯表现弹道');
