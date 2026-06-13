@@ -55,6 +55,26 @@ export function genWaves(template, params, seed) {
       if (last) count = Math.max(2, Math.round(count * 0.5));             // boss 波减量聚焦主将（防满级塔被淹 + 终 boss 震慑叠加打崩）
       return { campId: lane, pathId: lane, enemyType: type, count, spawnInterval, leadDelay: k };
     });
+
+    // [2026-06-13 需求③] 第10波后每路混编:把单一 type 的一路确定性切成 2-3 个不同兵种子 spawn。
+    //（总数量不变=切分非叠加;不新增 rng 调用 → 保 seed 确定性;末波不混编,聚焦主将;
+    //  置于装甲限路/特种折扣之前,使既有折扣规则照常作用于切分后的子 spawn。）
+    if (i >= 10 && !last && pool.length >= 2) {
+      const mixed = [];
+      for (const sp of spawns) {
+        const kinds = Math.min(3, pool.length);                       // 每路混 2-3 种
+        const start = Math.max(0, pool.indexOf(sp.enemyType));        // 从该路原 type 起,沿 pool 顺取
+        const base = Math.floor(sp.count / kinds), rem = sp.count % kinds;
+        for (let j = 0; j < kinds; j++) {
+          const c = base + (j < rem ? 1 : 0);
+          if (c <= 0) continue;
+          mixed.push({ ...sp, enemyType: pool[(start + j) % pool.length], count: c, leadDelay: sp.leadDelay + j * 0.5 });
+        }
+      }
+      spawns.length = 0;
+      spawns.push(...mixed);
+    }
+
     // [2026-06-13 平衡] 特种兵整形（rng 之后纯后处理，零新增 rng 调用 → 保确定性纪律）：
     // ①特种数量打折（同 boss 波×0.5 思路），打折后仍是该波最重压力但可解
     //（James 实玩 L11 第15波整路重甲完全无法通关；ch3+ 飞兵/方士满编同病）；
