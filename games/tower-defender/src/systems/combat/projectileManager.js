@@ -4,8 +4,8 @@ import { newProjectile, resetProjectile } from '../../entities/projectile.js';
 
 const pool = makePool(newProjectile, resetProjectile);
 
-export function spawnTracer(state, tower, enemy, color) {
-  state.projectiles.push(pool.acquire(tower.px, tower.py, enemy.px, enemy.py, color));
+export function spawnTracer(state, tower, enemy, color, kind = 'single') {
+  state.projectiles.push(pool.acquire(tower.px, tower.py, enemy.px, enemy.py, color, 0.12, kind));
 }
 
 export function updateProjectiles(state, dt) {

@@ -224,8 +224,35 @@ export function drawEnemy(ctx, e, now = 0) {
 }
 
 export function drawProjectile(ctx, p) {
-  ctx.strokeStyle = p.color; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-  ctx.beginPath(); ctx.moveTo(p.fromX, p.fromY); ctx.lineTo(p.toX, p.toY); ctx.stroke();
+  const dx = p.toX - p.fromX, dy = p.toY - p.fromY;
+  const len = Math.hypot(dx, dy) || 1;
+  const ux = dx / len, uy = dy / len;
+  ctx.save();
+  ctx.lineCap = 'round';
+  if (p.kind === 'single') {                         // 箭矢：细杆 + 箭头三角
+    ctx.strokeStyle = p.color; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(p.toX - ux * 14, p.toY - uy * 14); ctx.lineTo(p.toX, p.toY); ctx.stroke();
+    const a = 4;
+    ctx.fillStyle = p.color; ctx.beginPath();
+    ctx.moveTo(p.toX, p.toY);
+    ctx.lineTo(p.toX - ux * 7 - uy * a, p.toY - uy * 7 + ux * a);
+    ctx.lineTo(p.toX - ux * 7 + uy * a, p.toY - uy * 7 - ux * a);
+    ctx.closePath(); ctx.fill();
+  } else if (p.kind === 'burn') {                     // 火弹：橙红弹头 + 渐隐拖尾
+    const g = ctx.createLinearGradient(p.fromX, p.fromY, p.toX, p.toY);
+    g.addColorStop(0, 'rgba(255,120,40,0)'); g.addColorStop(1, p.color);
+    ctx.strokeStyle = g; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(p.fromX, p.fromY); ctx.lineTo(p.toX, p.toY); ctx.stroke();
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.toX, p.toY, 3.5, 0, Math.PI * 2); ctx.fill();
+  } else if (p.kind === 'slow') {                     // 水弹：蓝弹头 + 波纹
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.toX, p.toY, 4, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = p.color; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.5;
+    ctx.beginPath(); ctx.arc(p.toX, p.toY, 6, 0, Math.PI * 2); ctx.stroke();
+  } else {                                            // splash/charge：保留粗线(刀光/突进残影)
+    ctx.strokeStyle = p.color; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(p.fromX, p.fromY); ctx.lineTo(p.toX, p.toY); ctx.stroke();
+  }
+  ctx.restore();
 }
 
 export function drawFx(ctx, f) {

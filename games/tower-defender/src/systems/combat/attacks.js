@@ -16,7 +16,7 @@ function hitOnce(state, tower, g, enemy, rng) {
   const { dmg } = calcDamage(tower, g, enemy, rng);
   enemy.hp -= dmg;
   enemy.lastHitAt = state.time;                   // [P6] 受击时间戳（纯表现：entityRenderer 受击闪白）
-  spawnTracer(state, tower, enemy, g.color);
+  spawnTracer(state, tower, enemy, g.color, g.attack);
   if (enemy.hp <= 0) return killEnemy(state, enemy);
   return false;
 }
@@ -98,7 +98,7 @@ function attackCharge(state, tower, g, primary, rng, rangePx2) {
     const front = hits[0];                                  // = primary（冲锋锋尖）
     if (front.alive) front.knockback += g.signature.params.knockback || 0.5;
   }
-  spawnTracer(state, tower, primary, g.color);
+  spawnTracer(state, tower, primary, g.color, g.attack);
 }
 
 // 诸葛：上灼烧（DoT，不走直伤）；L3 火烧藤甲对藤甲 dps×2。
@@ -108,5 +108,5 @@ function attackBurn(state, tower, g, primary, now, stats) {
     dps *= g.signature.params.vsTengjiaMult || 2;
   }
   applyBurn(primary, dps, g.attackParams.burnDur, now);
-  spawnTracer(state, tower, primary, g.color);
+  spawnTracer(state, tower, primary, g.color, g.attack);
 }
