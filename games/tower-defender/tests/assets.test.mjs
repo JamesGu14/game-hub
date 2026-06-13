@@ -1,7 +1,7 @@
 // tests/assets.test.mjs — [P6] 预加载：注入 mock loader，验全成功/部分失败/全失败/reject 均不阻塞、不抛。
 // 运行：node games/tower-defender/tests/assets.test.mjs
 import assert from 'node:assert';
-import { preload, assets, MANIFEST } from '../src/core/assets.js';
+import { preload, assets, MANIFEST, generalSprite } from '../src/core/assets.js';
 
 const fakeImg = (src) => ({ src, width: 100, height: 130 });
 
@@ -39,10 +39,10 @@ const fakeImg = (src) => ({ src, width: 100, height: 130 });
   assert.equal(Object.keys(assets.images).length, 0, 'reject → 无图');
 }
 
-// 5) [形象演进 spec §6.1] 12 将 × 3 阶全部注册,路径规范
+// 5) [形象演进 spec §6.1+L4/L5] 12 将 × 5 阶全部注册,路径规范
 {
   const IDS = ['huang', 'zhang', 'guan', 'zhao', 'ma', 'zhuge', 'liao', 'zhou', 'madai', 'guanping', 'zhangbao', 'yueying'];
-  for (const id of IDS) for (const s of [1, 2, 3]) {
+  for (const id of IDS) for (const s of [1, 2, 3, 4, 5]) {
     assert.equal(MANIFEST[`gen_${id}_${s}`], `assets/sprites/generals/${id}_${s}.png`, `gen_${id}_${s} 注册`);
   }
 }
@@ -63,6 +63,22 @@ const fakeImg = (src) => ({ src, width: 100, height: 130 });
   assert.equal(progress.at(-1).percent, 100, '最终 percent=100');
   assert.equal(progress.at(-1).failed, 0, '全成功时 failed=0');
   assert.ok(stages.length >= 1, '至少有一个阶段标签');
+}
+
+// 7) generalSprite 封顶 5 + 逐级回退（注入假图，不依赖真加载）
+{
+  const saved = assets.images;
+  assets.images = {};
+  assets.images['gen_huang_3'] = { _tag: 'L3' };
+  assert.equal(generalSprite('huang', 5)._tag, 'L3', '封顶仍能落到已有的 L3（L5/L4 缺）');
+  assets.images['gen_huang_5'] = { _tag: 'L5' };
+  assert.equal(generalSprite('huang', 5)._tag, 'L5', 'L5 在 → 取 L5（证明封顶已升到 5）');
+  assets.images['gen_huang_4'] = { _tag: 'L4' };
+  assert.equal(generalSprite('huang', 4)._tag, 'L4', 'L4 在 → 取 L4');
+  assert.equal(generalSprite('huang', 5)._tag, 'L5', 'L5 仍优先');
+  delete assets.images['gen_huang_4'];
+  assert.equal(generalSprite('huang', 4)._tag, 'L3', 'L4 缺 → 向下回退 L3');
+  assets.images = saved;
 }
 
 console.log('ok assets');
