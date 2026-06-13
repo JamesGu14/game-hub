@@ -10,15 +10,18 @@ const mkState = (ids) => ({ unlocked: ids ? new Set(ids) : null, gold: 999 });
 assert.deepEqual(ROW_CHEAP, ['liao', 'zhou', 'madai', 'guanping', 'zhangbao', 'yueying'], '左段新6将价格升序');
 assert.deepEqual(ROW_PREMIUM, ['huang', 'zhang', 'guan', 'ma', 'zhuge', 'zhao'], '右段五虎+诸葛价格升序');
 
-// 新档:无五虎解锁 → 单行 6 项,全部可点
+// 新档(仅基础6将解锁):仍单行 12 牌,premium 段全部锁定(🔒+解锁提示),不再整排隐藏
 {
   const st = mkState(ROW_CHEAP);
   const L = buildBarLayout(view, st);
-  assert.equal(L.length, 6, '第1章单行 6 牌');
-  assert.ok(L.every((b) => !b.locked), '全部解锁');
-  const ys = new Set(L.map((b) => b.y));
-  assert.equal(ys.size, 1, '单行同一 y');
+  assert.equal(L.length, 12, '第1章即显示全12牌');
+  assert.equal(new Set(L.map((b) => b.y)).size, 1, '单行同一 y');
+  assert.deepEqual(L.map((b) => b.id), [...ROW_CHEAP, ...ROW_PREMIUM], '廉价段在左、五虎段在右');
+  assert.ok(L.slice(0, 6).every((b) => !b.locked), '廉价6将解锁');
+  assert.ok(L.slice(6).every((b) => b.locked), 'premium 6将锁定');
   assert.equal(hitBuildBar(view, st, L[0].x + 5, L[0].y + 5), 'liao', '命中首位');
+  const huang = L.find((b) => b.id === 'huang');
+  assert.equal(hitBuildBar(view, st, huang.x + 5, huang.y + 5), null, '锁定将命中 null');
 }
 
 // 解锁赵/张后:仍单行 12 牌(廉价 6 在左、五虎 6 在右),锁定命中返回 null

@@ -17,13 +17,13 @@ const UNLOCK_HINT = { huang: '过30关', zhang: '过10关', guan: '过20关', ma
 const BW = 74, BH = 70, GAP = 8, MIN_GAP = 5, SIDE = 12;
 
 // 布局:返回 [{id,x,y,w,h,row:'cheap'|'premium',locked,key}](row 字段保留段位语义)。
-// unlocked=null → 全解锁;五虎段仅在「任一五虎已解锁」后出现(第1章=6牌,spec §5)。
+// unlocked=null → 全解锁;锁定将照常出现于固定段位、渲染为 locked(第1章即12牌)。
 // 自适应:满宽放不下时先压 gap 再缩牌宽(iPad 竖屏 768 → 约56px,仍 >44px 触控底线);牌高不变。
 export function buildBarLayout(view, state) {
   const unlocked = state && state.unlocked;
   const has = (id) => !unlocked || unlocked.has(id);
-  const showPremium = ROW_PREMIUM.some(has);
-  const ids = showPremium ? [...ROW_CHEAP, ...ROW_PREMIUM] : ROW_CHEAP;
+  // [全显示] 永远12将单行:廉价6在左、五虎+诸葛6在右;未解锁者 locked=true(🔒+解锁提示),不再整排隐藏
+  const ids = [...ROW_CHEAP, ...ROW_PREMIUM];
   const n = ids.length;
   let gap = GAP, bw = BW;
   if (n * (bw + gap) - gap > view.w - SIDE * 2) {
