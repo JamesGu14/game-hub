@@ -123,3 +123,19 @@ export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   ctx.fillStyle = PAL.gold; ctx.font = FONT.head(18); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(`${chapter.id} / ${CHAPTERS.length}`, view.w / 2, L.navY + NAV_H / 2);
 }
+
+// [作弊] 隐藏热区:返回标题「成都保卫战」中「卫」(第4字)的屏幕矩形{x,y,w,h}(含触控外扩);无任何视觉绘制。
+// 与 drawLevelSelect 内 title(...,TITLE_PX) 同字体测量;改标题字号需同步本常量。
+const TITLE_PX = 46;
+export function cheatHotspot(ctx, view, levels, chapterIdx) {
+  const L = levelSelectLayout(view, levels, chapterIdx);
+  ctx.save();
+  ctx.font = FONT.head(TITLE_PX);
+  const full = ctx.measureText('成都保卫战').width;
+  const before = ctx.measureText('成都保').width;
+  const w = ctx.measureText('卫').width;
+  ctx.restore();
+  const left = view.w / 2 - full / 2;       // title 居中 → 左缘
+  const pad = 6;                            // 触控外扩
+  return { x: left + before - pad, y: L.header.titleY - TITLE_PX / 2 - pad, w: w + pad * 2, h: TITLE_PX + pad * 2 };
+}

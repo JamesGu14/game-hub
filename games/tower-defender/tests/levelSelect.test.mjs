@@ -1,7 +1,7 @@
 // tests/levelSelect.test.mjs — [检查点A] 分章选关：命中卡→{kind:'level',index}、导航→{kind:'chapter',delta}
 // 运行：node games/tower-defender/tests/levelSelect.test.mjs
 import assert from 'node:assert';
-import { levelSelectLayout, hitLevelSelect } from '../src/ui/levelSelect.js';
+import { levelSelectLayout, hitLevelSelect, cheatHotspot } from '../src/ui/levelSelect.js';
 import { defaultSave } from '../src/core/save.js';
 
 const view = { w: 1280, h: 800 };
@@ -49,6 +49,17 @@ const levels = Array.from({ length: 50 }, (_, i) => ({ id: i + 1, chapter: Math.
   const save = defaultSave(); save.unlockedLevel = 50;
   const L = levelSelectLayout(view, levels, 0);
   assert.deepEqual(hitLevelSelect(view, save, levels, 0, L.next.x + 5, L.next.y + 5), { kind: 'chapter', delta: 1 }, '下一章');
+}
+
+// [作弊] 隐藏热区:"卫"(成都保卫战 第4字)字形矩形,落标题带内、不压副标题、位于中线右侧
+{
+  const ctx = { save() {}, restore() {}, set font(v) {}, measureText: (s) => ({ width: s.length * 46 }) };
+  const hs = cheatHotspot(ctx, view, levels, 0);
+  const L = levelSelectLayout(view, levels, 0);
+  assert.ok(hs && typeof hs.x === 'number' && hs.w > 0 && hs.h > 0, 'cheatHotspot 返回矩形');
+  assert.ok(hs.x + hs.w / 2 > view.w / 2, '"卫"在标题中线右侧(第4字)');
+  assert.ok(hs.y + hs.h < L.header.chapterY, '不压章节副标题');
+  assert.ok(hs.y > L.header.titleY - 46, '在标题带内');
 }
 
 console.log('ok levelSelect');
