@@ -23,4 +23,9 @@ assert.equal(plain.name, '步卒', '无 faction → 原型默认名');
 // tint 回退
 assert.ok(tintOf('nanman').grassA && tintOf('unknown').grassA, 'tint 存在/回退');
 
+// [需求②] 骑兵换皮：东吴=丹阳劲骑 / 曹魏=具装铁骑 / 南蛮无骑兵
+assert.equal(skinOf('wu', 'cavalry').name, '丹阳劲骑');
+assert.equal(skinOf('wei', 'cavalry').name, '具装铁骑');
+assert.equal(skinOf('nanman', 'cavalry'), null, '南蛮无骑兵皮');
+
 console.log('ok factions');
