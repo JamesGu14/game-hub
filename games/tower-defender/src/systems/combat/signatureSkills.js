@@ -2,7 +2,7 @@
 // combatSystem 在 level>=3 且 signatureCd<=0 时调 fireSignature；返回 true（成功放）才进 CD。
 // 被动（黄忠暴击/赵云连射/马超击退/诸葛火烧藤甲）内联在 damageCalc/attacks，本模块不含。
 import { BAL } from '../../data/balance.js';
-import { towerStats } from '../../data/generals.js';
+import { effectiveStats } from '../../data/generals.js';
 import { applySlow, applyStun } from './statusEffects.js';
 import { killEnemy } from './kill.js';
 import { spawnRing } from '../../render/fx.js';
@@ -23,7 +23,7 @@ function fireShuiyan(state, tower, g, now) {
   if (!target || !target.alive) return false;
   const p = g.signature.params;
   const r = (p.radius || 1.5) * CELL, r2 = r * r;
-  const dmg = towerStats(g, tower.level).dmg * (p.dmgMult || 1);  // 谋略伤·无视护甲（常规）
+  const dmg = effectiveStats(tower).dmg * (p.dmgMult || 1);  // 谋略伤·无视护甲（常规）
   for (const e of state.enemies) {
     if (!e.alive) continue;
     const dx = e.px - target.px, dy = e.py - target.py;

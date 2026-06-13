@@ -1,7 +1,7 @@
 // systems/combat/attacks.js — 五种攻击行为派发（§17.1 + §17.2 被动）。
 // 由 combatSystem 在「塔 CD 到、target 在射程」后调用 runAttack。
 // single(黄/赵·赵L3连射) · splash(张) · slow(关) · charge(马·马L3击退) · burn(诸葛·诸葛L3×藤甲)。
-import { towerStats } from '../../data/generals.js';
+import { effectiveStats } from '../../data/generals.js';
 import { BAL } from '../../data/balance.js';
 import { calcDamage } from './damageCalc.js';
 import { applySlow, applyBurn } from './statusEffects.js';
@@ -31,8 +31,8 @@ function inRange(tower, e, rangePx2) {
 }
 
 export function runAttack(state, tower, g, primary, now, rng) {
-  const stats = towerStats(g, tower.level);
-  const rangePx2 = ((stats.range + (tower.rangeBonus || 0)) * CELL) ** 2;
+  const stats = effectiveStats(tower);
+  const rangePx2 = (stats.range * CELL) ** 2;
   switch (g.attack) {
     // splash/slow/burn 不在本层判射程(targeting+combatSystem 已确认 primary 在圈内);rangePx2 仅供连射/冲锋选次目标
     case 'splash': return attackSplash(state, tower, g, primary, rng);

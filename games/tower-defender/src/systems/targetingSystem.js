@@ -1,14 +1,14 @@
 // systems/targetingSystem.js — 每塔按目标模式选敌（§4 目标选择）。
 // first 最前(progress最大=最接近成都) | last 最后 | strongest 血最多 | weakest 血最少。
-// 射程用 towerStats(随等级)；防空过滤;统一「越大越优」键，last/weakest 取负。
-import { GENERALS, towerStats } from '../data/generals.js';
+// 射程用 effectiveStats(随等级+地形)；防空过滤;统一「越大越优」键，last/weakest 取负。
+import { GENERALS, effectiveStats } from '../data/generals.js';
 import { BAL } from '../data/balance.js';
 
 export function targetingSystem(state) {
   if (state.phase !== 'combat') return;          // [P0-3] 相位守卫
   for (const tower of state.towers) {
     const g = GENERALS[tower.generalId];
-    const rangePx = (towerStats(g, tower.level).range + (tower.rangeBonus || 0)) * BAL.CELL;
+    const rangePx = effectiveStats(tower).range * BAL.CELL;
     const r2 = rangePx * rangePx;
     let best = null, bestKey = null;
     for (const e of state.enemies) {

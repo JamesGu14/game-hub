@@ -1,6 +1,6 @@
 // systems/combatSystem.js — 编排器：每塔 tick 攻击CD + 招牌技CD → 在射程内对 target 按 attack 派发。
 // 击杀走 attacks→killEnemy（同步掉金 + emit）；伤害/效果细节见 combat/attacks.js、combat/signatureSkills.js。
-import { GENERALS, towerStats } from '../data/generals.js';
+import { GENERALS, effectiveStats } from '../data/generals.js';
 import { BAL } from '../data/balance.js';
 import { runAttack } from './combat/attacks.js';
 import { fireSignature } from './combat/signatureSkills.js';
@@ -21,9 +21,9 @@ export function combatSystem(state, dt) {
 
     const target = tower.target;
     if (tower.cooldown > 0 || !target || !target.alive) continue;
-    const stats = towerStats(g, tower.level);     // 升级生效：射程/间隔随等级
+    const stats = effectiveStats(tower);           // 升级生效：射程/间隔随等级
     const dx = target.px - tower.px, dy = target.py - tower.py;
-    if (dx * dx + dy * dy > ((stats.range + (tower.rangeBonus || 0)) * BAL.CELL) ** 2) continue;   // 命中前确认在射程
+    if (dx * dx + dy * dy > (stats.range * BAL.CELL) ** 2) continue;   // 命中前确认在射程
 
     runAttack(state, tower, g, target, now, rng);
     tower.cooldown = stats.interval;
