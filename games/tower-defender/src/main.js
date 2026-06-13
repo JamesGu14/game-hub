@@ -114,7 +114,8 @@ function startLevel(n) {
   storyPlayNarration();
   return true;
 }
-function toSelect() { screen = 'select'; selectedTower = null; audio.stopBgm(); }
+const SELECT_BGM_TRACK = 0;   // [改进⑨] 选关屏固定用 west-1（雄浑开场）
+function toSelect() { screen = 'select'; selectedTower = null; audio.startBgm(SELECT_BGM_TRACK); }
 
 function investedFor(generalId, level) {
   let inv = GENERALS[generalId].cost;
@@ -284,6 +285,7 @@ function render(s) {
 
 function onPointerDown(ev) {
   audio.init();                       // [P6] 首次手势解锁 AudioContext（幂等）
+  if (screen === 'select') audio.startBgm(SELECT_BGM_TRACK);   // [改进⑨] 首次手势后补播选关BGM(startBgm幂等,绕过自动播放限制)
   const sx = ev.clientX, sy = ev.clientY;
 
   // [全屏] 任意屏右上角 ⛶ 优先消费(选关/故事/对局/结算/暂停均可用;pointerdown=用户手势,满足 API 要求)
