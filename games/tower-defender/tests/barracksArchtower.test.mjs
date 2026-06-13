@@ -33,4 +33,17 @@ assert.equal(effectiveStats(camp).range, b1.range, '营 不改射程');
 assert.ok(Math.abs(effectiveStats(tower).interval - b1.interval * BAL.ARCHTOWER_INTERVAL_MULT) < 1e-9, '塔 攻速+25%');
 assert.equal(effectiveStats(tower).dmg, b1.dmg, '塔 不改攻击');
 
+// —— 全 50 关：每个 barracks/archtower 区必有 ≥1 存活将位（防"有地形无将位"死区）——
+import { LEVELS } from '../src/data/levels.js';
+let campN = 0, towerN = 0;
+for (const L of LEVELS) {
+  for (const z of L.terrain) {
+    if (z.type !== 'barracks' && z.type !== 'archtower') continue;
+    const built = z.cells.some((c) => L.slots.some((s) => s.x === c.x && s.y === c.y));
+    assert.ok(built, `关${L.id} 的 ${z.type} 区无可建将位（死区）`);
+    if (z.type === 'barracks') campN++; else towerN++;
+  }
+}
+assert.ok(campN >= 10 && towerN >= 10, `营${campN}/塔${towerN} 至少各覆盖 10（10 基板）`);
+
 console.log('ok barracksArchtower');

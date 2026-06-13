@@ -20,6 +20,8 @@ export const BASE_BOARDS = {
     terrain: [
       { type: 'plateau', rects: [{ x: 8, y: 6, w: 2, h: 2 }] },   // 城西高台,扼 a/c 会攻口
       { type: 'plateau', rects: [{ x: 16, y: 2, w: 2, h: 2 }] },  // 东北高台,扼 b 路折返段
+      { type: 'barracks', rects: [{ x: 6, y: 9, w: 1, h: 1 }] },   // 营:西南弧道,扼 c 路 (9,10) 折返口
+      { type: 'archtower', rects: [{ x: 15, y: 10, w: 1, h: 1 }] }, // 塔:东南要道,俯瞰 c 路 (14,12)→(14,9) 段
     ],
   },
   ch1B: {
@@ -39,6 +41,8 @@ export const BASE_BOARDS = {
     terrain: [
       { type: 'plateau', rects: [{ x: 6, y: 4, w: 2, h: 2 }] },   // 中西高台,扼 c 路迂回段
       { type: 'plateau', rects: [{ x: 18, y: 7, w: 2, h: 2 }] },  // 中东高台,扼 a/b 夹角
+      { type: 'barracks', rects: [{ x: 3, y: 8, w: 1, h: 1 }] },   // 营:西侧 c 路纵段,扼 (1,7)→(5,7) 折内口
+      { type: 'archtower', rects: [{ x: 19, y: 2, w: 1, h: 1 }] }, // 塔:东北 a 路顶段,俯瞰 (21,0)→(21,4) 折返
     ],
   },
   ch2A: {
@@ -63,6 +67,8 @@ export const BASE_BOARDS = {
       // 河 y=3..4 三段 rects,渡口列 x=6 / x=17 留缺口(rect 覆盖 x=0..5/7..16/18..23,空出 x=6 与 x=17)
       { type: 'river', rects: [{ x: 0, y: 3, w: 6, h: 2 }, { x: 7, y: 3, w: 10, h: 2 }, { x: 18, y: 3, w: 6, h: 2 }] },
       { type: 'plateau', rects: [{ x: 4, y: 6, w: 2, h: 2 }] },   // 西渡口南岸高台,扼 a 路折返段
+      { type: 'barracks', rects: [{ x: 9, y: 8, w: 1, h: 1 }] },   // 营:城西汇流口,扼 a 路 (8,9)/c 路 (10,8) 进城段
+      { type: 'archtower', rects: [{ x: 17, y: 7, w: 1, h: 1 }] }, // 塔:东渡口南岸,俯瞰 b 路 (16,9)→(16,7) 进城段
     ],
   },
   ch2B: {
@@ -87,6 +93,8 @@ export const BASE_BOARDS = {
       // 河 y=9..10 三段 rects,渡口列 x=5 / x=15 留缺口(rect 覆盖 x=0..4/6..14/16..23,空出 x=5 与 x=15)
       { type: 'river', rects: [{ x: 0, y: 9, w: 5, h: 2 }, { x: 6, y: 9, w: 9, h: 2 }, { x: 16, y: 9, w: 8, h: 2 }] },
       { type: 'plateau', rects: [{ x: 17, y: 3, w: 2, h: 2 }] },   // 东渡口北岸高台,扼 d 路迂回段
+      { type: 'barracks', rects: [{ x: 7, y: 6, w: 1, h: 1 }] },   // 营:西渡口北岸,扼 a 路 (8,5)/c 路 (7,4) 折内段
+      { type: 'archtower', rects: [{ x: 17, y: 4, w: 1, h: 1 }] }, // 塔:东侧 d 路迂回,俯瞰 (18,5)→(14,5) 折西段
     ],
   },
   ch3A: {
@@ -118,6 +126,8 @@ export const BASE_BOARDS = {
       { type: 'shallow', rects: [{ x: 4, y: 7, w: 2, h: 2 }] },   // 西桥出口,盖 a 路 (5,8)
       { type: 'shallow', rects: [{ x: 17, y: 7, w: 2, h: 2 }] },  // 东桥出口,盖 b 路 (18,8)
       { type: 'plateau', rects: [{ x: 8, y: 2, w: 2, h: 2 }] },   // 北中高台,扼 c/d 路夹角
+      { type: 'barracks', rects: [{ x: 5, y: 6, w: 1, h: 1 }] },   // 营:西栈桥北口,扼 a 路 (5,8)→(5,5) 上岸段
+      { type: 'archtower', rects: [{ x: 16, y: 8, w: 1, h: 1 }] }, // 塔:东栈桥北口,俯瞰 b 路 (15,8)/(18,8) 折内段
     ],
   },
   ch3B: {
@@ -148,6 +158,8 @@ export const BASE_BOARDS = {
       { type: 'shallow', rects: [{ x: 14, y: 2, w: 2, h: 2 }] },   // 上桥出口,盖 a 路 (14,3)
       { type: 'shallow', rects: [{ x: 14, y: 8, w: 2, h: 2 }] },   // 下桥出口,盖 b 路 (14,9)
       { type: 'plateau', rects: [{ x: 1, y: 2, w: 2, h: 2 }] },    // 西北高台,扼 c/d 路夹角
+      { type: 'barracks', rects: [{ x: 7, y: 5, w: 1, h: 1 }] },   // 营:西北 a 路 S 折,扼 (8,5)→(11,5) 进城段
+      { type: 'archtower', rects: [{ x: 12, y: 8, w: 1, h: 1 }] }, // 塔:中部 b 路下折,俯瞰 (9,7)→(14,7) 折内段
     ],
   },
   ch4A: {
@@ -182,6 +194,8 @@ export const BASE_BOARDS = {
       { type: 'rockfall', cells: [{ x: 7, y: 5 }, { x: 8, y: 5 }, { x: 7, y: 6 }, { x: 8, y: 6 }] },
       // 落石区2:东壁西侧窄道 — 盖 b 路 (18,3)/(18,4) 竖段(东壁滚石教学位)
       { type: 'rockfall', cells: [{ x: 18, y: 3 }, { x: 18, y: 4 }, { x: 19, y: 3 }, { x: 19, y: 4 }] },
+      { type: 'barracks', rects: [{ x: 5, y: 5, w: 1, h: 1 }] },   // 营:西壁夹道,扼 a 路 (4,4)→(4,8) 险道段
+      { type: 'archtower', rects: [{ x: 16, y: 5, w: 1, h: 1 }] }, // 塔:东壁夹道,俯瞰 b 路 (18,6)→(16,6) 险道段
     ],
   },
   ch4B: {
@@ -216,6 +230,8 @@ export const BASE_BOARDS = {
       { type: 'rockfall', cells: [{ x: 8, y: 3 }, { x: 8, y: 4 }, { x: 9, y: 3 }, { x: 9, y: 4 }] },
       // 落石区2:下脊右侧窄道 — 盖 f 路 (17,10) 折角+(18,10) 横段(下脊滚石教学位)
       { type: 'rockfall', cells: [{ x: 17, y: 9 }, { x: 17, y: 10 }, { x: 18, y: 9 }, { x: 18, y: 10 }] },
+      { type: 'barracks', rects: [{ x: 6, y: 5, w: 1, h: 1 }] },   // 营:上脊左侧,扼 a 路 (5,4)/c 路 (7,3) 绕脊段
+      { type: 'archtower', rects: [{ x: 15, y: 5, w: 1, h: 1 }] }, // 塔:上脊右侧,俯瞰 b 路 (17,4)/d 路 (16,3) 绕脊段
     ],
   },
   ch5A: {
@@ -261,6 +277,8 @@ export const BASE_BOARDS = {
       { type: 'firegully', rects: [{ x: 8, y: 7, w: 2, h: 3 }] },
       // 火谷区2:东走廊(x=17..19,y=7..9) — 盖 c路(17,7)(18,7..9)(19,9)/d路(17..19,8)
       { type: 'firegully', rects: [{ x: 17, y: 7, w: 3, h: 3 }] },
+      { type: 'barracks', rects: [{ x: 4, y: 5, w: 1, h: 1 }] },   // 营:西渡口南岸,扼 a 路 (5,4)→(2,4) 大弧段
+      { type: 'archtower', rects: [{ x: 16, y: 9, w: 1, h: 1 }] }, // 塔:东走廊侧,俯瞰 c 路 (18,9)/d/e 汇合段
     ],
   },
   ch5B: {
@@ -306,6 +324,8 @@ export const BASE_BOARDS = {
       { type: 'firegully', rects: [{ x: 8, y: 7, w: 3, h: 3 }] },
       // 谷底火谷大区2(东):x=13..15,y=7..9 — 盖 b/d/f/h 路入谷核心段
       { type: 'firegully', rects: [{ x: 13, y: 7, w: 3, h: 3 }] },
+      { type: 'barracks', rects: [{ x: 6, y: 2, w: 1, h: 1 }] },   // 营:谷口正北,扼 a 路 (4,1)/c 路 (4,3) 越谷口段
+      { type: 'archtower', rects: [{ x: 18, y: 6, w: 1, h: 1 }] }, // 塔:东中路侧,俯瞰 d 路 (19,5)/f 路 (16,5) 北绕段
     ],
   },
 };

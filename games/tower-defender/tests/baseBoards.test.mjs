@@ -4,7 +4,7 @@ import assert from 'node:assert';
 import { BASE_BOARDS } from '../src/data/baseBoards.js';
 
 const CHAPTER_CAMPS = { 1: 3, 2: 4, 3: 5, 4: 6, 5: 8 };
-const TERRAIN_TYPES = new Set(['plateau', 'river', 'shallow', 'mountain', 'rockfall', 'firegully']);
+const TERRAIN_TYPES = new Set(['plateau', 'river', 'shallow', 'mountain', 'rockfall', 'firegully', 'barracks', 'archtower']);
 
 for (const [id, b] of Object.entries(BASE_BOARDS)) {
   assert.equal(b.id, id, `${id} id 自洽`);
