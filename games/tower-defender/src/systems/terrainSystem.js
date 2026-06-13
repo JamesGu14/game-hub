@@ -11,9 +11,19 @@ export function terrainTypeAt(level, x, y) {
   return (level && level.terrainAt && level.terrainAt[y] && level.terrainAt[y][x]) || null;
 }
 
-// 将位射程加成:高台 +0.5,否则 0。建塔(economySystem)与续玩重建(main.applyResume)共用 → 快照零迁移。
+// 将位地形加成（建塔(economySystem)与续玩重建(main.applyResume)共用 → 快照零迁移）。
+// plateau→射程 / barracks→攻击 / archtower→攻速。
+export function terrainBonuses(level, slot) {
+  const t = terrainTypeAt(level, slot.x, slot.y);
+  return {
+    rangeBonus: t === 'plateau' ? BAL.PLATEAU_RANGE_BONUS : 0,
+    dmgMult: t === 'barracks' ? BAL.BARRACKS_DMG_MULT : 1,
+    intervalMult: t === 'archtower' ? BAL.ARCHTOWER_INTERVAL_MULT : 1,
+  };
+}
+// 薄封装：空将位建造预览（main.js）仅需射程；plateau.test 依赖。
 export function rangeBonusFor(level, slot) {
-  return terrainTypeAt(level, slot.x, slot.y) === 'plateau' ? BAL.PLATEAU_RANGE_BONUS : 0;
+  return terrainBonuses(level, slot).rangeBonus;
 }
 
 // 运行时地形状态（gameState.newGameState 调用;resume 重建即重置——v1 续玩回到波首,语义正确）
