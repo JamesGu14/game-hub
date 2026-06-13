@@ -94,7 +94,7 @@ export const BASE_BOARDS = {
       { type: 'river', rects: [{ x: 0, y: 9, w: 5, h: 2 }, { x: 6, y: 9, w: 9, h: 2 }, { x: 16, y: 9, w: 8, h: 2 }] },
       { type: 'plateau', rects: [{ x: 17, y: 3, w: 2, h: 2 }] },   // 东渡口北岸高台,扼 d 路迂回段
       { type: 'barracks', rects: [{ x: 7, y: 6, w: 1, h: 1 }] },   // 营:西渡口北岸,扼 a 路 (8,5)/c 路 (7,4) 折内段
-      { type: 'archtower', rects: [{ x: 17, y: 4, w: 1, h: 1 }] }, // 塔:东侧 d 路迂回,俯瞰 (18,5)→(14,5) 折西段
+      { type: 'archtower', rects: [{ x: 17, y: 7, w: 1, h: 1 }] }, // 塔:东侧 d 路俯瞰位,扼 b/d 北段(避开 (17,3) 高台)
     ],
   },
   ch3A: {
