@@ -30,6 +30,11 @@ export const ENEMIES = {
     heal: { range: 1.5, perSec: 8 },                           // 治疗周围友军（封顶见 BAL.HEAL_CAP_PER_SEC）
     color: '#e84393',
   },
+  cavalry: {
+    id: 'cavalry', name: '骑兵',
+    hp: 120, speed: 0.9, gold: 10, castleDmg: 2, flying: false,  // 重装冲锋·仅魏吴·无抗性,血厚+冲速施压(填轻骑↔重甲空位)
+    color: '#6c5ce7',
+  },
   heavy: {
     id: 'heavy', name: '重甲',
     hp: 200, speed: 0.5, gold: 14, castleDmg: 2, flying: false,
