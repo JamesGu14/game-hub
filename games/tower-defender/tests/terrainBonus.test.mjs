@@ -17,6 +17,8 @@ assert.deepEqual(terrainBonuses(fake, { x: 1, y: 1 }),
   { rangeBonus: 0, dmgMult: 1, intervalMult: 1 }, '平地无加成');
 assert.deepEqual(terrainBonuses({}, { x: 0, y: 0 }),
   { rangeBonus: 0, dmgMult: 1, intervalMult: 1 }, '无 terrainAt 防御性默认');
+assert.deepEqual(terrainBonuses(fake, { x: 5, y: 5 }),
+  { rangeBonus: 0, dmgMult: 1, intervalMult: 1 }, '越界 slot 安全默认');
 
 // 常量量级自检（温和 +25%）
 assert.equal(BAL.BARRACKS_DMG_MULT, 1.25, '营 +25%');

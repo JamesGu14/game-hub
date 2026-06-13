@@ -21,6 +21,7 @@ export function terrainBonuses(level, slot) {
     intervalMult: t === 'archtower' ? BAL.ARCHTOWER_INTERVAL_MULT : 1,
   };
 }
+
 // 薄封装：空将位建造预览（main.js）仅需射程；plateau.test 依赖。
 export function rangeBonusFor(level, slot) {
   return terrainBonuses(level, slot).rangeBonus;
