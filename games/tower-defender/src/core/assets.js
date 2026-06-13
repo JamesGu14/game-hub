@@ -51,6 +51,11 @@ export const MANIFEST = {
   enemy_heavy: 'assets/sprites/enemies/heavy.png',     // [检查点A v2] 重甲（跨势力共用）
   enemy_flyer: 'assets/sprites/enemies/flyer.png',     // [检查点A v2] 飞兵·战鹰
   enemy_shaman: 'assets/sprites/enemies/shaman.png',   // [检查点A v2] 方士/术士
+  // —— [需求①②] faction 专属敌兵图(缺图→ enemySprite 回退原型图→色块;James 跑 gen-sprites --enemies 产出)——
+  enemy_wu_footman: 'assets/sprites/enemies/wu_footman.png',
+  enemy_wei_footman: 'assets/sprites/enemies/wei_footman.png',
+  enemy_wu_cavalry: 'assets/sprites/enemies/wu_cavalry.png',
+  enemy_wei_cavalry: 'assets/sprites/enemies/wei_cavalry.png',
   // —— 南蛮名将 BOSS ——
   boss_mulu: 'assets/sprites/bosses/mulu.png',
   boss_wutugu: 'assets/sprites/bosses/wutugu.png',

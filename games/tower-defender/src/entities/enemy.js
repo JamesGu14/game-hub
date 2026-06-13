@@ -20,6 +20,7 @@ export function createEnemy(type, pathId, path, scale = 1, opts = {}) {
     speed: def.speed, flying: !!def.flying,
     color: (skin && skin.color) || def.color,
     name: opts.name || (skin && skin.name) || def.name,            // [P3] 显示名（BOSS名/皮名/原型名）
+    faction: opts.faction || null,                 // [需求①] 势力 → entityRenderer faction 感知选图(enemy_<faction>_<type>)
     resist: def.resist || null,                    // 抗性矩阵 resist[dmgType]
     tag: def.tag || null,                          // 'tengjia'/'heavy'（克制键）
     heal: def.heal || null,                        // 方士治疗光环 {range,perSec}

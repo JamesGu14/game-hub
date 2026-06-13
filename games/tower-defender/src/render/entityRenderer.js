@@ -8,7 +8,7 @@ import { assets, generalSprite } from '../core/assets.js';
 
 const C = BAL.CELL;
 
-const ENEMY_R = { footman: 0.26, wolf: 0.22, tengjia: 0.32, flyer: 0.24, shaman: 0.26, heavy: 0.3, boss: 0.44 };
+const ENEMY_R = { footman: 0.26, wolf: 0.22, tengjia: 0.32, flyer: 0.24, shaman: 0.26, heavy: 0.3, cavalry: 0.28, boss: 0.44 };
 const MODE_GLYPH = { first: '前', last: '后', strongest: '强', weakest: '弱' };
 
 // —— 补间常量（集中调参）——
@@ -134,12 +134,17 @@ export function drawTower(ctx, t, now = 0) {
   }
 }
 
+// [需求①] 敌兵选图:faction 专属图(enemy_<faction>_<type>)优先 → 原型通用图(enemy_<type>)→ null(调用方画色块)。
+export function enemySprite(e) {
+  return (e.faction && assets.images['enemy_' + e.faction + '_' + e.type]) || assets.images['enemy_' + e.type] || null;
+}
+
 export function drawEnemy(ctx, e, now = 0) {
   const lift = e.flying ? -C * 0.34 : 0;
   const bob = Math.sin(now * IDLE_K + (e.id || 0) * 1.7) * (IDLE_AMP * 0.6);
   const cy = e.py + lift + bob;                                  // 本体中心（含抬升+浮动）
   const R = (ENEMY_R[e.type] || 0.26) * C;
-  const img = e.isBoss ? assets.images['boss_' + e.bossId] : assets.images['enemy_' + e.type];
+  const img = e.isBoss ? assets.images['boss_' + e.bossId] : enemySprite(e);
   const flash = pulse(e.lastHitAt, now, HIT_DUR);               // 受击闪白脉冲
   const crit = pulse(e.critFlashAt, now, 0.25);                 // [改进④] 暴击闪红脉冲(比受击白更久更醒目)
 
