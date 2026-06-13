@@ -23,7 +23,7 @@ for (const c of CAMPAIGN) {
   assert.ok(c.chapter >= 1 && c.chapter <= 5, `L${c.id} chapter 合法`);
   assert.ok(VALID_FACTIONS.has(c.faction), `L${c.id} faction 合法`);
   assert.ok(TEMPLATES[c.templateId], `L${c.id} templateId ${c.templateId} 合法`);
-  assert.ok(c.waveCount >= 20, `L${c.id} waveCount≥20`);
+  assert.ok(c.waveCount >= 30 && c.waveCount <= 34, `L${c.id} waveCount∈[30,34]（[改进③]每关+10波）`);
   assert.ok(typeof c.difficulty === 'number', `L${c.id} difficulty 数`);
   assert.ok(Array.isArray(c.enemyTiers) && c.enemyTiers.length, `L${c.id} enemyTiers 非空`);
   assert.equal(c.enemyTiers[0], 'footman', `L${c.id} enemyTiers[0]=footman（教学保底）`);

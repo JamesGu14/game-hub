@@ -26,7 +26,7 @@ function positionParams(ch, k) {
   const p = k / 9;
   return {
     difficulty: +(C.diffLo + (C.diffHi - C.diffLo) * p).toFixed(2),
-    waveCount: 20 + Math.round(p * (ch - 1)),   // 20→(20+章号-1)，后章更长，恒 ≥20
+    waveCount: 30 + Math.round(p * (ch - 1)),   // [改进③] 30→(30+章号-1)，每关+10波(满级可达),恒 ≥30
   };
 }
 
