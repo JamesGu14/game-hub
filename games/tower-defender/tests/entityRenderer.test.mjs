@@ -8,6 +8,7 @@ import { assets } from '../src/core/assets.js';
 // —— 带 save/restore 栈 + 调用计数的假 ctx ——
 function makeStubCtx() {
   const calls = { drawImage: 0, fillRect: 0, fillText: 0, arc: 0, ellipse: 0, fill: 0, stroke: 0 };
+  const texts = [];
   const state = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', globalAlpha: 1,
     globalCompositeOperation: 'source-over', shadowColor: '', shadowBlur: 0,
@@ -21,12 +22,12 @@ function makeStubCtx() {
     arc() { calls.arc++; }, ellipse() { calls.ellipse++; },
     fill() { calls.fill++; }, stroke() { calls.stroke++; },
     fillRect() { calls.fillRect++; }, strokeRect() {},
-    fillText() { calls.fillText++; }, strokeText() {},
+    fillText(t) { calls.fillText++; texts.push(String(t)); }, strokeText(t) { texts.push(String(t)); },
     drawImage() { calls.drawImage++; },
     measureText(t) { return { width: (t ? String(t).length : 0) * 8 }; },
     createLinearGradient() { return { addColorStop() {} }; },
     createRadialGradient() { return { addColorStop() {} }; },
-    _depth() { return stack.length; }, _calls: calls,
+    _depth() { return stack.length; }, _calls: calls, _texts: texts,
   };
   for (const k of Object.keys(state)) Object.defineProperty(ctx, k, { get() { return state[k]; }, set(v) { state[k] = v; }, enumerable: true });
   return ctx;
@@ -49,7 +50,7 @@ function assertClean(ctx, label) {
   const ctx = makeStubCtx();
   assert.doesNotThrow(() => drawTower(ctx, tower(), 1.0), '塔有图不抛');
   assert.ok(ctx._calls.drawImage >= 1, '塔有图应 drawImage');
-  assert.ok(ctx._calls.arc >= 1, '有图也画等级金点(arc)');
+  assert.ok(ctx._texts.some((t) => /^Lv\.\d/.test(t)), '有图在头顶画等级 Lv.N');
   assert.ok(ctx._calls.fillText >= 1, '有图也画目标模式角标(fillText)');
   assertClean(ctx, '塔有图');
 }

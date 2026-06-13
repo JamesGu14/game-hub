@@ -102,10 +102,14 @@ export function drawTower(ctx, t, now = 0) {
   }
 
   // —— 信息层（始终画；屏幕直绘，不随 bob/pop，稳定可读）——
-  // 等级 pips（L1-3 金点）
-  for (let i = 0; i < t.level; i++) {
-    ctx.fillStyle = '#ffe08a';
-    ctx.beginPath(); ctx.arc(t.px - s + 4 + i * 6, t.py + s - 4, 2.2, 0, Math.PI * 2); ctx.fill();
+  // 等级（头顶 Lv.N 描边金字；脚下金点旧法在武将贴近时被邻格脚部遮挡，改头顶）
+  {
+    const lvY = img ? t.py - C * 1.45 : t.py - s - 8;   // 有立绘=头顶上方;色块回退=方块顶上
+    ctx.font = `bold ${C * 0.3}px system-ui`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+    ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(20,12,4,.85)';
+    ctx.strokeText('Lv.' + t.level, t.px, lvY);
+    ctx.fillStyle = '#ffe08a'; ctx.fillText('Lv.' + t.level, t.px, lvY);
   }
   // 目标模式角标（右上）
   ctx.fillStyle = 'rgba(20,24,34,.82)'; ctx.fillRect(t.px + s - 11, t.py - s - 2, 13, 12);
