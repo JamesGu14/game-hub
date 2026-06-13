@@ -291,33 +291,66 @@ function lobeSpots(p, lb, k) {
 function flowerAt(ctx, x, y, col) {
   ctx.strokeStyle = col.stem; ctx.lineWidth = 1.5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(x, y + 6); ctx.lineTo(x, y); ctx.stroke();
+  ctx.lineCap = 'butt'; ctx.lineWidth = 1;
+  // 5 花瓣(黄金角均布;确定性,无 Math.random)
   ctx.fillStyle = col.petal;
-  for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) { ctx.beginPath(); ctx.arc(x + dx, y + dy, 1.6, 0, Math.PI * 2); ctx.fill(); }
-  ctx.fillStyle = col.flowerCore; ctx.beginPath(); ctx.arc(x, y, 1.3, 0, Math.PI * 2); ctx.fill();
+  for (let i = 0; i < 5; i++) {
+    const ang = i * (Math.PI * 2 / 5) - Math.PI / 2;
+    ctx.beginPath(); ctx.arc(x + Math.cos(ang) * 2.2, y + Math.sin(ang) * 2.2, 1.7, 0, Math.PI * 2); ctx.fill();
+  }
+  // 花蕊高光
+  ctx.fillStyle = col.flowerCore; ctx.beginPath(); ctx.arc(x, y, 1.4, 0, Math.PI * 2); ctx.fill();
+  ellipseFill(ctx, x - 0.3, y - 0.4, 0.5, 0.4, 'rgba(255,255,255,.4)', 1);
 }
 function crownAt(ctx, x, y, r, fill, outline) {
   ctx.fillStyle = fill; ctx.strokeStyle = outline; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+  ctx.lineWidth = 1;   // 自清:防 lineWidth=1.5 泄漏到后续 painter(质审 Important)
 }
-function treeAt(ctx, x, y, r, crownFill, col) {        // 圆冠树(grove/孤树)
+function treeAt(ctx, x, y, r, crownFill, col) {        // 圆冠树(grove/孤树) — 分层精修
   shadowAt(ctx, x, y + r * 1.5, r * 1.3);
+  // 树干
   ctx.fillStyle = col.trunk; ctx.strokeStyle = col.trunkOutline; ctx.lineWidth = 1;
   ctx.fillRect(x - 2, y + r * 0.5, 4, r * 0.9); ctx.strokeRect(x - 2, y + r * 0.5, 4, r * 0.9);
+  // 主冠
   crownAt(ctx, x, y, r, crownFill, col.crownOutline);
+  // 冠底 AO 暗面(增加立体感)
+  ellipseFill(ctx, x, y + r * 0.35, r * 0.85, r * 0.5, 'rgba(0,0,0,.14)', 1);
+  // 第二簇(左上副冠,增加丰茂感)
+  crownAt(ctx, x - r * 0.42, y - r * 0.18, r * 0.6, crownFill, col.crownOutline);
+  // 冠顶高光
   ellipseFill(ctx, x - r * 0.3, y - r * 0.4, r * 0.4, r * 0.32, col.crownHi, 0.85);
+  // 副冠小高光
+  ellipseFill(ctx, x - r * 0.55, y - r * 0.35, r * 0.22, r * 0.17, 'rgba(255,255,255,.18)', 1);
+  ctx.lineWidth = 1; ctx.lineCap = 'butt';
 }
-function pineAt(ctx, x, y, h, fill, col) {             // 松(三角冠)
+function pineAt(ctx, x, y, h, fill, col) {             // 松(叠层三角冠,3层由深到浅)
   shadowAt(ctx, x, y + h * 0.55, h * 0.45);
+  // 树干
   ctx.fillStyle = col.trunk; ctx.fillRect(x - 1.5, y + h * 0.35, 3, h * 0.2);
+  // 底层最大三角(最暗:alpha 暗压)
   ctx.fillStyle = fill; ctx.strokeStyle = col.pineOutline; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(x - h * 0.32, y + h * 0.4); ctx.lineTo(x + h * 0.32, y + h * 0.4); ctx.lineTo(x, y - h * 0.5); ctx.closePath();
+  ctx.beginPath(); ctx.moveTo(x - h * 0.32, y + h * 0.4); ctx.lineTo(x + h * 0.32, y + h * 0.4); ctx.lineTo(x, y - h * 0.2); ctx.closePath();
   ctx.fill(); ctx.stroke();
+  ellipseFill(ctx, x, y + h * 0.15, h * 0.18, h * 0.1, 'rgba(0,0,0,.12)', 1);   // 底层 AO
+  // 中层三角(略小、向上偏)
+  ctx.fillStyle = fill; ctx.strokeStyle = col.pineOutline;
+  ctx.beginPath(); ctx.moveTo(x - h * 0.24, y + h * 0.18); ctx.lineTo(x + h * 0.24, y + h * 0.18); ctx.lineTo(x, y - h * 0.35); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // 顶层最小三角 + 白色高光
+  ctx.beginPath(); ctx.moveTo(x - h * 0.16, y + h * 0.0); ctx.lineTo(x + h * 0.16, y + h * 0.0); ctx.lineTo(x, y - h * 0.5); ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ellipseFill(ctx, x - h * 0.04, y - h * 0.28, h * 0.07, h * 0.05, 'rgba(255,255,255,.22)', 1);  // 顶端高光
+  ctx.lineWidth = 1; ctx.lineCap = 'butt';
 }
-function rockAt(ctx, x, y, r, col) {                   // 岩块(三角面)
+function rockAt(ctx, x, y, r, col) {                   // 岩块(三角面 + 顶面高光)
   shadowAt(ctx, x, y + r * 0.5, r);
   ctx.fillStyle = col.rock; ctx.strokeStyle = col.rockOutline; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(x - r, y + r * 0.5); ctx.lineTo(x - r * 0.2, y - r * 0.7); ctx.lineTo(x + r * 0.9, y + r * 0.5); ctx.closePath();
   ctx.fill(); ctx.stroke();
+  // 左侧受光面高光
+  ellipseFill(ctx, x - r * 0.25, y - r * 0.25, r * 0.28, r * 0.18, 'rgba(255,255,255,.2)', 1);
+  ctx.lineWidth = 1;
 }
 function reedAt(ctx, x, y, col, sway) {                // 芦苇(sway=苇顶 x 偏移;烘焙传 0,动效传 sin)
   ctx.strokeStyle = col.reed; ctx.lineWidth = 2; ctx.lineCap = 'round';
@@ -449,10 +482,16 @@ function leafAt(ctx, x, y, col, rot) {                 // 单片红叶(rot 弧�
 const DECOR_PAINTERS = {
   tuft(ctx, x, y, v, col) {
     const s = 0.85 + v * 0.15;
+    // 主草茎(深色基调)
     ctx.strokeStyle = col.tuft; ctx.lineWidth = 2; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x - 3 * s, y - 6 * s, x - 6 * s, y - 8 * s); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - 12 * s); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + 3 * s, y - 6 * s, x + 6 * s, y - 8 * s); ctx.stroke();
+    // 叶尖高光(细线叠白,模拟逆光边缘)
+    ctx.strokeStyle = 'rgba(255,255,255,.28)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - 4 * s, y - 5 * s); ctx.lineTo(x - 6 * s, y - 8 * s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - 0.5, y - 9 * s); ctx.lineTo(x, y - 12 * s); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 4 * s, y - 5 * s); ctx.lineTo(x + 6 * s, y - 8 * s); ctx.stroke();
     ctx.lineCap = 'butt'; ctx.lineWidth = 1;
   },
   flower(ctx, x, y, v, col) { flowerAt(ctx, x, y, col); },
@@ -462,6 +501,9 @@ const DECOR_PAINTERS = {
     ctx.fillStyle = col.haystack; ctx.strokeStyle = col.haystackOutline; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.arc(x, y, r, Math.PI, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x, y); ctx.stroke();
+    // 顶部高光弧
+    ellipseFill(ctx, x - r * 0.2, y - r * 0.55, r * 0.4, r * 0.22, 'rgba(255,255,255,.2)', 1);
+    ctx.lineWidth = 1;
   },
   stone(ctx, x, y, v, col) {
     shadowAt(ctx, x + 2, y + 4, 8);
@@ -525,15 +567,33 @@ const LANDMARK_PAINTERS = {
     ctx.beginPath(); ctx.moveTo(cx, footY - 38); ctx.quadraticCurveTo(cx + 3, footY - 45, cx, footY - 51); ctx.stroke();
     ctx.globalAlpha = 1; ctx.lineCap = 'butt'; ctx.lineWidth = 1;
   },
-  tent(ctx, cx, footY) {         // 军帐:三角帐+门帘+小旗
+  tent(ctx, cx, footY) {         // 军帐:三角帐+门帘+脊梁+明暗面+小旗
     shadowAt(ctx, cx, footY, C * 0.5);
+    // 帐篷主体
     ctx.fillStyle = LK.cloth; ctx.strokeStyle = LK.clothDark; ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(cx - 16, footY); ctx.lineTo(cx + 16, footY); ctx.lineTo(cx, footY - 24); ctx.closePath(); ctx.fill(); ctx.stroke();
+    // 左坡面:受光面(浅白高光叠层)
+    ctx.fillStyle = 'rgba(255,255,255,.12)';
+    ctx.beginPath(); ctx.moveTo(cx - 16, footY); ctx.lineTo(cx, footY - 24); ctx.lineTo(cx, footY); ctx.closePath(); ctx.fill();
+    // 右坡面:背光面(深色暗压)
+    ctx.fillStyle = 'rgba(0,0,0,.14)';
+    ctx.beginPath(); ctx.moveTo(cx + 16, footY); ctx.lineTo(cx, footY - 24); ctx.lineTo(cx, footY); ctx.closePath(); ctx.fill();
+    // 门帘
     ctx.fillStyle = LK.clothDark;
     ctx.beginPath(); ctx.moveTo(cx - 4, footY); ctx.lineTo(cx, footY - 8); ctx.lineTo(cx + 4, footY); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = LK.woodDark; ctx.beginPath(); ctx.moveTo(cx, footY - 24); ctx.lineTo(cx, footY - 32); ctx.stroke();
+    // 脊梁缝线(顶脊 → 底边中央;模拟帐篷缝合线)
+    ctx.strokeStyle = LK.clothDark; ctx.lineWidth = 1; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(cx, footY - 24); ctx.lineTo(cx, footY); ctx.stroke();
+    // 中央顶杆(延伸到旗杆)
+    ctx.strokeStyle = LK.woodDark; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(cx, footY - 24); ctx.lineTo(cx, footY - 33); ctx.stroke();
+    // 旗杆底座小影(立体感)
+    ctx.fillStyle = 'rgba(0,0,0,.18)';
+    ctx.beginPath(); ctx.ellipse(cx, footY - 24, 2.5, 1, 0, 0, Math.PI * 2); ctx.fill();
+    // 小旗
     ctx.fillStyle = LK.flag;
-    ctx.beginPath(); ctx.moveTo(cx, footY - 32); ctx.lineTo(cx + 9, footY - 29); ctx.lineTo(cx, footY - 26); ctx.closePath(); ctx.fill();
+    ctx.beginPath(); ctx.moveTo(cx, footY - 33); ctx.lineTo(cx + 9, footY - 30); ctx.lineTo(cx, footY - 27); ctx.closePath(); ctx.fill();
+    ctx.lineCap = 'butt'; ctx.lineWidth = 1;
   },
   watchtower(ctx, cx, footY) {   // 木瞭望塔:斜腿+横撑+平台+布棚
     shadowAt(ctx, cx, footY, C * 0.45);
