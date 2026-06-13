@@ -117,3 +117,14 @@ export function towerStats(g, level) {
     interval: g.interval * BAL.UPGRADE_INTERVAL_MULT ** HARD * BAL.UPGRADE_INTERVAL_MULT_SOFT ** SOFT,
   };
 }
+
+// 等级数值 × 地形加成（建塔时写 tower.dmgMult/rangeBonus/intervalMult；缺则默认）。
+// 收口：所有战斗/UI 取数走此函数，勿在调用点再 +rangeBonus（防双计）。
+export function effectiveStats(tower) {
+  const s = towerStats(GENERALS[tower.generalId], tower.level);
+  return {
+    dmg: s.dmg * (tower.dmgMult || 1),
+    range: s.range + (tower.rangeBonus || 0),
+    interval: s.interval * (tower.intervalMult || 1),
+  };
+}
