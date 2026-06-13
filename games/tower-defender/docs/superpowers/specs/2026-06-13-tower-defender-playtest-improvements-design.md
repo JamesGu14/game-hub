@@ -38,7 +38,10 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
 
 ### 2. 升级 → 弹窗消失 + 闪光
 - **现状**：`src/main.js:340-348`，升级成功后 `return` 但 `selectedTower` 保留 → 弹窗不关；已有 0.5s 金光罩（`entityRenderer.js:72-80` 读 `upgradedAt`）+ `spawnRing` + `spawnFloat('L2!')`。
-- **改法**：升级成功分支内 `selectedTower = null`（弹窗消失）；强化闪光——保留金光罩，`spawnRing` 改成更醒目的向外扩散金色冲击环，飘字改 `Lv.N ↑`。
+- **改法**：升级成功分支（`main.js:341-347`）内 `selectedTower = null`（弹窗消失）；强化闪光：
+  - 飘字（`main.js:345`）`'L'+level+'!'` → `'Lv.'+level+' ↑'`，色保持 `#ffd24d`；
+  - 冲击环（`main.js:344`，现 `spawnRing(state,px,py,'#ffd24d',C*0.95,0.5)`）改**双层**：内环 `C*0.95/ttl0.5` + 外环 `C*1.35/ttl0.7`，叠出扩张感（`spawnRing` 现成，多调一次即可，不必改 `fx.js`）；
+  - 金光罩（`entityRenderer.js:72-80` 读 `upgradedAt`）保留不动。
 - **取舍**：连升 5 级需重新点武将；第 8 点修好命中后点选跟手，James 已接受。
 - **涉及**：`main.js`（upgrade 分支）、`render/fx.js`（如需新环型）。
 - **验证**：单测（升级后 selectedTower 为 null）+ 浏览器目检闪光。
@@ -52,16 +55,17 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
   - `charge`（马超/马岱）→ **突进残影**
   - `burn`（诸葛/黄月英）→ **火弹拖尾**
 - **关键决策**：**只升级视觉，不碰战斗逻辑**。伤害仍在开火瞬间结算（现状即如此，tracer 只是视觉）。弹道在 ttl 期间按进度从 from 插值到 to 来"飞"，纯渲染。平衡零影响。
-- **涉及**：`entities/projectile.js`（加 kind）、`combat/projectileManager.js`（spawnTracer 传 kind）、`render/entityRenderer.js`（drawProjectile 分支）。
-- **验证**：单测（projectile 带正确 kind）+ 浏览器目检各类型弹道。
+- **信号链路**（GLM review 校正）：`hitOnce(state,tower,g,enemy,rng)` 第 3 参**已持有 `g`**（`attacks.js:15`），可直接取 `g.attack`——无需上溯。`spawnTracer` 现签名 `(state,tower,enemy,color)` → 加第 5 参 kind。**三处调用点都要传** `g.attack`：`hitOnce`（`attacks.js:19`）、`attackCharge`（`attacks.js:101`）、`attackBurn`（`attacks.js:111`）。`newProjectile`/`resetProjectile`（`projectile.js`）加 `kind` 字段（默认 `'single'`）。
+- **涉及**：`entities/projectile.js`（加 kind 字段）、`combat/projectileManager.js`（spawnTracer 透传 kind）、`combat/attacks.js`（3 处调用传 `g.attack`）、`render/entityRenderer.js`（drawProjectile 按 kind 分支）。
+- **验证**：单测（projectile 带正确 kind）+ `node tools/smoke-shots.mjs`（现成弹道冒烟）+ 浏览器目检各类型弹道。
 
 ---
 
 ## B 组 · 交互与布局
 
 ### 6. 提前出兵按钮挪到底部
-- **现状**：`src/main.js:172` `EARLY_BTN = { x: view.w/2-80, y: HUD_H+8, w:160, h:32 }` → 屏幕**顶部**；渲染 `main.js:262`，命中 `main.js:353`。
-- **改法**：改 `EARLY_BTN` 的 y 到底部建造栏正上方居中（建造栏在 `view.h - BH - 12 = view.h-82`，按钮放约 `view.h - 130`），拇指易够、不压建造栏。仅 `prep` 相位显示（不变）。
+- **现状**：`src/main.js:172` 是**工厂函数**（非对象字面量，GLM 校正）：`const EARLY_BTN = () => ({ x: view.w/2-80, y: HUD_H+8, w:160, h:32 })`，resize 后坐标随调用刷新；渲染 `main.js:262`、命中 `main.js:353` 均以 `EARLY_BTN()` 调用 → 屏幕**顶部**。
+- **改法**：改**函数体内**的 y 计算到底部建造栏正上方居中（建造栏在 `view.h - BH - 12 = view.h-82`，按钮放约 `view.h - 130`），拇指易够、不压建造栏。x/w 不变，仅 `prep` 相位显示（不变）。
 - **涉及**：`main.js`（EARLY_BTN 坐标）。
 - **验证**：浏览器/iPad 目检按钮在底部、可点、不挡建造栏。
 
@@ -79,11 +83,12 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
 > 通用纪律：本组每改一步，跑 `node tools/sim-economy.mjs`（真实经济模拟，确定性，模拟合格玩家）+ levels-winnable 测试，守住 **50/50 可通关**，并核对 balance-report 无新墙。
 
 ### 3. 波数 ~30 + 经济够升满级
-- **现状**：`src/data/campaign.js:29` `waveCount: 20 + Math.round(p*(ch-1))` → 第1章 20 波、第5章 24 波。经济来源：击杀掉金（`enemies.js` 各兵 `gold`）+ 清波奖励 `BAL.WAVE_CLEAR_BONUS=15` + 提前出兵 ≤30。升满级总花费 `base×8.4`。痛点：20 波金币不够升满。
+- **现状**：`src/data/campaign.js:29` `waveCount: 20 + Math.round(p*(ch-1))` → 第1章 20 波、第5章 24 波。经济来源：击杀掉金（`enemies.js` 各兵 `gold`）+ 清波奖励 `BAL.WAVE_CLEAR_BONUS=15` + 提前出兵 ≤30。升满级总花费 = `base×(1 + 1.0+1.6+2.0+2.8) = base×8.4`（建造 + L2~L5，`balance.js:22-25`）。痛点：20 波金币不够升满。
 - **改法**：
   1. 波数公式改 `30 + Math.round(p*(ch-1))` → 全 50 关 **30~34 波**（每关 +10）。
   2. 经济**数据驱动调**：加 10 波本身多给约 50% 金币（击杀+清波），**很可能光加波就够升满级**。先只加波，用 `sim-economy` 跑出实际可升到几级；若仍不够，再微调 `WAVE_CLEAR_BONUS 15→20` 或 `UPGRADE_COST_L5 2.8→2.5`。**不预先拍数值**。
-- **性能（小米 pad）**：加波是**延长**而非**加密度**，同屏峰值敌人数基本不变（仍 ~30-50）。`gameLoop` 有累加器封顶（`MAX_STEPS=3`），渲染逐帧 `sortByY` + drawTower/drawEnemy。结论：性能无忧；实现时在浏览器节流 CPU（4x throttle）下实测末波峰值帧率确认 ≥ 可玩。
+- **性能（小米 pad）**：加波是**延长**而非**加密度**。`waveGen` 用**归一化 intensity**（`i/(waveCount-1)`，`waveGen.js:34`）算单波密度——波数 20→30 把难度曲线**摊平到更多波**：同一"第 15 波"在 30 波关里 intensity 更低、出兵更少；**末波峰值**（intensity=1、rampT=1、且 `last` 波 ×0.5 减量，`waveGen.js:55`）**与波数无关、恒定**。故同屏峰值基本不变（仍 ~30-50），`gameLoop` 累加器封顶 `MAX_STEPS=3` 兜底。结论：性能无忧；实现时浏览器 4x CPU throttle 下实测末波峰值帧率确认。
+- **⚠️ 平衡副作用（GLM review 引申）**：因 intensity 归一化，加波**不是"多打 10 波同样的兵"，而是把曲线摊平**——前中期每波变弱、总波数变多。净效果：经济变宽松（清波 `15×30` vs `×20` + 更多击杀金）、前中期变易。**这正是 C 组必须 sim-economy 逐关重测的核心理由**：既确认满级可达，也要防整体过简单（若过简单，应反向上调 `difficulty` 而非靠"少给钱"卡玩家）。
 - **涉及**：`campaign.js`（波数公式）、可能 `balance.js`（经济微调，视模拟结果）。
 - **验证**：`sim-economy` 全 50 关跑通 + 某关实测玩家能在 30 波内把主力升到 L5；waveGen 测试更新（波数断言）。
 
@@ -94,10 +99,14 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
 - **验证**：重跑 sim-economy + winnable；balance-report 无回退。
 
 ### 4. 黄忠暴击特效
-- **现状**：`src/systems/combat/damageCalc.js:7-16`，仅黄忠 L3 百步穿杨 25%×2.5 无视护甲，返回 `{ dmg, isCrit:true }`；渲染层未消费 `isCrit`。
-- **改法**：命中暴击时，在被击敌人头顶弹"**暴击!**"金红大号飘字 + 敌人短暂闪红。需把 `isCrit` 信号从 sim 层（`combat/attacks.js` 调 damageCalc 处）冒泡到渲染——经 `state.fx` 或 `eventBus`（保持 sim 确定性，不在 sim 里写渲染）。
-- **涉及**：`combat/attacks.js`（读 isCrit 触发 fx 事件）、`render/fx.js`（暴击飘字样式）、可能 `render/entityRenderer.js`（敌人闪红）。
-- **验证**：单测（暴击命中产生暴击 fx）+ 浏览器目检黄忠 L3 暴击时敌人头上有特效。
+- **现状**：`src/systems/combat/damageCalc.js:7-16`，仅黄忠 L3 百步穿杨 25%×2.5 无视护甲，返回 `{ dmg, isCrit:true }`；但 `attacks.js:16` 的 `hitOnce` **只解构了 `dmg`、丢弃 `isCrit`**（GLM 🔴 关键链路），渲染层根本拿不到暴击信号——不补这行后面全白做。
+- **改法**（信号方式拍死 = **state.fx**，不用 eventBus——`attacks.js:10` 已 import 同模块的 `spawnRing`，`enemy.px/py` 现成，与 spawnFloat/spawnTracer 同范式，无需新依赖/延迟派发）：
+  1. `hitOnce` 解构改 `const { dmg, isCrit } = calcDamage(...)`；
+  2. `isCrit` 时 `spawnFloat(state, enemy.px, enemy.py - C*0.6, '暴击!', '#ff5a3a')`（金红大字；若要更大号，在 `fx.js` 的 float 加可选 `size` 字段，drawFx 读它放大）；
+  3. 敌人闪红：置 `enemy.critFlashAt = state.time`，`entityRenderer.drawEnemy` 读此时间戳叠红（类比现有 `lastHitAt` 受击闪白机制，`attacks.js:18`）。
+- **涉及**：`combat/attacks.js`（hitOnce 解构 isCrit + 触发 fx/标记）、`render/fx.js`（如加飘字 size）、`render/entityRenderer.js`（drawEnemy 读 critFlashAt 闪红）。
+- **不动**：damageCalc 数值、暴击率/倍率、其余武将——纯特效。
+- **验证**：单测（暴击命中 push 暴击 float + 置 critFlashAt）+ 浏览器目检黄忠 L3 暴击特效。
 
 ---
 
@@ -127,8 +136,10 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
 
 ## 测试与验证策略
 
-- **单测**（`tests/*.test.mjs`，62 个现有）：新增/更新覆盖——升级后弹窗关闭、projectile kind、暴击 fx、波数公式、廖化/黄忠数值、进 select 起 BGM、towerAtPixel 命中。
-- **平衡门禁**：`node tools/sim-economy.mjs` 全 50 关 + levels-winnable + balance-report，守 50/50 可通关无新墙。
+- **全门禁**：`bash scripts/test.sh`（串跑 `node --check` 全文件 + 全单测 `tests/*.test.mjs` + `verify-levels` 50 关 0 漏怪 + `check-imports` 自含铁律），任一红即 fail。
+- **单测**（62 个现有，逐文件 `node tests/x.test.mjs`）：新增/更新覆盖——升级后弹窗关闭、projectile kind、暴击 fx+critFlash、波数公式、廖化/黄忠数值、进 select 起 BGM、`towerAtPixel` 命中。
+- **平衡门禁**（C 组每步必跑）：`node tools/sim-economy.mjs`（真实经济模拟全 50 关）+ `node tools/verify-levels.mjs`（0 漏怪）+ `node tools/balance-report.mjs`（威胁基无新墙）+ 可选 `node tools/play-through.mjs`（策略组合通关）。守 **50/50 可通关**。
+- **冒烟**：`node tools/smoke-shots.mjs`（弹道）。
 - **真机冒烟**（小米 pad / iPad）：第 8 点点击命中、第 3 点末波帧率、首页背景+BGM。
 
 ## 风险与开放问题
@@ -137,3 +148,4 @@ James 实玩一轮后给出 10 条改进。本 spec 把每条落到代码锚点�
 - **R2**：背景图可能多轮才满意——预留生成迭代。
 - **R3**：第 3 点经济微调幅度待模拟结果定（spec 不预先拍死，实现时数据驱动）。
 - **R4**：首页 BGM 自动播放限制导致"首次静默"，已有补播方案，需真机确认体验可接受。
+- **R5（GLM review）**：D 组 Point 7（改 `core/assets.js` MANIFEST）、Point 9（改 `main.js` 起 BGM）与 A/B 组的 `main.js` 改动有重叠区间——同会话**串行**实现即可规避；若并行 worktree 需留意 `main.js` merge。
