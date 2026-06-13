@@ -13,9 +13,9 @@ export const CHAPTERS = [
   // [2026-06-13 平衡] ch2 去 heavy:重甲克制(诸葛/关羽)L21 才解锁,L18-20 重甲=无解题(实测墙);
   // 官渡主题=兵海以弱胜强,难度靠 diffK 数量曲线给。heavy 首秀顺延至 ch3 骨架带(L25,克制已到手)。
   { id: 2, title: '官渡之争·以弱胜强', faction: 'wei', templates: ['ch2A', 'ch2B'], tiers: ['footman', 'wolf'], bossPool: ['yanliang', 'wenchou', 'zhangliao'], lieutenantPool: ['yuejin', 'caohong', 'caoxiu', 'niujin'], diffLo: 0.8, diffHi: 1.6 },
-  { id: 3, title: '火烧赤壁·三分天下', faction: 'wu', templates: ['ch3A', 'ch3B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman'], bossPool: ['caocao', 'ganning', 'sunquan'], lieutenantPool: ['zhoutai', 'jiangqin', 'dingfeng', 'xusheng'], diffLo: 1.6, diffHi: 2.4 },
-  { id: 4, title: '进取西川·汉中之战', faction: 'wei', templates: ['ch4A', 'ch4B'], tiers: ['footman', 'wolf', 'heavy', 'tengjia'], bossPool: ['xiahouyuan', 'zhangren', 'caoren'], lieutenantPool: ['lidian', 'yujin', 'caoxiu', 'niujin'], diffLo: 2.4, diffHi: 3.2 },
-  { id: 5, title: '夷陵之火·六出祁山', faction: 'wu', templates: ['ch5A', 'ch5B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia'], bossPool: ['luxun', 'zhuran', 'zhanghe', 'xuchu'], lieutenantPool: ['dingfeng', 'xusheng', 'panzhang', 'handang'], diffLo: 3.2, diffHi: 4.0 },
+  { id: 3, title: '火烧赤壁·三分天下', faction: 'wu', templates: ['ch3A', 'ch3B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'cavalry'], bossPool: ['caocao', 'ganning', 'sunquan'], lieutenantPool: ['zhoutai', 'jiangqin', 'dingfeng', 'xusheng'], diffLo: 1.6, diffHi: 2.4 },
+  { id: 4, title: '进取西川·汉中之战', faction: 'wei', templates: ['ch4A', 'ch4B'], tiers: ['footman', 'wolf', 'heavy', 'tengjia', 'cavalry'], bossPool: ['xiahouyuan', 'zhangren', 'caoren'], lieutenantPool: ['lidian', 'yujin', 'caoxiu', 'niujin'], diffLo: 2.4, diffHi: 3.2 },
+  { id: 5, title: '夷陵之火·六出祁山', faction: 'wu', templates: ['ch5A', 'ch5B'], tiers: ['footman', 'wolf', 'heavy', 'flyer', 'shaman', 'tengjia', 'cavalry'], bossPool: ['luxun', 'zhuran', 'zhanghe', 'xuchu'], lieutenantPool: ['dingfeng', 'xusheng', 'panzhang', 'handang'], diffLo: 3.2, diffHi: 4.0 },
 ];
 
 const FACTION_CN = { nanman: '南蛮', wu: '东吴', wei: '曹魏' };
