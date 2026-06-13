@@ -1,7 +1,7 @@
 // ui/towerPanel.js — [P5] 点将面板（屏幕坐标）：竹简底 + 升级/拆除/切目标。
 // layout/hit 为单一来源（draw 共用）。点面板内（非按钮）也消费点击，防穿透建塔。
 import { BAL } from '../data/balance.js';
-import { GENERALS, towerStats } from '../data/generals.js';
+import { GENERALS, effectiveStats } from '../data/generals.js';
 import { generalSprite } from '../core/assets.js';
 import { upgradeCost, sellRefund } from '../systems/economySystem.js';
 import { panel, button, roundRect, FONT, PAL } from './theme.js';
@@ -61,10 +61,12 @@ export function drawTowerPanel(ctx, view, state, tower) {
   }
 
   // 当前数值（攻击/射程/攻速；射程同时以场上光圈显示）
-  const st = towerStats(g, tower.level);
-  const rngEff = st.range + (tower.rangeBonus || 0);
+  const st = effectiveStats(tower);
+  const dmgMark = tower.dmgMult > 1 ? '营' : '';
+  const rngMark = tower.rangeBonus ? '⛰' : '';
+  const spdMark = tower.intervalMult < 1 ? '塔' : '';
   ctx.fillStyle = PAL.ink; ctx.font = FONT.body(10, 600); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-  ctx.fillText(`攻击 ${Math.round(st.dmg)}　射程 ${rngEff.toFixed(1)}${tower.rangeBonus ? '⛰' : ''}　攻速 ${(1 / st.interval).toFixed(1)}`, L.x + 12, L.y + 40);
+  ctx.fillText(`攻击 ${Math.round(st.dmg)}${dmgMark}　射程 ${st.range.toFixed(1)}${rngMark}　攻速 ${(1 / st.interval).toFixed(1)}${spdMark}`, L.x + 12, L.y + 40);
 
   // 招牌技行(新6将无招牌技 → 整行隐藏,spec §5)
   if (g.signature) {

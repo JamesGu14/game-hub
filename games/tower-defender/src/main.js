@@ -27,7 +27,7 @@ import { loadVoiceRegistry, voiceSrcFor } from './core/voiceRegistry.js';
 import { CHAPTERS } from './data/campaign.js';
 import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
-import { GENERALS, towerStats } from './data/generals.js';
+import { GENERALS, effectiveStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
 import { button, panel, backdrop, vignette } from './ui/theme.js';
 import { createLoadingScreen, updateLoadingScreen, fadeOutLoadingScreen, showRetryDialog } from './ui/loadingScreen.js';
@@ -229,8 +229,7 @@ function render(s) {
 
   // [检查点A] 选中塔：场上画攻击范围光圈（射程随等级）
   if (selectedTower && s.towers.includes(selectedTower)) {
-    const sg = GENERALS[selectedTower.generalId];
-    const srng = towerStats(sg, selectedTower.level).range + (selectedTower.rangeBonus || 0);
+    const srng = effectiveStats(selectedTower).range;
     ctx.save();
     ctx.strokeStyle = 'rgba(255,210,77,.6)'; ctx.fillStyle = 'rgba(255,210,77,.08)';
     ctx.lineWidth = 1.5; ctx.setLineDash([6, 5]);
