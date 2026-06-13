@@ -22,6 +22,7 @@ import { drawHeroCard } from './ui/heroCard.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
 import { hitLevelSelect, drawLevelSelect, cheatHotspot } from './ui/levelSelect.js';
 import { hitCheatPanel, drawCheatPanel } from './ui/cheatPanel.js';
+import { hitCheatKeypad, drawCheatKeypad } from './ui/cheatKeypad.js';
 import { defaultCheats, effectiveUnlockedLevel, effectiveRoster, effectiveStartGold } from './core/cheats.js';
 import { newStoryState, hitStoryScene, drawStoryScene, toDialogue, advanceDialogue, storySceneLayout } from './ui/storyScene.js';
 import { storyContentFor } from './data/storylines.js';
@@ -59,7 +60,8 @@ let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
 let unlockNotice = null;   // [spec §4] 本局通关新解锁的武将提示
 let isFs = false;          // [全屏] 当前是否全屏(fullscreenchange 同步,驱动 ⛶ 高亮)
 let cheats = defaultCheats();   // [作弊] 纯内存叠加层,刷新即还原;绝不写存档(见 core/cheats.js)
-let cheatOpen = false;          // [作弊] 选关屏作弊面板是否打开(模态)
+let cheatStage = 'closed';      // [作弊] 'closed' | 'password' | 'menu' | 'gold'
+let keypadValue = '';           // [作弊] 数字键盘当前输入值
 // [作弊] 选关用 shim save:allLevels 时把有效最高可玩关号抬到总关数;levelSelect/startLevel 据此判解锁,内部零改
 function selSave() { return { ...save, unlockedLevel: effectiveUnlockedLevel(save, cheats, LEVELS.length) }; }
 
@@ -209,7 +211,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatOpen) drawCheatPanel(ctx, view, cheats); drawFsButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue); drawFsButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -300,27 +302,51 @@ function onPointerDown(ev) {
 
   // [P4] 选关屏
   if (screen === 'select') {
-    // [作弊] 面板打开=模态,优先消费(空白/未命中也吞,不穿透选关)
-    if (cheatOpen) {
+    // [作弊] 键盘输入态(password/gold)=模态,优先消费
+    if (cheatStage === 'password' || cheatStage === 'gold') {
+      const k = hitCheatKeypad(view, sx, sy);
+      if (k && k >= '0' && k <= '9') {
+        if (keypadValue.length < 6) keypadValue += k;
+        audio.sfx('ui');
+      } else if (k === 'back') {
+        keypadValue = keypadValue.slice(0, -1);
+        audio.sfx('ui');
+      } else if (k === 'cancel') {
+        if (cheatStage === 'password') cheatStage = 'closed';
+        else cheatStage = 'menu';
+        keypadValue = '';
+        audio.sfx('ui');
+      } else if (k === 'ok') {
+        if (cheatStage === 'password') {
+          if (keypadValue === '111') cheatStage = 'menu';
+          // 错密码留在 password 让其重试
+        } else {
+          const n = parseInt(keypadValue, 10);
+          if (Number.isInteger(n) && n >= 0) cheats.goldOverride = n;
+          cheatStage = 'menu';
+        }
+        keypadValue = '';
+        audio.sfx('ui');
+      }
+      // 'panel'/null 吞掉(模态)
+      return;
+    }
+    // [作弊] 面板菜单态=模态,优先消费
+    if (cheatStage === 'menu') {
       const a = hitCheatPanel(view, sx, sy);
       if (a === 'levels-on') cheats.allLevels = true;
       else if (a === 'levels-reset') cheats.allLevels = false;
       else if (a === 'generals-toggle') cheats.allGenerals = !cheats.allGenerals;
-      else if (a === 'gold-set') {
-        const v = window.prompt('设置初始金币（留空取消）', cheats.goldOverride != null ? String(cheats.goldOverride) : '');
-        const n = parseInt(v, 10);
-        if (Number.isInteger(n) && n >= 0) cheats.goldOverride = n;   // 空/NaN/负→不变
-      } else if (a === 'gold-reset') cheats.goldOverride = null;
-      else if (a === 'close') cheatOpen = false;
+      else if (a === 'gold-set') { cheatStage = 'gold'; keypadValue = cheats.goldOverride != null ? String(cheats.goldOverride) : ''; }
+      else if (a === 'gold-reset') cheats.goldOverride = null;
+      else if (a === 'close') cheatStage = 'closed';
       if (a) audio.sfx('ui');
       return;
     }
-    // [作弊] 隐藏热区:点"卫"字 → 密码 111 → 开面板;错/取消静默
+    // [作弊] 隐藏热区:点"卫"字 → canvas 密码键盘;错/取消静默
     const hs = cheatHotspot(ctx, view, LEVELS, selectChapter);
     if (sx >= hs.x && sx <= hs.x + hs.w && sy >= hs.y && sy <= hs.y + hs.h) {
-      const pw = window.prompt('请输入作弊密码');
-      if ((pw || '').trim() === '111') { cheatOpen = true; audio.sfx('ui'); }
-      return;
+      cheatStage = 'password'; keypadValue = ''; audio.sfx('ui'); return;
     }
     const r = hitLevelSelect(view, selSave(), LEVELS, selectChapter, sx, sy);
     if (r && r.kind === 'level') startLevel(r.index);
@@ -478,7 +504,8 @@ async function boot() {
     reviewStory() { enterStoryReview(); },
     voiceSrc: () => audio.currentVoiceSrc(),
     get cheats() { return cheats; },
-    openCheat() { cheatOpen = true; },   // [作弊] QA:绕过密码直接开面板
+    get cheatStage() { return cheatStage; },
+    openCheat() { cheatStage = 'menu'; },   // [作弊] QA:绕过密码直接开面板
   };
   bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
