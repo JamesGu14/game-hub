@@ -169,7 +169,8 @@ function drawFsButton() {
   button(ctx, hudButtons(view).fs, { label: '⛶', variant: isFs ? 'jade' : 'wood', active: isFs });
 }
 
-const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: HUD_H + 8, w: 160, h: 32 });
+// [改进⑥] 提前出兵按钮挪到屏幕下方(建造栏顶 view.h-82 再上抬 40)，拇指易够、不压建造栏
+const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: view.h - 122, w: 160, h: 32 });
 
 function resize() {
   // [C5] Retina/DPI：backing store = 逻辑像素 × dpr（封顶 2× 平衡清晰度与 GPU/内存）；
