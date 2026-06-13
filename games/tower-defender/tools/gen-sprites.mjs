@@ -200,6 +200,27 @@ let anchorUrl = null;
 const anchorFile = path.join(OUT, 'generals', 'huang.png');
 if (only.length && fs.existsSync(anchorFile)) anchorUrl = dataUrlOf(anchorFile);   // 复用已存黄忠当锚
 
+// —— 尾阶模式:仅生成 L4/L5(锚现有 _3,绝不重画 L1-L3):node tools/gen-sprites.mjs --tail [id...] ——
+if (process.argv.includes('--tail')) {
+  const ids = process.argv.slice(2).filter((a) => a !== '--tail');
+  const todo = ids.length ? STAGED.filter((u) => ids.includes(u.id)) : STAGED;
+  for (const u of todo) {
+    const l3 = path.join(OUT, 'generals', `${u.id}_3.png`);
+    if (!fs.existsSync(l3)) { console.log(`✗ ${u.id} — 缺 _3.png 锚,跳过`); continue; }
+    let ref = dataUrlOf(l3);                       // 阶4 锚现有 L3(同一人续装)
+    for (let s = 4; s <= 5; s++) {
+      const file = `${u.id}_${s}.png`;
+      try {
+        const r = await gen({ cat: 'generals', id: u.id, file, desc: u.stages[s - 1] }, ref);
+        console.log(`✓ generals/${file}  (${(r.bytes / 1024).toFixed(0)} KB)`);
+        ref = dataUrlOf(r.file);                   // 阶5 锚新阶4
+        await sleep(1500);
+      } catch (e) { console.log(`✗ generals/${file} — ${e.message}`); break; }
+    }
+  }
+  process.exit(0);
+}
+
 // —— 三阶模式:node tools/gen-sprites.mjs --stages [id...](无 id = 全 12 将)——
 if (process.argv.includes('--stages')) {
   const ids = process.argv.slice(2).filter((a) => a !== '--stages');
