@@ -77,6 +77,8 @@ export const MANIFEST = {
   building_wei: 'assets/sprites/buildings/wei.png',
   building_wu: 'assets/sprites/buildings/wu.png',
   building_chengdu: 'assets/sprites/buildings/chengdu.png',
+  // —— [改进⑦] 首页选关屏工笔国画背景(成都城墙·曹刘对阵;缺图 → levelSelect 回退渐变)——
+  bg_select: 'assets/bg/select-bg.jpg',
 };
 
 const STAGES = [

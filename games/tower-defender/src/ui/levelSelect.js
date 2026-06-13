@@ -4,6 +4,7 @@ import { isUnlocked, nextPlayableIndex } from '../core/save.js';
 import { FACTIONS } from '../data/factions.js';
 import { CHAPTERS } from '../data/campaign.js';
 import { backdrop, panel, title, seal, button, roundRect, FONT, PAL } from './theme.js';
+import { assets } from '../core/assets.js';
 
 const COLS = 5;
 const NAV_W = 132, NAV_H = 44;
@@ -54,7 +55,16 @@ export function hitLevelSelect(view, save, levels, chapterIdx, sx, sy) {
 
 export function drawLevelSelect(ctx, view, save, levels, chapterIdx) {
   ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);   // [C5] 屏幕坐标含 dpr
-  backdrop(ctx, view.w, view.h);
+  // [改进⑦] 首页工笔国画背景(cover 居中裁切 + 暗角压暗保证选关卡片/文字可读);缺图回退渐变,不阻塞
+  const bg = assets.images.bg_select;
+  if (bg) {
+    const sc = Math.max(view.w / bg.width, view.h / bg.height);
+    const dw = bg.width * sc, dh = bg.height * sc;
+    ctx.drawImage(bg, (view.w - dw) / 2, (view.h - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(13,8,5,.46)'; ctx.fillRect(0, 0, view.w, view.h);
+  } else {
+    backdrop(ctx, view.w, view.h);
+  }
   const chapter = CHAPTERS[chapterIdx];
 
   const nextIdx = nextPlayableIndex(save, levels.length);
