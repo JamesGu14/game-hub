@@ -17,10 +17,12 @@ import { sortByY } from './render/ysort.js';
 import { drawHud, hitHud, hudButtons, HUD_H } from './render/hud.js';
 import { spawnFloat, spawnRing } from './render/fx.js';
 import { drawBuildBar, hitBuildBar, buildBarLayout, HOTKEYS } from './ui/buildBar.js';
-import { unlockedGenerals, newlyUnlocked } from './data/unlocks.js';
+import { newlyUnlocked } from './data/unlocks.js';
 import { drawHeroCard } from './ui/heroCard.js';
 import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.js';
-import { hitLevelSelect, drawLevelSelect } from './ui/levelSelect.js';
+import { hitLevelSelect, drawLevelSelect, cheatHotspot } from './ui/levelSelect.js';
+import { hitCheatPanel, drawCheatPanel } from './ui/cheatPanel.js';
+import { defaultCheats, effectiveUnlockedLevel, effectiveRoster, effectiveStartGold } from './core/cheats.js';
 import { newStoryState, hitStoryScene, drawStoryScene, toDialogue, advanceDialogue, storySceneLayout } from './ui/storyScene.js';
 import { storyContentFor } from './data/storylines.js';
 import { loadVoiceRegistry, voiceSrcFor } from './core/voiceRegistry.js';
@@ -56,6 +58,10 @@ let lastProjCount = 0;   // [P6] 弹道数量增量 → 开火音效探测
 let sfxPhase = null;     // [P6] 相位切换 → 号角/胜/败音效探测
 let unlockNotice = null;   // [spec §4] 本局通关新解锁的武将提示
 let isFs = false;          // [全屏] 当前是否全屏(fullscreenchange 同步,驱动 ⛶ 高亮)
+let cheats = defaultCheats();   // [作弊] 纯内存叠加层,刷新即还原;绝不写存档(见 core/cheats.js)
+let cheatOpen = false;          // [作弊] 选关屏作弊面板是否打开(模态)
+// [作弊] 选关用 shim save:allLevels 时把有效最高可玩关号抬到总关数;levelSelect/startLevel 据此判解锁,内部零改
+function selSave() { return { ...save, unlockedLevel: effectiveUnlockedLevel(save, cheats, LEVELS.length) }; }
 
 function towerAt(cell) {
   return state.towers.find((t) => t.slot.x === cell.x && t.slot.y === cell.y) || null;
@@ -64,7 +70,7 @@ function curIndex() { return LEVELS.indexOf(state.level); }
 
 // [演绎] 进故事屏统一建态(选关入口/重看入口共用;roster 实时取,点将随解锁进度生长)
 function makeStoryState(n, { hasResume, review }) {
-  return newStoryState(storyContentFor(LEVELS[n], unlockedGenerals(save)), { hasResume, review });
+  return newStoryState(storyContentFor(LEVELS[n], effectiveRoster(save, cheats, Object.keys(GENERALS))), { hasResume, review });
 }
 // [演绎段2] 语音:进屏自动播旁白+预热幕2首句;registry 惰性加载,晚到且仍在幕1才补播(防 race 串台)
 function storyPlayNarration() {
@@ -95,7 +101,8 @@ function enterStoryReview() {
 // [P4] 进关(原地换关,循环持同一 state 引用)。enterLevel 不校验解锁(供 retry/调试);startLevel 校验。
 function enterLevel(n) {
   if (n < 0 || n >= LEVELS.length) return false;
-  Object.assign(state, newGameState(LEVELS[n], { unlocked: unlockedGenerals(save) }));
+  Object.assign(state, newGameState(LEVELS[n], { unlocked: effectiveRoster(save, cheats, Object.keys(GENERALS)) }));
+  state.gold = effectiveStartGold(state.gold, cheats);   // [作弊] goldOverride 覆盖起始金币(applyResume 随后用快照金币覆盖→续玩不受影响)
   if (BAL.GROUND_THEMES) bakeGround(state.level);   // [背景spec §3] 进关预烘(applyResume 内部走本函数,同口;drawGround 仍有懒烘兜底)
   recorded = false; unlockNotice = null; selected = 'liao'; selectedTower = null;
   lastProjCount = 0; sfxPhase = state.phase;        // [P6] 复位音效追踪（prep→combat 起号角）
@@ -105,7 +112,7 @@ function enterLevel(n) {
 }
 // [检查点A] 选关 → 故事屏（有续玩则带选项）；校验解锁。
 function startLevel(n) {
-  if (!isUnlocked(save, n + 1)) return false;
+  if (!isUnlocked(selSave(), n + 1)) return false;   // [作弊] allLevels 时放行全关
   pendingLevel = n; storyReview = false;
   const snap = browserLoadResume();
   pendingResume = (snap && snap.levelId === LEVELS[n].id) ? snap : null;
@@ -202,7 +209,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, save, LEVELS, selectChapter); drawFsButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatOpen) drawCheatPanel(ctx, view, cheats); drawFsButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -293,7 +300,29 @@ function onPointerDown(ev) {
 
   // [P4] 选关屏
   if (screen === 'select') {
-    const r = hitLevelSelect(view, save, LEVELS, selectChapter, sx, sy);
+    // [作弊] 面板打开=模态,优先消费(空白/未命中也吞,不穿透选关)
+    if (cheatOpen) {
+      const a = hitCheatPanel(view, sx, sy);
+      if (a === 'levels-on') cheats.allLevels = true;
+      else if (a === 'levels-reset') cheats.allLevels = false;
+      else if (a === 'generals-toggle') cheats.allGenerals = !cheats.allGenerals;
+      else if (a === 'gold-set') {
+        const v = window.prompt('设置初始金币（留空取消）', cheats.goldOverride != null ? String(cheats.goldOverride) : '');
+        const n = parseInt(v, 10);
+        if (Number.isInteger(n) && n >= 0) cheats.goldOverride = n;   // 空/NaN/负→不变
+      } else if (a === 'gold-reset') cheats.goldOverride = null;
+      else if (a === 'close') cheatOpen = false;
+      if (a) audio.sfx('ui');
+      return;
+    }
+    // [作弊] 隐藏热区:点"卫"字 → 密码 111 → 开面板;错/取消静默
+    const hs = cheatHotspot(ctx, view, LEVELS, selectChapter);
+    if (sx >= hs.x && sx <= hs.x + hs.w && sy >= hs.y && sy <= hs.y + hs.h) {
+      const pw = window.prompt('请输入作弊密码');
+      if ((pw || '').trim() === '111') { cheatOpen = true; audio.sfx('ui'); }
+      return;
+    }
+    const r = hitLevelSelect(view, selSave(), LEVELS, selectChapter, sx, sy);
     if (r && r.kind === 'level') startLevel(r.index);
     else if (r && r.kind === 'chapter') selectChapter = Math.max(0, Math.min(CHAPTERS.length - 1, selectChapter + r.delta));
     return;
@@ -416,7 +445,7 @@ async function boot() {
 
   save = browserLoad();
   audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
-  state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: unlockedGenerals(save) });   // 预建有效 state(供 resize/loop)
+  state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: effectiveRoster(save, cheats, Object.keys(GENERALS)) });   // 预建有效 state(供 resize/loop;boot 时 cheats 全关→等价 unlockedGenerals)
   resize();
   screen = 'select';
   if (bannerEl) bannerEl.classList.remove('show');   // 改用 resultPanel,不再用 #banner
@@ -448,6 +477,8 @@ async function boot() {
     persistResume,
     reviewStory() { enterStoryReview(); },
     voiceSrc: () => audio.currentVoiceSrc(),
+    get cheats() { return cheats; },
+    openCheat() { cheatOpen = true; },   // [作弊] QA:绕过密码直接开面板
   };
   bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音

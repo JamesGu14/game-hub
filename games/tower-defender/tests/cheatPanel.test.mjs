@@ -28,4 +28,7 @@ const noOverlap = (a, b) => a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <=
 assert.ok(noOverlap(L.levelsOn, L.levelsReset), '行0两按钮不重叠');
 assert.ok(noOverlap(L.goldSet, L.goldReset), '行1两按钮不重叠');
 
+// [Minor] 行2中间区域(generalsToggle左侧标签区)→ 'panel'(模态吞点击,不穿透选关)
+assert.equal(hitCheatPanel(view, L.panel.x + 24 + 10, L.rowY(2) + 29), 'panel', '行2左半区吞点击');
+
 console.log('ok cheatPanel');
