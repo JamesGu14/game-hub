@@ -15,6 +15,7 @@ assert.equal(hitCheatPanel(view, ...center(L.levelsToggle)), 'levels-toggle', '�
 assert.equal(hitCheatPanel(view, ...center(L.goldSet)), 'gold-set', '设置金币');
 assert.equal(hitCheatPanel(view, ...center(L.goldReset)), 'gold-reset', '金币还原');
 assert.equal(hitCheatPanel(view, ...center(L.generalsToggle)), 'generals-toggle', '解锁武将');
+assert.equal(hitCheatPanel(view, ...center(L.progressReset)), 'progress-reset', '重置真实进度');
 assert.equal(hitCheatPanel(view, ...center(L.close)), 'close', '关闭');
 
 // 面板内空白(标题区左上角)→ 'panel'(模态,不穿透)

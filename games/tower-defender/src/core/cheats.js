@@ -17,3 +17,8 @@ export function effectiveRoster(save, cheats, allIds) {
 export function effectiveStartGold(levelStartGold, cheats) {
   return cheats.goldOverride != null ? cheats.goldOverride : levelStartGold;
 }
+// 通关是否记入真实存档:仅当该关在真实存档下本就可玩(关号 ≤ unlockedLevel,即正常推进/重玩)。
+// allLevels 作弊跳关时 关号 > unlockedLevel → 不记 → 作弊纯内存、反选即还原(关卡+派生武将一并回锁)。
+export function shouldRecordClear(save, levelId) {
+  return levelId <= save.unlockedLevel;
+}

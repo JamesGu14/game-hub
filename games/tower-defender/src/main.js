@@ -7,7 +7,7 @@ import { newGameState, toggleFreeze, cycleSpeed } from './core/gameState.js';
 import { makeLoop } from './core/gameLoop.js';
 import { bus } from './core/eventBus.js';
 import { towerAtPixel } from './core/hit.js';
-import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume } from './core/save.js';
+import { browserLoad, browserWrite, applyClear, isUnlocked, nextPlayableIndex, resumeSnapshot, browserWriteResume, browserLoadResume, browserClearResume, defaultSave } from './core/save.js';
 import { tryBuild, tryUpgrade, sellTower, upgradeCost } from './systems/economySystem.js';
 import { rangeBonusFor, terrainBonuses } from './systems/terrainSystem.js';
 import { drawBoard, drawWeather } from './render/board.js';
@@ -23,7 +23,7 @@ import { hitTowerPanel, drawTowerPanel, cycleTowerMode } from './ui/towerPanel.j
 import { hitLevelSelect, drawLevelSelect, cheatHotspot } from './ui/levelSelect.js';
 import { hitCheatPanel, drawCheatPanel } from './ui/cheatPanel.js';
 import { hitCheatKeypad, drawCheatKeypad } from './ui/cheatKeypad.js';
-import { defaultCheats, effectiveUnlockedLevel, effectiveRoster, effectiveStartGold } from './core/cheats.js';
+import { defaultCheats, effectiveUnlockedLevel, effectiveRoster, effectiveStartGold, shouldRecordClear } from './core/cheats.js';
 import { newStoryState, hitStoryScene, drawStoryScene, toDialogue, advanceDialogue, storySceneLayout } from './ui/storyScene.js';
 import { storyContentFor } from './data/storylines.js';
 import { loadVoiceRegistry, voiceSrcFor } from './core/voiceRegistry.js';
@@ -62,6 +62,7 @@ let isFs = false;          // [全屏] 当前是否全屏(fullscreenchange 同�
 let cheats = defaultCheats();   // [作弊] 纯内存叠加层,刷新即还原;绝不写存档(见 core/cheats.js)
 let cheatStage = 'closed';      // [作弊] 'closed' | 'password' | 'menu' | 'gold'
 let keypadValue = '';           // [作弊] 数字键盘当前输入值
+let cheatResetArmed = false;    // [作弊] 「重置真实进度」二次确认:首点武装、再点执行;其余操作/关闭即解除
 // [作弊] 选关用 shim save:allLevels 时把有效最高可玩关号抬到总关数;levelSelect/startLevel 据此判解锁,内部零改
 function selSave() { return { ...save, unlockedLevel: effectiveUnlockedLevel(save, cheats, LEVELS.length) }; }
 
@@ -237,7 +238,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); drawMuteButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats, { resetArmed: cheatResetArmed }); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); drawMuteButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -304,7 +305,7 @@ function render(s) {
     if (!recorded) {
       browserClearResume();                       // [检查点A] 胜/负先清续玩（防写档异常残留脏档）
       recorded = true;
-      if (s.phase === 'won') {
+      if (s.phase === 'won' && shouldRecordClear(save, s.level.id)) {   // [作弊] 跳关通关不写盘:allLevels 纯内存、反选即还原
         const prev = save.unlockedLevel;
         save = applyClear(save, s.level.id, s.stars); browserWrite(save);
         const ids = newlyUnlocked(prev, save.unlockedLevel);
@@ -364,11 +365,18 @@ function onPointerDown(ev) {
     // [作弊] 面板菜单态=模态,优先消费
     if (cheatStage === 'menu') {
       const a = hitCheatPanel(view, sx, sy);
-      if (a === 'levels-toggle') cheats.allLevels = !cheats.allLevels;
-      else if (a === 'generals-toggle') cheats.allGenerals = !cheats.allGenerals;
-      else if (a === 'gold-set') { cheatStage = 'gold'; keypadValue = cheats.goldOverride != null ? String(cheats.goldOverride) : ''; }
-      else if (a === 'gold-reset') cheats.goldOverride = null;
-      else if (a === 'close') cheatStage = 'closed';
+      // [作弊] 重置真实进度:二次确认。首点武装,再点执行(清 unlockedLevel/stars,留 settings);其余按钮即解除武装。
+      if (a === 'progress-reset') {
+        if (cheatResetArmed) { save = { ...defaultSave(), settings: { ...save.settings } }; browserWrite(save); browserClearResume(); cheatResetArmed = false; }
+        else cheatResetArmed = true;
+      } else {
+        cheatResetArmed = false;
+        if (a === 'levels-toggle') cheats.allLevels = !cheats.allLevels;
+        else if (a === 'generals-toggle') cheats.allGenerals = !cheats.allGenerals;
+        else if (a === 'gold-set') { cheatStage = 'gold'; keypadValue = cheats.goldOverride != null ? String(cheats.goldOverride) : ''; }
+        else if (a === 'gold-reset') cheats.goldOverride = null;
+        else if (a === 'close') cheatStage = 'closed';
+      }
       if (a) audio.sfx('ui');
       return;
     }
