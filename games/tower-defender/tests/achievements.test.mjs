@@ -34,6 +34,14 @@ function fakeStore() {
   assert.deepEqual(a.earned, {}, '脏 earned → {}');
 }
 
+// 脏 kills 值归一化（负数/非整数 → 0，保留键）
+{
+  const s = fakeStore();
+  s.m['save_td_ach_v1'] = JSON.stringify({ kills:{ guan:-5, zhao:'x', ma:3 } });
+  const a = loadAch(s);
+  assert.deepEqual(a.kills, { guan:0, zhao:0, ma:3 }, '脏 kills 值 → 非负整数否则0');
+}
+
 // 段位边界
 {
   assert.equal(TIERS.length, 6, '6 段');
@@ -52,6 +60,7 @@ function fakeStore() {
   const a = defaultAch();
   recordKill(a, 'guan'); recordKill(a, 'guan'); recordKill(a, null);
   assert.equal(a.kills.guan, 2, 'recordKill 累加;null 不计');
+  recordKill(a, ''); assert.equal(Object.prototype.hasOwnProperty.call(a.kills, ''), false, '空字符串 id 不计');
   assert.equal(cardTier(a, 'guan'), 0, 'cardTier 查段位');
   recordDefeatedEnemy(a, 'lvbu'); recordDefeatedEnemy(a, 'lvbu');
   assert.equal(a.seen.lvbu, true, 'seen 标记');

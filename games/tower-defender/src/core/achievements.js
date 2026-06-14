@@ -38,7 +38,9 @@ export function loadAch(storage) {
     const d = _applyAchMigrations(JSON.parse(raw));
     return {
       version: ACH_VERSION,
-      kills: d.kills && typeof d.kills === 'object' ? { ...d.kills } : {},
+      kills: d.kills && typeof d.kills === 'object' && !Array.isArray(d.kills)
+        ? Object.fromEntries(Object.keys(d.kills).map((k) => [k, Number.isInteger(d.kills[k]) && d.kills[k] >= 0 ? d.kills[k] : 0]))
+        : {},
       seen: d.seen && typeof d.seen === 'object' ? { ...d.seen } : {},
       namedDefeats: Number.isInteger(d.namedDefeats) && d.namedDefeats >= 0 ? d.namedDefeats : 0,
       earned: d.earned && typeof d.earned === 'object' ? { ...d.earned } : {},
@@ -51,7 +53,7 @@ export function writeAch(storage, ach) {
   return ach;
 }
 
-// —— 记录/查询（就地 mutate ach 并返回，便于链用；纯逻辑、无 IO）——
+// —— 记录/查询（就地 mutate ach 并返回；非纯函数，调用方持同一引用，链式写法为可选便利；无 IO）——
 export function recordKill(ach, generalId) {
   if (!generalId) return ach;
   ach.kills[generalId] = (ach.kills[generalId] || 0) + 1;
