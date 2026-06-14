@@ -57,4 +57,15 @@ for (const lv of LEVELS) {
   assert.ok(Number.isFinite(lv.difficulty), `L${lv.id} difficulty 透传`);
 }
 
+// [成就] 副将出场必带 id(→ enemy.bossId，供图鉴点亮);锁住 levels→waveGen→waveSystem 透传链
+{
+  const withLt = LEVELS.find((l) => l.lieutenants && l.lieutenants.length);
+  assert.ok(withLt, '存在带副将的关卡');
+  for (const lt of withLt.lieutenants) {
+    assert.ok(lt.id, '副将解析对象带 id');
+    const spawned = withLt.waves.some((w) => w.spawns.some((sp) => sp.enemyType === 'boss' && sp.id === lt.id));
+    assert.ok(spawned, `副将 ${lt.id} 出现在某波 spawn(带 id→bossId)`);
+  }
+}
+
 console.log('ok levels-integrity');

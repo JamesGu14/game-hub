@@ -34,6 +34,10 @@ import { GENERALS, effectiveStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
 import { button, panel, backdrop, vignette, FONT, PAL } from './ui/theme.js';
 import { createLoadingScreen, updateLoadingScreen, fadeOutLoadingScreen, showRetryDialog } from './ui/loadingScreen.js';
+import { browserLoadAch, browserWriteAch, recordKill, recordDefeatedEnemy, tierIndex, TIERS } from './core/achievements.js';
+import { evaluate, achName } from './data/achievements.js';
+import { BOSSES, LIEUTENANTS } from './data/bosses.js';
+import { hitCodex, drawCodex } from './ui/codexScreen.js';
 
 
 const C = BAL.CELL;
@@ -61,6 +65,11 @@ let unlockNotice = null;   // [spec §4] 本局通关新解锁的武将提示
 let isFs = false;          // [全屏] 当前是否全屏(fullscreenchange 同步,驱动 ⛶ 高亮)
 let cheats = defaultCheats();   // [作弊] 纯内存叠加层,刷新即还原;绝不写存档(见 core/cheats.js)
 let cheatStage = 'closed';      // [作弊] 'closed' | 'password' | 'menu' | 'gold'
+let ach = null;                 // [成就] 内存成就档(boot 加载);定点落盘
+let achDirty = false;           // [成就] 有未落盘变更
+let codexTab = 'codex';         // [成就] 'codex' | 'ach'
+let codexDetail = null;         // [成就] 打开的大卡 id | null
+let toasts = [];                // [成就] 屏幕中上方横幅 {msg, until}
 let keypadValue = '';           // [作弊] 数字键盘当前输入值
 let cheatResetArmed = false;    // [作弊] 「重置真实进度」二次确认:首点武装、再点执行;其余操作/关闭即解除
 // [作弊] 选关用 shim save:allLevels 时把有效最高可玩关号抬到总关数;levelSelect/startLevel 据此判解锁,内部零改
@@ -124,6 +133,31 @@ function startLevel(n) {
   storyPlayNarration();
   return true;
 }
+// [成就] 横幅
+function pushToast(msg) { toasts.push({ msg, until: performance.now() + 2800 }); if (toasts.length > 4) toasts.shift(); }
+function drawToasts() {
+  const now = performance.now(); toasts = toasts.filter((t) => t.until > now);
+  let y = 70;
+  for (const t of toasts) {
+    const w = 320, x = view.w / 2 - w / 2;
+    panel(ctx, x, y, w, 38, { variant: 'gold', r: 10 });
+    ctx.fillStyle = PAL.ink; ctx.font = FONT.head(15); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(t.msg, view.w / 2, y + 19); y += 46;
+  }
+}
+// [成就] 跑判定:新解锁 → 横幅 + 标脏
+function fireAch(run) {
+  if (!ach) return;
+  const got = evaluate(ach, save, run || {});
+  for (const id of got) { ach.earned[id] = true; pushToast('🏆 解锁成就:' + achName(id)); }
+  if (got.length) achDirty = true;
+}
+function flushAch() { if (ach && achDirty) { browserWriteAch(ach); achDirty = false; } }
+function maxRunKills() { let m = 0; for (const k in state.runKills) if (state.runKills[k] > m) m = state.runKills[k]; return m; }
+// [成就] 首页左上角入口钮
+function CODEX_BTN() { return { x: 20, y: 18, w: 104, h: 38 }; }
+function drawCodexButton() { button(ctx, CODEX_BTN(), { label: '🏆 图鉴', variant: 'wood' }); }
+
 const SELECT_BGM_TRACK = 0;   // [改进⑨] 选关屏固定用 west-1（雄浑开场）
 function toSelect() { screen = 'select'; selectedTower = null; audio.startBgm(SELECT_BGM_TRACK); }
 
@@ -162,7 +196,7 @@ function fromStory(act) {
   pendingResume = null;
 }
 // [检查点A] 退出对局即清续玩（退到选关/大厅=放弃）。
-function leaveToSelect() { browserClearResume(); toSelect(); }
+function leaveToSelect() { flushAch(); browserClearResume(); toSelect(); }
 
 // —— [全屏] 标准 + webkit 前缀(iPad Safari/Chrome 同 WebKit 内核走前缀);不支持(如 iPhone)按钮隐藏 ——
 const docEl = document.documentElement;
@@ -238,7 +272,8 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats, { resetArmed: cheatResetArmed }); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); drawMuteButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats, { resetArmed: cheatResetArmed }); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); drawMuteButton(); drawCodexButton(); return; }
+  if (screen === 'codex') { drawCodex(ctx, view, selSave(), ach, codexTab, codexDetail); drawToasts(); drawFsButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -295,6 +330,7 @@ function render(s) {
   ctx.setTransform(d, 0, 0, d, 0, 0);
   vignette(ctx, view.w, view.h);
   drawHud(ctx, s, view, fsState());
+  drawToasts();
   drawBuildBar(ctx, s, view, selected);
   if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view, state).find((b) => b.id === hoverBuild));
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
@@ -311,6 +347,8 @@ function render(s) {
         const ids = newlyUnlocked(prev, save.unlockedLevel);
         unlockNotice = ids.length ? '⚔️ 新武将来援:' + ids.map((id) => GENERALS[id].name).join('、') + '!' : null;
       }
+      fireAch({ maxRunKills: maxRunKills(), castleHpFull: s.castleHp >= s.castleMaxHp });
+      flushAch();
     }
     drawResult(ctx, view, s, LEVELS.length, { unlockNotice });
   }
@@ -333,6 +371,7 @@ function onPointerDown(ev) {
 
   // [P4] 选关屏
   if (screen === 'select') {
+    if (cheatStage === 'closed' && inBtn(CODEX_BTN(), sx, sy)) { codexTab = 'codex'; codexDetail = null; screen = 'codex'; audio.sfx('ui'); return; }
     // [作弊] 键盘输入态(password/gold)=模态,优先消费
     if (cheatStage === 'password' || cheatStage === 'gold') {
       const k = hitCheatKeypad(view, sx, sy);
@@ -401,6 +440,15 @@ function onPointerDown(ev) {
       else if (r === 'done') fromStory('continue');             // reveal:语音继续念完,不打断
     }
     if (act) audio.sfx('ui');
+    return;
+  }
+  if (screen === 'codex') {
+    const r = hitCodex(view, codexTab, sx, sy, codexDetail);
+    if (r && r.kind === 'tab') codexTab = r.tab;
+    else if (r && r.kind === 'card') codexDetail = r.id;
+    else if (r && r.kind === 'closeDetail') codexDetail = null;
+    else if (r && r.kind === 'back') { flushAch(); toSelect(); }
+    if (r) audio.sfx('ui');
     return;
   }
   // [P4] 结算屏(胜/负):仅响应结算按钮,消费其余点击
@@ -507,6 +555,7 @@ async function boot() {
   }
 
   save = browserLoad();
+  ach = browserLoadAch();
   audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
   state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: effectiveRoster(save, cheats, Object.keys(GENERALS)) });   // 预建有效 state(供 resize/loop;boot 时 cheats 全关→等价 unlockedGenerals)
   resize();
@@ -543,8 +592,27 @@ async function boot() {
     get cheats() { return cheats; },
     get cheatStage() { return cheatStage; },
     openCheat() { cheatStage = 'menu'; },   // [作弊] QA:绕过密码直接开面板
+    getAch() { return ach; },
+    openCodex() { codexTab = 'codex'; codexDetail = null; screen = 'codex'; },
   };
-  bus.on('enemyKilled', ({ enemy }) => { spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill'); });
+  bus.on('enemyKilled', ({ enemy, killerId }) => {
+    spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill');   // 原行为保留
+    if (killerId && GENERALS[killerId] && ach) {
+      const before = ach.kills[killerId] || 0;
+      recordKill(ach, killerId); achDirty = true;
+      state.runKills[killerId] = (state.runKills[killerId] || 0) + 1;
+      const a = tierIndex(before), b = tierIndex(before + 1);
+      if (b > a) pushToast('⚔️ ' + GENERALS[killerId].name + ' 晋升 ' + TIERS[b].name + '!');
+      fireAch({ maxRunKills: maxRunKills() });
+    }
+    const eid = enemy.bossId;
+    if (eid && (BOSSES[eid] || LIEUTENANTS[eid]) && ach) {
+      const fresh = !ach.seen[eid];
+      recordDefeatedEnemy(ach, eid); achDirty = true;
+      if (fresh) pushToast('🏆 图鉴 +1:' + ((BOSSES[eid] || LIEUTENANTS[eid]).name));
+      fireAch({});
+    }
+  });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
 
   window.addEventListener('resize', resize);
@@ -563,6 +631,7 @@ async function boot() {
     if (screen === 'playing' && (state.phase === 'prep' || state.phase === 'combat')) {
       browserWriteResume(resumeSnapshot(state));
     }
+    flushAch();
   }
   document.addEventListener('visibilitychange', () => { if (document.hidden) persistResume(); });
   window.addEventListener('beforeunload', persistResume);
