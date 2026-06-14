@@ -156,7 +156,7 @@ function fireAch(run) {
 function flushAch() { if (ach && achDirty) { browserWriteAch(ach); achDirty = false; } }
 function maxRunKills() { let m = 0; for (const k in state.runKills) if (state.runKills[k] > m) m = state.runKills[k]; return m; }
 // [成就] 首页左上角入口钮
-function CODEX_BTN() { return { x: 20, y: 18, w: 104, h: 38 }; }
+function CODEX_BTN() { return { x: 92, y: 18, w: 104, h: 38 }; }   // x:92 避开 HTML #back-to-hub(left10+宽~72)
 function drawCodexButton() { button(ctx, CODEX_BTN(), { label: '🏆 图鉴', variant: 'wood' }); }
 
 const SELECT_BGM_TRACK = 0;   // [改进⑨] 选关屏固定用 west-1（雄浑开场）

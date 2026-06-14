@@ -25,7 +25,7 @@ export function codexLayout(view, tab) {
     codex: { x: view.w / 2 - tabW - 6, y: ty, w: tabW, h: tabH },
     ach:   { x: view.w / 2 + 6,        y: ty, w: tabW, h: tabH },
   };
-  const back = { x: 20, y: 18, w: 96, h: 38 };
+  const back = { x: 92, y: 18, w: 96, h: 38 };   // x:92 避开 HTML #back-to-hub(left10+宽~72)
   const cards = [], sections = [];
   const rows = [];
 
