@@ -56,7 +56,8 @@ export function evaluate(ach, save, run = {}) {
     total: totalKills(ach),
     anyThreeStar: Object.values(save.stars || {}).some((s) => s === 3),
   };
+  const earned = ach.earned || {};
   const out = [];
-  for (const a of ACHIEVEMENTS) if (!ach.earned[a.id] && a.test(ctx)) out.push(a.id);
+  for (const a of ACHIEVEMENTS) if (!earned[a.id] && a.test(ctx)) out.push(a.id);
   return out;
 }

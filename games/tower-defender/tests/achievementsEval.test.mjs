@@ -96,4 +96,21 @@ const baseSave = () => ({ version: 1, unlockedLevel: 1, stars: {}, settings: {} 
   assert.ok(evaluate(defaultAch(), s3, {}).includes('masterstroke'), '第一章全3星 → 运筹帷幄');
 }
 
+// evaluate 容忍缺 earned 字段（防御）——不应抛错
+{
+  const noEarned = { version: 1, kills: {}, seen: {}, namedDefeats: 0 }; // 故意无 earned
+  const s = baseSave(); s.stars = { 1: 1 };
+  assert.doesNotThrow(() => evaluate(noEarned, s, {}), 'evaluate 容忍缺 earned');
+  assert.ok(evaluate(noEarned, s, {}).includes('first_blood'), '缺 earned 仍正常判定');
+}
+
+// 43 卡不触发武庙立像（少 1 敌将）
+{
+  const a = defaultAch();
+  const allEnemy = [...Object.keys(BOSSES), ...Object.keys(LIEUTENANTS)];
+  for (const id of allEnemy.slice(0, -1)) a.seen[id] = true; // 31/32 敌将
+  const s = baseSave(); s.unlockedLevel = 40;               // 12 友
+  assert.ok(!evaluate(a, s, {}).includes('martial_temple'), '43 卡不触发武庙立像');
+}
+
 console.log('achievementsEval.test.mjs OK');
