@@ -32,6 +32,7 @@ export function newGameState(level, opts = {}) {
     allWavesEmitted: false,       // 末波 spawns 出尽
     terrain: initTerrainState(level),   // [地形] 运行时状态（落石计时/禁用集;敌身上的状态在敌实例）
     stars: 0,
+    runKills: {},                 // [成就] 单局分将击杀计数(每关复位;万人敌判定 + 击杀归因)
   };
 }
 

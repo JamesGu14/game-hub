@@ -48,4 +48,10 @@ const level = { startGold: 500, castleHp: 10, waves: [], paths: {}, slots: [{ x:
   assert.equal(s.towers.length, 0, '拆除生效');
 }
 
+// 新建关：runKills 为空对象（单局分将击杀计数，每关复位）
+{
+  const st = newGameState(level);
+  assert.deepEqual(st.runKills, {}, 'newGameState.runKills = {}');
+}
+
 console.log('ok gameState');
