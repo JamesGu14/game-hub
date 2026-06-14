@@ -4,19 +4,17 @@
 
 // generalId → level → 帧时间线：按进度 k(0~1) 升序，命中首个 k<until 的帧。
 // suffix=null 表示该段回到 idle 立绘（收势）。
-// 关羽 L5 打样：0~40% 引刀蓄力(atk1) → 40~70% 劈出(atk2) → 70~100% 收势(idle)。
+// 关羽 L5：曹操传式两态 —— 出手整段显示「刀向下」劈砍帧(atk2)，停留满时长再回 idle 持刀。
 export const ATTACK_SEQUENCES = {
   guan: {
     5: [
-      { until: 0.4, suffix: 'atk1' },
-      { until: 0.7, suffix: 'atk2' },
-      { until: 1.0, suffix: null },
+      { until: 1.0, suffix: 'atk2' },   // 整个出手窗口 = 刀向下(atk2)，不再分引刀/劈出多段
     ],
   },
 };
 
-// 帧动画总时长（s）。比 FIRE_DUR(0.18) 长，才看得清 引刀→劈出 的挥砍。
-export const ATK_FRAME_DUR = 0.42;
+// 劈砍帧停留时长（s）。曹操传式：出手切到「刀向下」并保持 0.45s 再切回持刀（James 实玩定 0.4~0.5s）。
+export const ATK_FRAME_DUR = 0.45;
 
 export function hasAttackSequence(generalId, level) {
   return !!(ATTACK_SEQUENCES[generalId] && ATTACK_SEQUENCES[generalId][level]);

@@ -78,23 +78,23 @@ function assertClean(ctx, label) {
 
 // —— 塔：关羽 L5 出手 → 用专属挥刀帧(attackFrameId 选 atk1)而非 idle 立绘 ——
 {
-  const idleImg = { width: 90, height: 110 }, atk1Img = { width: 96, height: 112 };
-  setImages({ gen_guan_5: idleImg, gen_guan_5_atk1: atk1Img });
+  const idleImg = { width: 90, height: 110 }, chopImg = { width: 96, height: 112 };
+  setImages({ gen_guan_5: idleImg, gen_guan_5_atk2: chopImg });
   const ctx = makeStubCtx();
-  drawTower(ctx, tower({ generalId: 'guan', level: 5, lastFireAt: 1.0, aimX: 200, aimY: 100 }), 1.0);  // k=0 → 引刀帧
-  assert.ok(ctx._imgs.includes(atk1Img), '关羽L5出手画攻击帧 atk1');
+  drawTower(ctx, tower({ generalId: 'guan', level: 5, lastFireAt: 1.0, aimX: 200, aimY: 100 }), 1.0);  // 出手 → 刀向下帧
+  assert.ok(ctx._imgs.includes(chopImg), '关羽L5出手画刀向下帧 atk2');
   assert.ok(!ctx._imgs.includes(idleImg), '出手期间不画 idle 立绘');
   assertClean(ctx, '关羽L5出手帧');
 }
 
 // —— 塔：关羽 L5 未出手 → 用 idle 立绘(攻击帧不介入) ——
 {
-  const idleImg = { width: 90, height: 110 }, atk1Img = { width: 96, height: 112 };
-  setImages({ gen_guan_5: idleImg, gen_guan_5_atk1: atk1Img });
+  const idleImg = { width: 90, height: 110 }, chopImg = { width: 96, height: 112 };
+  setImages({ gen_guan_5: idleImg, gen_guan_5_atk2: chopImg });
   const ctx = makeStubCtx();
   drawTower(ctx, tower({ generalId: 'guan', level: 5 }), 5.0);  // 无 lastFireAt
   assert.ok(ctx._imgs.includes(idleImg), '未出手画 idle');
-  assert.ok(!ctx._imgs.includes(atk1Img), '未出手不画攻击帧');
+  assert.ok(!ctx._imgs.includes(chopImg), '未出手不画攻击帧');
   assertClean(ctx, '关羽L5待机');
 }
 
