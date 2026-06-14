@@ -76,11 +76,14 @@ export function hitCheatKeypad(view, sx, sy) {
 }
 
 /**
- * drawCheatKeypad(ctx, view, title, value)
+ * drawCheatKeypad(ctx, view, title, value, opts)
  * 纯绘制：遮罩 + 木牌面板 + 标题 + 输入显示区 + 12键 + 确定键。
+ * opts: { mask=false, placeholder='' } —— mask 时输入显示为等距金色圆点(密码遮罩)；
+ *       value 为空时显示暗色 placeholder 提示。
  * ctx.save/restore 包裹所有状态改动。
  */
-export function drawCheatKeypad(ctx, view, title, value) {
+export function drawCheatKeypad(ctx, view, title, value, opts = {}) {
+  const { mask = false, placeholder = '' } = opts;
   ctx.save();
 
   const L = cheatKeypadLayout(view);
@@ -99,26 +102,68 @@ export function drawCheatKeypad(ctx, view, title, value) {
   ctx.textBaseline = 'middle';
   ctx.fillText(title, view.w / 2, L.titleY);
 
-  // 输入显示区背景（竹简浅色凹槽）
+  // 输入显示区背景（深色内陷凹槽：渐变底 + 顶部内阴影线 + 金细框）
   const d = L.display;
+  const dcy = d.y + d.h / 2;
   ctx.save();
-  ctx.fillStyle = 'rgba(8,5,3,.45)';
   const dr = 8;
   ctx.beginPath();
   ctx.roundRect(d.x, d.y, d.w, d.h, dr);
+  const gg = ctx.createLinearGradient(0, d.y, 0, d.y + d.h);
+  gg.addColorStop(0, 'rgba(6,4,2,.62)');
+  gg.addColorStop(1, 'rgba(14,9,5,.42)');
+  ctx.fillStyle = gg;
   ctx.fill();
+  // 顶部内阴影线（凹陷感）
+  ctx.save();
+  ctx.beginPath();
+  ctx.roundRect(d.x, d.y, d.w, d.h, dr);
+  ctx.clip();
+  ctx.strokeStyle = 'rgba(0,0,0,.4)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(d.x + 2, d.y + 1.5);
+  ctx.lineTo(d.x + d.w - 2, d.y + 1.5);
+  ctx.stroke();
+  ctx.restore();
+  // 金细框
+  ctx.beginPath();
+  ctx.roundRect(d.x, d.y, d.w, d.h, dr);
   ctx.lineWidth = 1.25;
   ctx.strokeStyle = PAL.gold;
   ctx.globalAlpha = 0.6;
   ctx.stroke();
   ctx.restore();
 
-  // 输入值（数字）
-  ctx.fillStyle = value ? PAL.goldBright : PAL.dim;
-  ctx.font = FONT.body(26, 700);
+  // 输入值
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText(value || '', view.w / 2, d.y + d.h / 2);
+  if (!value) {
+    // 空 → 暗色占位提示
+    ctx.fillStyle = 'rgba(243,234,212,.30)';
+    ctx.font = FONT.body(16, 500);
+    ctx.fillText(placeholder, view.w / 2, dcy);
+  } else if (mask) {
+    // 密码遮罩 → 等距金色圆点 + 柔光
+    ctx.save();
+    ctx.fillStyle = PAL.goldBright;
+    ctx.shadowColor = 'rgba(255,230,160,.55)';
+    ctx.shadowBlur = 8;
+    const dotR = 5, gap = 20;
+    const n = value.length;
+    const startX = view.w / 2 - ((n - 1) * gap) / 2;
+    for (let i = 0; i < n; i++) {
+      ctx.beginPath();
+      ctx.arc(startX + i * gap, dcy, dotR, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  } else {
+    // 明文（金币数额）
+    ctx.fillStyle = PAL.goldBright;
+    ctx.font = FONT.body(26, 700);
+    ctx.fillText(value, view.w / 2, dcy);
+  }
 
   // 数字键盘按键
   for (const k of L.keys) {

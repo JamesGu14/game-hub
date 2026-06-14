@@ -14,8 +14,7 @@ export function cheatPanelLayout(view) {
   const midBtn = (i) => ({ x: px + PW - PAD - BTN_W * 2 - GAP, y: rowY(i) + (ROW_H - BTN_H) / 2, w: BTN_W, h: BTN_H });
   return {
     panel: { x: px, y: py, w: PW, h: ph },
-    levelsOn: midBtn(0),          // 行0:解锁所有关卡
-    levelsReset: rightBtn(0),     // 行0:还原
+    levelsToggle: rightBtn(0),    // 行0:解锁所有关卡(单按钮切换)
     goldSet: midBtn(1),           // 行1:设置
     goldReset: rightBtn(1),       // 行1:还原
     generalsToggle: rightBtn(2),  // 行2:解锁所有武将(切换)
@@ -28,8 +27,7 @@ export function cheatPanelLayout(view) {
 export function hitCheatPanel(view, sx, sy) {
   const L = cheatPanelLayout(view);
   const hit = (b) => b && sx >= b.x && sx <= b.x + b.w && sy >= b.y && sy <= b.y + b.h;
-  if (hit(L.levelsOn)) return 'levels-on';
-  if (hit(L.levelsReset)) return 'levels-reset';
+  if (hit(L.levelsToggle)) return 'levels-toggle';
   if (hit(L.goldSet)) return 'gold-set';
   if (hit(L.goldReset)) return 'gold-reset';
   if (hit(L.generalsToggle)) return 'generals-toggle';
@@ -54,8 +52,7 @@ export function drawCheatPanel(ctx, view, cheats) {
   ctx.fillText('初始金币：' + (cheats.goldOverride != null ? cheats.goldOverride : '未设'), lx, L.rowY(1) + ROW_H / 2);
   ctx.fillText('解锁所有武将', lx, L.rowY(2) + ROW_H / 2);
   // 按钮(开关态 jade 高亮)
-  button(ctx, L.levelsOn, { label: cheats.allLevels ? '已解锁' : '解锁', variant: cheats.allLevels ? 'jade' : 'wood' });
-  button(ctx, L.levelsReset, { label: '还原', variant: 'wood' });
+  button(ctx, L.levelsToggle, { label: cheats.allLevels ? '已解锁' : '解锁', variant: cheats.allLevels ? 'jade' : 'wood' });
   button(ctx, L.goldSet, { label: '设置', variant: cheats.goldOverride != null ? 'jade' : 'wood' });
   button(ctx, L.goldReset, { label: '还原', variant: 'wood' });
   button(ctx, L.generalsToggle, { label: cheats.allGenerals ? '已解锁' : '解锁', variant: cheats.allGenerals ? 'jade' : 'wood' });

@@ -211,7 +211,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue); drawFsButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -334,8 +334,7 @@ function onPointerDown(ev) {
     // [作弊] 面板菜单态=模态,优先消费
     if (cheatStage === 'menu') {
       const a = hitCheatPanel(view, sx, sy);
-      if (a === 'levels-on') cheats.allLevels = true;
-      else if (a === 'levels-reset') cheats.allLevels = false;
+      if (a === 'levels-toggle') cheats.allLevels = !cheats.allLevels;
       else if (a === 'generals-toggle') cheats.allGenerals = !cheats.allGenerals;
       else if (a === 'gold-set') { cheatStage = 'gold'; keypadValue = cheats.goldOverride != null ? String(cheats.goldOverride) : ''; }
       else if (a === 'gold-reset') cheats.goldOverride = null;
