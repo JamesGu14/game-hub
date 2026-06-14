@@ -17,11 +17,11 @@ export function applyStun(e, dur, now) {
   if (!e.statuses.stun || e.statuses.stun.until < u) e.statuses.stun = { until: u };
 }
 
-// 灼烧：每层独立计时，最多 BURN_MAX_STACKS 层；满层则刷新最早到期的一层。
-export function applyBurn(e, dps, dur, now, max = BAL.BURN_MAX_STACKS) {
+// 灼烧：每层独立计时，最多 BURN_MAX_STACKS 层；满层则刷新最早到期的一层。记来源将 src（成就归因）。
+export function applyBurn(e, dps, dur, now, src = null, max = BAL.BURN_MAX_STACKS) {
   const arr = (e.statuses.burn || []).filter((b) => b.until > now);
-  if (arr.length < max) arr.push({ dps, until: now + dur });
-  else { arr.sort((a, b) => a.until - b.until); arr[0] = { dps, until: now + dur }; }
+  if (arr.length < max) arr.push({ dps, until: now + dur, src });
+  else { arr.sort((a, b) => a.until - b.until); arr[0] = { dps, until: now + dur, src }; }
   e.statuses.burn = arr;
 }
 

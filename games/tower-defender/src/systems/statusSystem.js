@@ -35,6 +35,11 @@ export function statusSystem(state, dt) {
     // 净值结算（治疗抵消 DoT），不超 maxHp。
     const net = (heal - burn) * dt;
     if (net) e.hp = Math.min(e.maxHp, e.hp + net);
-    if (e.hp <= 0) killEnemy(state, e);            // DoT 致死同样掉金 + emit
+    if (e.hp <= 0) {
+      const stk = e.statuses.burn;
+      let src = null;
+      if (stk && stk.length) src = stk[stk.length - 1].src ?? (stk.find((b) => b.src)?.src ?? null);
+      killEnemy(state, e, src);                       // DoT 致死归"最后点火将"；纯环境灼烧 → null
+    }
   }
 }

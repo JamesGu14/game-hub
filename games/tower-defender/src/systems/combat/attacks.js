@@ -111,6 +111,6 @@ function attackBurn(state, tower, g, primary, now, stats) {
   if (tower.level >= BAL.SIGNATURE_LEVEL && g.signature?.id === 'huoshao' && primary.tag === 'tengjia') {
     dps *= g.signature.params.vsTengjiaMult || 2;
   }
-  applyBurn(primary, dps, g.attackParams.burnDur, now);
+  applyBurn(primary, dps, g.attackParams.burnDur, now, g.id);
   spawnTracer(state, tower, primary, g.color, g.attack);
 }
