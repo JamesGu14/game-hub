@@ -14,7 +14,10 @@ const SECTIONS = [
   { side: 'boss',  label: '敌方 · 名将', ids: () => Object.keys(BOSSES) },
   { side: 'lieut', label: '敌方 · 副将', ids: () => Object.keys(LIEUTENANTS) },
 ];
-const COLS = 10, CW = 74, CH = 96, GAP = 10, TOP = 132;
+const COLS = 10, GAP = 10, TOP = 132;
+// CW/CH 改为在 codexLayout 内按视口动态计算，不再是模块常量
+
+function clamp(lo, hi, v) { return Math.max(lo, Math.min(hi, v)); }
 
 export function codexLayout(view, tab) {
   const tabW = 150, tabH = 40, ty = 64;
@@ -25,24 +28,37 @@ export function codexLayout(view, tab) {
   const back = { x: 20, y: 18, w: 96, h: 38 };
   const cards = [], sections = [];
   const rows = [];
+
+  // 可用高度（标题/标签占头部 TOP，底留 16px 边距）
+  const availH = view.h - TOP - 16;
+
   if (tab === 'codex') {
+    // 横向自适应：卡宽 clamp(44, 74)
+    const CW = clamp(44, 74, Math.floor((view.w - 48 - (COLS - 1) * GAP) / COLS));
+    // 纵向自适应：图鉴页 3 个分区各 label≈30px，总卡行数 = ceil(12/10)+ceil(20/10)+ceil(12/10)=6
+    const labelBlock = 30, cardRowsTotal = 6;
+    const CH = clamp(54, 96, Math.floor((availH - SECTIONS.length * labelBlock) / cardRowsTotal) - GAP);
+    const gridW = COLS * CW + (COLS - 1) * GAP;
+    const x0 = (view.w - gridW) / 2;
     let y = TOP;
     for (const sec of SECTIONS) {
       const ids = sec.ids();
-      const gridW = COLS * CW + (COLS - 1) * GAP;
-      const x0 = (view.w - gridW) / 2;
-      sections.push({ label: sec.label, side: sec.side, y: y - 24 });
+      // section 对象带 x（网格左缘），供 drawCodex 标签定位用（避免重算）
+      sections.push({ label: sec.label, side: sec.side, y: y - 24, x: x0 });
       ids.forEach((id, k) => {
         const r = Math.floor(k / COLS), c = k % COLS;
         cards.push({ id, side: sec.side, x: x0 + c * (CW + GAP), y: y + r * (CH + GAP), w: CW, h: CH });
       });
       const rowsN = Math.ceil(ids.length / COLS);
-      y += rowsN * (CH + GAP) + 34;
+      y += rowsN * (CH + GAP) + labelBlock + 4;
     }
   } else {
+    // 成就页：stepH 自适应（15 行），rowH = stepH - 6
+    const stepH = clamp(34, 50, Math.floor(availH / ACHIEVEMENTS.length));
+    const rowH = stepH - 6;
     const lw = Math.min(560, view.w - 80), x0 = (view.w - lw) / 2;
     let y = TOP;
-    for (const a of ACHIEVEMENTS) { rows.push({ id: a.id, x: x0, y, w: lw, h: 44 }); y += 50; }
+    for (const a of ACHIEVEMENTS) { rows.push({ id: a.id, x: x0, y, w: lw, h: rowH }); y += stepH; }
   }
   return { tabs, back, cards, sections, rows };
 }
@@ -77,7 +93,7 @@ export function drawCodex(ctx, view, save, ach, tab, detailId) {
     const unlocked = unlockedGenerals(save);
     for (const s of L.sections) {
       ctx.fillStyle = PAL.gold; ctx.font = FONT.head(16); ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-      ctx.fillText(s.label, (view.w - (COLS * CW + (COLS - 1) * GAP)) / 2, s.y);
+      ctx.fillText(s.label, s.x, s.y);
     }
     for (const c of L.cards) {
       const lit = c.side === 'shu' ? unlocked.has(c.id) : !!ach.seen[c.id];
