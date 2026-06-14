@@ -5,6 +5,7 @@
 import { BAL } from '../data/balance.js';
 import { GENERALS } from '../data/generals.js';
 import { assets, generalSprite } from '../core/assets.js';
+import { attackFrameId, hasAttackSequence } from './attackAnim.js';
 
 const C = BAL.CELL;
 
@@ -35,7 +36,9 @@ function shadow(ctx, x, y, rx, ry) {
 
 export function drawTower(ctx, t, now = 0) {
   const g = GENERALS[t.generalId];
-  const img = generalSprite(t.generalId, t.level);
+  const atkId = attackFrameId(t.generalId, t.level, t.lastFireAt, now);   // 出手帧序列(关羽L5 引刀/劈出)命中→帧id,否则 null
+  const img = (atkId && assets.images[atkId]) || generalSprite(t.generalId, t.level);
+  const useFrames = hasAttackSequence(t.generalId, t.level);             // 有专属挥刀帧 → 抑制整图前冲(帧本身即动作)
   const s = C * 0.32;
 
   // —— 补间量 ——
@@ -46,7 +49,7 @@ export function drawTower(ctx, t, now = 0) {
   const upArc = up > 0 ? Math.sin((1 - up) * Math.PI) : 0;             // 0→峰→0 弹跳弧
   const pop = (1 + fire * 0.12) * (1 + upArc * 0.16);                  // 出手缩放弹 × 升级弹跳
   let lx = 0, ly = 0, tilt = 0;
-  if (fire > 0) {
+  if (fire > 0 && !useFrames) {                                          // 有专属挥刀帧时不叠整图前冲(帧已含动作)
     const ax = t.aimX ?? t.px, ay = t.aimY ?? (t.py - C);
     const dx = ax - t.px, dy = ay - t.py, d = Math.hypot(dx, dy) || 1;
     const lunge = Math.sin(fire * Math.PI) * C * 0.16;                 // 冲出再回（0→峰→0）

@@ -42,6 +42,9 @@ export const MANIFEST = {
   gen_guanping_4: 'assets/sprites/generals/guanping_4.png', gen_guanping_5: 'assets/sprites/generals/guanping_5.png',
   gen_zhangbao_4: 'assets/sprites/generals/zhangbao_4.png', gen_zhangbao_5: 'assets/sprites/generals/zhangbao_5.png',
   gen_yueying_4: 'assets/sprites/generals/yueying_4.png', gen_yueying_5: 'assets/sprites/generals/yueying_5.png',
+  // —— [出手动画 打样] 关羽 L5 挥刀帧(引刀/劈出;缺图 → drawTower 经 attackFrameId 命中但无图时回退 idle 立绘)——
+  gen_guan_5_atk1: 'assets/sprites/generals/guan_5_atk1.png',
+  gen_guan_5_atk2: 'assets/sprites/generals/guan_5_atk2.png',
   // —— [演绎段1] 剧情角色(非塔将):刘备(幕2 对话立绘;缺图 → storyScene 色块名牌兜底)——
   gen_liubei: 'assets/sprites/generals/liubei.png',
   // —— 南蛮敌兵（footman 用南蛮基底图）——

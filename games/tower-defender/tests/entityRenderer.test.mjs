@@ -9,6 +9,7 @@ import { assets } from '../src/core/assets.js';
 function makeStubCtx() {
   const calls = { drawImage: 0, fillRect: 0, fillText: 0, arc: 0, ellipse: 0, fill: 0, stroke: 0 };
   const texts = [];
+  const imgs = [];
   const state = {
     fillStyle: '', strokeStyle: '', lineWidth: 1, font: '', globalAlpha: 1,
     globalCompositeOperation: 'source-over', shadowColor: '', shadowBlur: 0,
@@ -23,11 +24,11 @@ function makeStubCtx() {
     fill() { calls.fill++; }, stroke() { calls.stroke++; },
     fillRect() { calls.fillRect++; }, strokeRect() {},
     fillText(t) { calls.fillText++; texts.push(String(t)); }, strokeText(t) { texts.push(String(t)); },
-    drawImage() { calls.drawImage++; },
+    drawImage(img) { calls.drawImage++; imgs.push(img); },
     measureText(t) { return { width: (t ? String(t).length : 0) * 8 }; },
     createLinearGradient() { return { addColorStop() {} }; },
     createRadialGradient() { return { addColorStop() {} }; },
-    _depth() { return stack.length; }, _calls: calls, _texts: texts,
+    _depth() { return stack.length; }, _calls: calls, _texts: texts, _imgs: imgs,
   };
   for (const k of Object.keys(state)) Object.defineProperty(ctx, k, { get() { return state[k]; }, set(v) { state[k] = v; }, enumerable: true });
   return ctx;
@@ -73,6 +74,28 @@ function assertClean(ctx, label) {
   assert.doesNotThrow(() => drawTower(ctx, tower({ lastFireAt: 1.0, aimX: 200, aimY: 100 }), 1.0), '出手补间不抛');
   assert.ok(ctx._calls.drawImage >= 2, '出手时叠加提亮重绘(≥2 drawImage)');
   assertClean(ctx, '塔出手');
+}
+
+// —— 塔：关羽 L5 出手 → 用专属挥刀帧(attackFrameId 选 atk1)而非 idle 立绘 ——
+{
+  const idleImg = { width: 90, height: 110 }, atk1Img = { width: 96, height: 112 };
+  setImages({ gen_guan_5: idleImg, gen_guan_5_atk1: atk1Img });
+  const ctx = makeStubCtx();
+  drawTower(ctx, tower({ generalId: 'guan', level: 5, lastFireAt: 1.0, aimX: 200, aimY: 100 }), 1.0);  // k=0 → 引刀帧
+  assert.ok(ctx._imgs.includes(atk1Img), '关羽L5出手画攻击帧 atk1');
+  assert.ok(!ctx._imgs.includes(idleImg), '出手期间不画 idle 立绘');
+  assertClean(ctx, '关羽L5出手帧');
+}
+
+// —— 塔：关羽 L5 未出手 → 用 idle 立绘(攻击帧不介入) ——
+{
+  const idleImg = { width: 90, height: 110 }, atk1Img = { width: 96, height: 112 };
+  setImages({ gen_guan_5: idleImg, gen_guan_5_atk1: atk1Img });
+  const ctx = makeStubCtx();
+  drawTower(ctx, tower({ generalId: 'guan', level: 5 }), 5.0);  // 无 lastFireAt
+  assert.ok(ctx._imgs.includes(idleImg), '未出手画 idle');
+  assert.ok(!ctx._imgs.includes(atk1Img), '未出手不画攻击帧');
+  assertClean(ctx, '关羽L5待机');
 }
 
 // —— 塔：被震慑（无图）→ 灰罩 + ✋，不抛 ——
