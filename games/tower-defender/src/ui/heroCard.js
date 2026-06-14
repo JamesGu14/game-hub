@@ -9,7 +9,7 @@ import { panel, roundRect, FONT, PAL } from './theme.js';
 const CW = 300, PAD = 14, PORT = 56, LH = 16;
 
 // 十二将 lore：生平简介（史实向、一年级能懂）+ 武将特性（招牌技白话）。
-const HERO_LORE = {
+export const HERO_LORE = {
   huang: { bio: '蜀汉五虎上将。老当益壮的神射手，年过六旬仍冲锋陷阵，定军山一战斩魏将夏侯渊。', trait: '百步穿杨：有几率射出暴击，伤害大增且无视护甲。' },
   zhang: { bio: '蜀汉五虎上将。豹头环眼、声若巨雷的猛将，长坂桥一声怒吼吓退曹军。', trait: '当阳怒吼：震慑周围地面敌军，使其短暂定身。' },
   guan: { bio: '蜀汉五虎上将、忠义武圣。红脸长髯、手持青龙偃月刀，水淹七军威震华夏。', trait: '水淹七军：放水重创并大幅减速一片敌军。' },
