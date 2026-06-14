@@ -55,6 +55,7 @@ export function hitCodex(view, tab, sx, sy, detailId) {
   if (inb(L.tabs.codex)) return { kind: 'tab', tab: 'codex' };
   if (inb(L.tabs.ach)) return { kind: 'tab', tab: 'ach' };
   for (const c of L.cards) if (inb(c)) return { kind: 'card', id: c.id };
+  // 注：成就页 rows 为纯展示，不作命中目标（无逐行交互）
   return null;
 }
 
@@ -63,6 +64,7 @@ function enemyName(id) { return (BOSSES[id] || LIEUTENANTS[id])?.name || id; }
 function cardImg(id, side) { return side === 'shu' ? generalSprite(id, 3) : (assets.images['boss_' + id] || null); }
 
 export function drawCodex(ctx, view, save, ach, tab, detailId) {
+  if (!ach) return;   // ach 未初始化(boot 早期/误传) → 跳过绘制，杜绝渲染期 NPE
   ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);
   backdrop(ctx, view.w, view.h);
   title(ctx, '成就中心', view.w / 2, 38, 30);
@@ -113,6 +115,7 @@ function tierColor(i) { return ['#7a4a1e', '#8a8f99', '#caa23a', '#3fb6cc', '#9a
 
 function drawAchRow(ctx, r, ach) {
   const a = ACHIEVEMENTS.find((x) => x.id === r.id);
+  if (!a) return;
   const got = !!ach.earned[r.id];
   panel(ctx, r.x, r.y, r.w, r.h, { variant: got ? 'wood' : 'ink', r: 8 });
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
