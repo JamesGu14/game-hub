@@ -136,6 +136,7 @@ function startLevel(n) {
 // [成就] 横幅
 function pushToast(msg) { toasts.push({ msg, until: performance.now() + 2800 }); if (toasts.length > 4) toasts.shift(); }
 function drawToasts() {
+  ctx.setTransform(view.dpr || 1, 0, 0, view.dpr || 1, 0, 0);
   const now = performance.now(); toasts = toasts.filter((t) => t.until > now);
   let y = 70;
   for (const t of toasts) {
@@ -159,7 +160,7 @@ function CODEX_BTN() { return { x: 20, y: 18, w: 104, h: 38 }; }
 function drawCodexButton() { button(ctx, CODEX_BTN(), { label: '🏆 图鉴', variant: 'wood' }); }
 
 const SELECT_BGM_TRACK = 0;   // [改进⑨] 选关屏固定用 west-1（雄浑开场）
-function toSelect() { screen = 'select'; selectedTower = null; audio.startBgm(SELECT_BGM_TRACK); }
+function toSelect() { flushAch(); screen = 'select'; selectedTower = null; audio.startBgm(SELECT_BGM_TRACK); }
 
 function investedFor(generalId, level) {
   let inv = GENERALS[generalId].cost;
@@ -196,7 +197,7 @@ function fromStory(act) {
   pendingResume = null;
 }
 // [检查点A] 退出对局即清续玩（退到选关/大厅=放弃）。
-function leaveToSelect() { flushAch(); browserClearResume(); toSelect(); }
+function leaveToSelect() { browserClearResume(); toSelect(); }
 
 // —— [全屏] 标准 + webkit 前缀(iPad Safari/Chrome 同 WebKit 内核走前缀);不支持(如 iPhone)按钮隐藏 ——
 const docEl = document.documentElement;
@@ -447,7 +448,7 @@ function onPointerDown(ev) {
     if (r && r.kind === 'tab') codexTab = r.tab;
     else if (r && r.kind === 'card') codexDetail = r.id;
     else if (r && r.kind === 'closeDetail') codexDetail = null;
-    else if (r && r.kind === 'back') { flushAch(); toSelect(); }
+    else if (r && r.kind === 'back') { toSelect(); }
     if (r) audio.sfx('ui');
     return;
   }
@@ -597,21 +598,21 @@ async function boot() {
   };
   bus.on('enemyKilled', ({ enemy, killerId }) => {
     spawnFloat(state, enemy.px, enemy.py, '+' + enemy.gold); audio.sfx('kill');   // 原行为保留
+    let dirty = false;
     if (killerId && GENERALS[killerId] && ach) {
       const before = ach.kills[killerId] || 0;
-      recordKill(ach, killerId); achDirty = true;
+      recordKill(ach, killerId); achDirty = true; dirty = true;
       state.runKills[killerId] = (state.runKills[killerId] || 0) + 1;
       const a = tierIndex(before), b = tierIndex(before + 1);
       if (b > a) pushToast('⚔️ ' + GENERALS[killerId].name + ' 晋升 ' + TIERS[b].name + '!');
-      fireAch({ maxRunKills: maxRunKills() });
     }
     const eid = enemy.bossId;
     if (eid && (BOSSES[eid] || LIEUTENANTS[eid]) && ach) {
       const fresh = !ach.seen[eid];
-      recordDefeatedEnemy(ach, eid); achDirty = true;
+      recordDefeatedEnemy(ach, eid); achDirty = true; dirty = true;
       if (fresh) pushToast('🏆 图鉴 +1:' + ((BOSSES[eid] || LIEUTENANTS[eid]).name));
-      fireAch({});
     }
+    if (dirty) fireAch({ maxRunKills: maxRunKills() });
   });
   bus.on('castleDamaged', () => audio.sfx('cityHit'));   // [P6] 成都受创警示音
 
