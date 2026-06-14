@@ -21,7 +21,7 @@ function hitOnce(state, tower, g, enemy, rng) {
     spawnFloat(state, enemy.px, enemy.py - CELL * 0.6, '暴击!', '#ff5a3a');
   }
   spawnTracer(state, tower, enemy, g.color, g.attack);
-  if (enemy.hp <= 0) return killEnemy(state, enemy);
+  if (enemy.hp <= 0) return killEnemy(state, enemy, tower.generalId);
   return false;
 }
 

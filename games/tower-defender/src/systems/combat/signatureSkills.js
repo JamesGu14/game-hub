@@ -30,7 +30,7 @@ function fireShuiyan(state, tower, g, now) {
     if (dx * dx + dy * dy > r2) continue;
     applySlow(e, p.slowPct, p.slowDur, now);
     e.hp -= dmg;
-    if (e.hp <= 0) killEnemy(state, e);
+    if (e.hp <= 0) killEnemy(state, e, tower.generalId);
   }
   spawnRing(state, target.px, target.py, g.color, r);
   return true;
