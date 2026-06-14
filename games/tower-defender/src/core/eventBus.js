@@ -8,10 +8,11 @@ export function makeBus() {
   const queue = [];
 
   function on(evt, fn) {
-    if (typeof fn !== 'function') return;
+    if (typeof fn !== 'function') return () => {};  // 非法 fn：返回 no-op，调用方仍可安全 off()
     let set = listeners.get(evt);
     if (!set) { set = new Set(); listeners.set(evt, set); }
     set.add(fn);
+    return () => off(evt, fn);                      // 退订函数
   }
   function off(evt, fn) {
     const set = listeners.get(evt);

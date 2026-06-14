@@ -38,4 +38,17 @@ import { makeBus } from '../src/core/eventBus.js';
   assert.equal(n, 0, 'off 后不再触发');
 }
 
+// 4) on 返回退订函数：调用后不再触发
+{
+  const bus = makeBus();
+  let n = 0;
+  const off = bus.on('ping', () => n++);
+  assert.equal(typeof off, 'function', 'on 返回退订函数');
+  bus.emit('ping'); bus.flush();
+  assert.equal(n, 1, '订阅期间收到');
+  off();
+  bus.emit('ping'); bus.flush();
+  assert.equal(n, 1, '退订后不再收到');
+}
+
 console.log('ok eventBus');
