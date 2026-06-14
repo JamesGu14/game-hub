@@ -32,7 +32,7 @@ import { createTower } from './entities/tower.js';
 import { hitResult, drawResult } from './ui/resultPanel.js';
 import { GENERALS, effectiveStats } from './data/generals.js';
 import { hitPause, drawPause } from './ui/pauseMenu.js';
-import { button, panel, backdrop, vignette } from './ui/theme.js';
+import { button, panel, backdrop, vignette, FONT, PAL } from './ui/theme.js';
 import { createLoadingScreen, updateLoadingScreen, fadeOutLoadingScreen, showRetryDialog } from './ui/loadingScreen.js';
 
 
@@ -181,8 +181,34 @@ function drawFsButton() {
   button(ctx, hudButtons(view).fs, { label: '⛶', variant: isFs ? 'jade' : 'wood', active: isFs });
 }
 
-// [改进⑥] 提前出兵按钮挪到屏幕下方(建造栏顶 view.h-82 再上抬 40)，拇指易够、不压建造栏
-const EARLY_BTN = () => ({ x: view.w / 2 - 80, y: view.h - 122, w: 160, h: 32 });
+// [静音] 首页静音钮:⛶ 左侧同高铜牌(全屏不支持时自动顶到最右)。draw/hit 共用此几何。
+const MUTE_BTN = () => {
+  const b = hudButtons(view);
+  const w = 36, right = fsSupported() ? b.fs.x - 8 : view.w - 20;
+  return { x: right - w, y: b.fs.y, w, h: b.fs.h };
+};
+function drawMuteButton() {
+  const muted = !!save.settings.muted;
+  button(ctx, MUTE_BTN(), { label: muted ? '🔇' : '🔊', variant: muted ? 'danger' : 'wood', active: muted });
+}
+
+// [出兵改版] 提前出兵改 72×72 方形,挪屏幕右下角(建造栏上方 12px);仅备战相位显示
+const EARLY_BTN = () => { const s = 72; return { x: view.w - s - 16, y: view.h - 94 - s, w: s, h: s }; };
+// 方形提前出兵:空底铜牌 + ⚔ 图标 + 提前/出兵 两行(label/sub 单行放不下,手绘叠放)
+function drawEarlyButton() {
+  const b = EARLY_BTN();
+  button(ctx, b, { variant: 'gold' });
+  ctx.save();
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillStyle = PAL.ink;
+  const cx = b.x + b.w / 2;
+  ctx.font = FONT.body(26);
+  ctx.fillText('⚔', cx, b.y + b.h * 0.30);
+  ctx.font = FONT.head(17);
+  ctx.fillText('提前', cx, b.y + b.h * 0.60);
+  ctx.fillText('出兵', cx, b.y + b.h * 0.83);
+  ctx.restore();
+}
 
 function resize() {
   // [C5] Retina/DPI：backing store = 逻辑像素 × dpr（封顶 2× 平衡清晰度与 GPU/内存）；
@@ -211,7 +237,7 @@ function inBtn(b, sx, sy) { return sx >= b.x && sx <= b.x + b.w && sy >= b.y && 
 
 function render(s) {
   // [P4] 选关屏:只画选关页
-  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); return; }
+  if (screen === 'select') { drawLevelSelect(ctx, view, selSave(), LEVELS, selectChapter); if (cheatStage === 'menu') drawCheatPanel(ctx, view, cheats); else if (cheatStage === 'password') drawCheatKeypad(ctx, view, '输入作弊密码', keypadValue, { mask: true, placeholder: '输入密码' }); else if (cheatStage === 'gold') drawCheatKeypad(ctx, view, '设置初始金币', keypadValue, { placeholder: '输入金额' }); drawFsButton(); drawMuteButton(); return; }
   if (screen === 'story') { drawStoryScene(ctx, view, storyState, LEVELS[pendingLevel], performance.now()); drawFsButton(); return; }
 
   const d = view.dpr || 1;   // [C5] dpr 乘进每个变换；屏幕坐标 = setTransform(d…)，棋盘坐标 = scale*d
@@ -271,7 +297,7 @@ function render(s) {
   drawBuildBar(ctx, s, view, selected);
   if (hoverBuild && !s.paused) drawHeroCard(ctx, view, hoverBuild, buildBarLayout(view, state).find((b) => b.id === hoverBuild));
   if (selectedTower && s.towers.includes(selectedTower)) drawTowerPanel(ctx, view, s, selectedTower);
-  if (s.phase === 'prep') button(ctx, EARLY_BTN(), { label: '⚔ 提前出兵 ↵', variant: 'gold' });
+  if (s.phase === 'prep') drawEarlyButton();
 
   // [P4] 结算:胜利写档(一次)+ 结算面板
   if (s.phase === 'won' || s.phase === 'lost') {
@@ -299,6 +325,10 @@ function onPointerDown(ev) {
 
   // [全屏] 任意屏右上角 ⛶ 优先消费(选关/故事/对局/结算/暂停均可用;pointerdown=用户手势,满足 API 要求)
   if (fsSupported() && hitHud(view, sx, sy) === 'fs') { toggleFullscreen(); audio.sfx('ui'); return; }
+  // [静音] 首页右上角静音钮(选关屏、无作弊浮层时):切静音并持久化(与暂停菜单同一开关)
+  if (screen === 'select' && cheatStage === 'closed' && inBtn(MUTE_BTN(), sx, sy)) {
+    save.settings.muted = !save.settings.muted; audio.setMuted(save.settings.muted); browserWrite(save); audio.sfx('ui'); return;
+  }
 
   // [P4] 选关屏
   if (screen === 'select') {
