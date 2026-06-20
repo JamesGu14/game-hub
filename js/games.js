@@ -101,4 +101,15 @@ export const GAMES = [
     tags: ['塔防', '策略', '三国', '键鼠/触屏'],
     path: 'games/tower-defender/index.html',
   },
+  {
+    id: 'bomb-zombie',
+    title: '向僵尸开炮 BOMB ZOMBIE',
+    subtitle: '阵地防守 · 自动射击 · roguelite 构筑',
+    desc: '底部炮台守城墙 · 僵尸潮割草 · 升级三选一滚雪球 · 进化卡质变 · 主动技能 · 触屏/键鼠',
+    icon: '🧟',
+    accent: '#7cff5a',
+    accent2: '#2a7a1a',
+    tags: ['割草', 'Roguelite', '构筑'],
+    path: 'games/bomb-zombie/index.html',
+  },
 ];
