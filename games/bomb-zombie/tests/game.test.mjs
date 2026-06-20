@@ -56,3 +56,16 @@ test('清完全部波次且场上空 → levelclear', () => {
   g.update(0.1);
   assert.ok(g.state === 'levelclear' || g.state === 'win');
 });
+
+test('同帧多杀只触发一次 cardpick(后续击杀不重复 draw3)', () => {
+  const g = new Game(() => 0.0);
+  g.startLevel(0);
+  g.xp = 0; g.xpNeed = 1;            // trivially low so first kill levels up
+  g.enemies = [
+    { id: 901, type: 'normal', x: 270, y: 100, r: 13, hp: 0, hpMax: 22, atk: 0, attackInterval: 1, atkTimer: 0, xp: 5, dots: [], frozen: 0, atWall: false },
+    { id: 902, type: 'normal', x: 270, y: 120, r: 13, hp: 0, hpMax: 22, atk: 0, attackInterval: 1, atkTimer: 0, xp: 5, dots: [], frozen: 0, atWall: false },
+  ];
+  g.update(1 / 60);
+  assert.equal(g.state, 'cardpick');
+  assert.equal(g.pendingCards.length, 3);
+});

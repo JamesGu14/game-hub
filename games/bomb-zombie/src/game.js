@@ -3,7 +3,7 @@ import { HERO, WALL, FIELD } from './config.js';
 import { effectiveStats, tickDoT } from './combat.js';
 import { makeWall, resolveGnaw, wallDamage, isDefeated } from './wall.js';
 import { makeSpawner, tickSpawner, isLevelComplete } from './spawn.js';
-import { stepEnemy, laneX } from './enemies.js';
+import { stepEnemy } from './enemies.js';
 import { fireTick } from './hero.js';
 import { stepBullets } from './bullets.js';
 import { buildRun, applyCard, draw3 } from './cards.js';
@@ -60,7 +60,7 @@ export class Game {
   _gainXp(amount) {
     const mult = 1 + (this.run.inMods.xpPct || 0);
     this.xp += amount * mult;
-    if (this.xp >= this.xpNeed) {
+    if (this.state === 'playing' && this.xp >= this.xpNeed) {
       this.xp -= this.xpNeed;
       this.pendingCards = draw3(this.run, this.rng);
       this.state = 'cardpick';
@@ -112,7 +112,7 @@ export class Game {
     this.feedback.shake = Math.max(0, this.feedback.shake - dt * 12);
     // 8) 胜负判定
     if (isDefeated(this.wall)) { this.state = 'gameover'; return; }
-    if (isLevelComplete(this.spawner, this.enemies)) {
+    if (this.state === 'playing' && isLevelComplete(this.spawner, this.enemies)) {
       this.state = (this.levelIndex >= LEVELS.length - 1) ? 'win' : 'levelclear';
     }
   }
