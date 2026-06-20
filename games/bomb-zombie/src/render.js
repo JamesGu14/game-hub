@@ -1,6 +1,5 @@
 // render.js — Canvas 2D 绘制。离屏烘焙背景 + 实体/墙/子弹/HUD/飘字/震屏。
 import { FIELD, WALL, LANES } from './config.js';
-import { laneX } from './enemies.js';
 import { floaterColor, floaterSize, formatAmount } from './feedback.js';
 
 export class Renderer {

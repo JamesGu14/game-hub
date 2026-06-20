@@ -81,7 +81,6 @@ export class Game {
     for (const e of this.enemies) {
       stepEnemy(e, dt);
       if (e.dots.length) tickDoT(e, dt);
-      // spitter atWall: 按啃咬处理（空块已省略，无 ranged-spit 逻辑）
     }
     // 3) 城墙自动修复（wallRegen 卡）
     const regen = this.run.inMods.wallRegen || 0;
@@ -97,7 +96,6 @@ export class Game {
     const survivors = [];
     for (const e of this.enemies) {
       if (e.hp <= 0) {
-        // exploder 被打死不炸墙（省略 wallDamage(wall, 0) 无操作行）
         this._gainXp(e.xp);
         this.feedback.shake = Math.min(8, this.feedback.shake + 0.6);
         continue;

@@ -38,9 +38,22 @@ function renderCards() {
     row.appendChild(el);
   }
 }
+const MOD_LABELS = {
+  damagePct: '伤害', fireRatePct: '射速', bulletSpeedPct: '弹速', critRatePct: '暴击率',
+  wallHpPct: '城墙上限', xpPct: '经验', goldPct: '金币', refund: '弹药回收',
+  multishotAdd: '多重弹', pierceAdd: '穿透', critMultAdd: '暴击伤害', splashAdd: '溅射范围',
+  burnDps: '燃烧', poisonDps: '中毒', frostSlow: '冰缓', chainCount: '闪电链',
+  knockback: '击退', wallRegen: '修墙/秒', thorns: '反伤', shieldEvery: '护盾周期', magnet: '磁吸', aoeTargets: '索敌',
+};
+const PCT_KEYS = new Set(['damagePct', 'fireRatePct', 'bulletSpeedPct', 'critRatePct', 'wallHpPct', 'xpPct', 'goldPct', 'refund']);
 function describe(info) {
-  if (!info.mod) return '强化';
-  return Object.entries(info.mod).map(([k, v]) => `${k} +${v}`).join('，');
+  if (!info.mod) {
+    return info.id === '__gold__' ? '金币奖励' : info.id === '__xp__' ? '经验加成' : info.id === '__heal__' ? '修复城墙' : '强化';
+  }
+  return Object.entries(info.mod).map(([k, v]) => {
+    const label = MOD_LABELS[k] || k;
+    return PCT_KEYS.has(k) ? `${label} +${Math.round(v * 100)}%` : `${label} +${v}`;
+  }).join('，');
 }
 
 function buildSkillBar() {
@@ -89,6 +102,8 @@ function syncDom() {
   if (game.state !== prev && (game.state === 'levelclear' || game.state === 'win')) {
     save = applyClear(save, LEVELS[game.levelIndex].id, 3); browserWrite(save);
     if ($('menu-best')) $('menu-best').textContent = '🏆 已解锁第 ' + save.unlockedLevel + ' 关';
+    if (game.state === 'levelclear') { if ($('lc-msg')) $('lc-msg').textContent = '🏆 已解锁第 ' + save.unlockedLevel + ' 关'; }
+    if (game.state === 'win') { if ($('win-msg')) $('win-msg').textContent = '🎉 第一章全 10 关通关！继续守护废土！'; }
   }
   prev = game.state;
 }
