@@ -28,7 +28,7 @@ export const CARD_POOL = [
   { id: 'xpgain',   name: '战斗经验', rarity: 'common',   max: 6, mod: { xpPct: 0.15 } },
   { id: 'goldgain', name: '拾荒者',   rarity: 'common',   max: 5, mod: { goldPct: 0.2 } },
   { id: 'magnet',   name: '吸引力场', rarity: 'uncommon', max: 3, mod: { magnet: 1 } },
-  { id: 'refund',   name: '弹药回收', rarity: 'common',   max: 4, mod: { pierceAdd: 0.0, refund: 0.1 } },
+  { id: 'refund',   name: '弹药回收', rarity: 'common',   max: 4, mod: { refund: 0.1 } },
   { id: 'rangeup',  name: '广域索敌', rarity: 'common',   max: 4, mod: { aoeTargets: 1 } },
   { id: 'firstaid', name: '应急维修', rarity: 'uncommon', max: 3, mod: { wallHpPct: 0.1, wallRegen: 2 } },
   { id: 'overload', name: '超载内核', rarity: 'epic',     max: 3, mod: { damagePct: 0.25, fireRatePct: 0.1 } },

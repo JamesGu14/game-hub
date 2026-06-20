@@ -35,7 +35,7 @@ test('叠满的卡退出卡池（不再被抽到，除非其进化）', () => {
   const rng = rngFrom(7);
   for (let k = 0; k < 60; k++) {
     const three = draw3(run, rng);
-    assert.ok(!three.includes(card.id) || three.includes(`${card.id}`) === false);
+    assert.ok(!three.includes(card.id), `maxed card ${card.id} should be retired from pool`);
   }
 });
 
