@@ -25,7 +25,7 @@ test('多重弹/穿透走加法整数通道', () => {
 });
 
 test('暴击率封顶 100%', () => {
-  const s = effectiveStats(HERO, { critRatePct: 5 }, {});  // 远超100%
+  const s = effectiveStats(HERO, { critRatePct: 50 }, {});  // 远超100%
   assert.equal(s.critRate, 1);
 });
 
