@@ -24,6 +24,11 @@ test('多重弹/穿透走加法整数通道', () => {
   assert.equal(s.pierce, HERO.pierce + 3);
 });
 
+test('暴击率两层相乘(非封顶): 局内+100%、局外+100% = base×2×2', () => {
+  const s = effectiveStats(HERO, { critRatePct: 1 }, { critRatePct: 1 });
+  assert.ok(Math.abs(s.critRate - HERO.critRate * 2 * 2) < 1e-9);
+});
+
 test('暴击率封顶 100%', () => {
   const s = effectiveStats(HERO, { critRatePct: 50 }, {});  // 远超100%
   assert.equal(s.critRate, 1);

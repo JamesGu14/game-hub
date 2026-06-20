@@ -12,7 +12,7 @@ export function effectiveStats(base, inMods = {}, outMods = {}) {
     bulletSpeed: base.bulletSpeed * mul('bulletSpeedPct'),
     pierce: base.pierce + add(inMods, 'pierceAdd') + add(outMods, 'pierceAdd'),
     multishot: base.multishot + add(inMods, 'multishotAdd') + add(outMods, 'multishotAdd'),
-    critRate: Math.min(1, base.critRate * (1 + pct(inMods, 'critRatePct') + pct(outMods, 'critRatePct'))),
+    critRate: Math.min(1, base.critRate * mul('critRatePct')),
     critMult: base.critMult + add(inMods, 'critMultAdd') + add(outMods, 'critMultAdd'),
     splash: base.splash + add(inMods, 'splashAdd') + add(outMods, 'splashAdd'),
   };
