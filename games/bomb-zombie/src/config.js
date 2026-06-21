@@ -1,11 +1,11 @@
 // config.js — 全部可调数值表（纯数据，可被 node:test import）。平衡模拟器是这些数的裁判。
 export const FIELD = { W: 540, H: 960 };
 export const LANES = 5;                                   // 僵尸下行通道数
-export const WALL = { y: 760, maxHp: 2500, heroY: 880 };  // 墙在 y=760，角色在 y=880
+export const WALL = { y: 760, maxHp: 1600, heroY: 880 };  // 墙在 y=760，角色在 y=880
 
 // 英雄基础武器面板（局内卡片/局外养成在此之上叠加；阶段1局外恒0）
 export const HERO = {
-  damage: 6, fireInterval: 0.20, bulletSpeed: 720,
+  damage: 6, fireInterval: 0.30, bulletSpeed: 720,
   pierce: 0, multishot: 1, critRate: 0.05, critMult: 2.0, splash: 0,
 };
 export const BULLET = { r: 5, life: 2.0 };
