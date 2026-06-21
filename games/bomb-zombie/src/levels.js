@@ -4,13 +4,13 @@ import { XP } from './config.js';
 export const expForLevel = (n) => Math.round(XP.base * Math.pow(XP.growth, n - 1));
 
 // 随关号单调递增的难度系数（敌人血量与密度），game.js 用 hpScale 乘 hpMax。
-export const levelParams = (n) => ({ hpScale: 1 + (n - 1) * 0.18, densityScale: 1 + (n - 1) * 0.15 });
+export const levelParams = (n) => ({ hpScale: 1 + (n - 1) * 0.16, densityScale: 1 + (n - 1) * 0.15 });
 
 // 工具：把一组 (type,count,interval) 包成一波
 const wave = (enemies, startDelay = 1.2, lane) => ({ enemies, startDelay, ...(lane != null ? { lane } : {}) });
 const g = (type, count, interval) => ({ type, count, interval });
 
-// 关 1-9 渐进引入兵种；关 10 Boss。由 tools/sim-run.mjs 校到「10/10 可通关 + 单关~7-13级」(渐贵经验曲线,升级体感越来越慢)。
+// 关 1-9 渐进引入兵种；关 10 Boss。由 tools/sim-run.mjs 校到「10/10 可通关 + 单关~5-10级」(渐贵经验曲线,升级体感越来越慢;开局基础枪3-5枪杀普通僵尸)。
 export const LEVELS = [
   { id: 1, name: '废土前哨', waves: [ wave([g('normal', 8, 0.7)]), wave([g('normal', 12, 0.5)]) ] },
   { id: 2, name: '断桥', waves: [ wave([g('normal', 10, 0.6)]), wave([g('fast', 6, 0.5), g('normal', 8, 0.6)]) ] },

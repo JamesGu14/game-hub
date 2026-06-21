@@ -5,7 +5,7 @@ export const WALL = { y: 760, maxHp: 2500, heroY: 880 };  // 墙在 y=760，角�
 
 // 英雄基础武器面板（局内卡片/局外养成在此之上叠加；阶段1局外恒0）
 export const HERO = {
-  damage: 12, fireInterval: 0.40, bulletSpeed: 720,
+  damage: 6, fireInterval: 0.20, bulletSpeed: 720,
   pierce: 0, multishot: 1, critRate: 0.05, critMult: 2.0, splash: 0,
 };
 export const BULLET = { r: 5, life: 2.0 };
@@ -22,7 +22,7 @@ export const ENEMIES = {
 };
 
 // 经验曲线：升 n→n+1 所需经验 = round(base * growth^(n-1))。渐贵、严格递增(无平台)，升级体感越来越慢。
-export const XP = { base: 8, growth: 1.20 };
+export const XP = { base: 12, growth: 1.26 };
 
 // 三选一稀有度权重（draw3 用）
 export const CARD_RARITY = { common: 60, uncommon: 25, rare: 12, epic: 3 };

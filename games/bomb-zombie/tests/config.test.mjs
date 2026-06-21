@@ -25,6 +25,11 @@ test('七种僵尸齐全且字段完整', () => {
   }
 });
 
+test('开局基础枪打普通僵尸需 3-5 枪(不一枪秒,留挑战)', () => {
+  const shots = Math.ceil(ENEMIES.normal.hp / HERO.damage);   // 局外0、无卡时的开局体感
+  assert.ok(shots >= 3 && shots <= 5, `开局打死普通僵尸需 ${shots} 枪，目标 3-5 枪`);
+});
+
 test('稀有度权重为正、key 固定、存档 key 正确', () => {
   for (const k of ['common', 'uncommon', 'rare', 'epic']) assert.ok(CARD_RARITY[k] > 0);
   assert.ok(LANES >= 3);
