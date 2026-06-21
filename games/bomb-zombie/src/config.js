@@ -21,8 +21,8 @@ export const ENEMIES = {
   summoner: { hp: 64,  speed: 18, atk: 3,  attackInterval: 1.2, xp: 30, r: 17, color: '#bf6a8f', summonInterval: 3.0, summonType: 'normal' },
 };
 
-// 经验曲线：升 n→n+1 所需经验 = round(base * growth^(n-1))。目标单关 ~15-22 级（sim 校准）。
-export const XP = { base: 3, growth: 1.17 };
+// 经验曲线：升 n→n+1 所需经验 = round(base * growth^(n-1))。渐贵、严格递增(无平台)，升级体感越来越慢。
+export const XP = { base: 8, growth: 1.20 };
 
 // 三选一稀有度权重（draw3 用）
 export const CARD_RARITY = { common: 60, uncommon: 25, rare: 12, epic: 3 };

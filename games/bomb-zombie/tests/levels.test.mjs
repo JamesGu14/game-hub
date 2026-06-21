@@ -19,9 +19,16 @@ test('每关 wave 结构合法（type/count/interval）', () => {
   }
 });
 
-test('经验曲线随等级递增', () => {
-  assert.ok(expForLevel(2) > expForLevel(1));
-  assert.ok(expForLevel(10) > expForLevel(5));
+test('经验曲线严格递增(无平台)且升级越来越贵', () => {
+  // 逐级严格递增——抓「平台」(如旧 base=3 时 exp(2)=exp(3)=4 的双升级)
+  for (let n = 1; n < 30; n++) {
+    assert.ok(expForLevel(n + 1) > expForLevel(n),
+      `expForLevel(${n + 1})=${expForLevel(n + 1)} 必须 > expForLevel(${n})=${expForLevel(n)}（不能有平台）`);
+  }
+  // 凸增长：后段单级增量 ≥ 前段，体感「越升越慢」
+  assert.ok(expForLevel(10) - expForLevel(9) >= expForLevel(3) - expForLevel(2));
+  // 首级不能太廉价（至少一只普通僵尸击杀量级，normal.xp=6），否则「一杀即升」
+  assert.ok(expForLevel(1) >= 6, `首级经验 ${expForLevel(1)} 太低，一杀即升`);
 });
 
 test('难度随关号单调递增（怪量或血量）', () => {
