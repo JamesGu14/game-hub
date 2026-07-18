@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
         android:label="成都保卫战"
+        android:icon="@mipmap/ic_launcher"
         android:allowBackup="true"
         android:theme="@style/Theme.TowerDefender">
         <!-- configChanges 必须含 orientation:sensorLandscape 两个横向间翻转若触发重建,WebView 会整页重载丢局中状态 -->
