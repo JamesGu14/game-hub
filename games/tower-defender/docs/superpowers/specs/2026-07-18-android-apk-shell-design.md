@@ -58,7 +58,7 @@ games/tower-defender/android/          # 独立 Gradle 工程
 
 ## 5. 壳规格(MainActivity 行为)
 
-1. `WebViewAssetLoader` + `AssetsPathHandler("/assets/")`,加载 `https://appassets.androidplatform.net/assets/game/index.html`;`shouldInterceptRequest` 同时覆盖页面 fetch(配音清单)与媒体请求。
+1. `WebViewAssetLoader` + `AssetsPathHandler("/assets/")`,加载 `https://appassets.androidplatform.net/assets/game/index.html`;`shouldInterceptRequest` 同时覆盖页面 fetch(配音清单)与媒体请求。**MIME 硬化(grill 复审新增)**:用 ~10 行自定义 PathHandler 包一层 AssetsPathHandler,对 `.js/.mjs/.json` 显式返回 JavaScript/JSON MIME——module script 对 MIME 是硬要求,平台猜测在部分 WebView 版本返回 `text/plain` 会直接拒载白屏,不赌冒烟。已核实 `audio.js:129` 的 `new URL('../../assets/bgm/…', import.meta.url)` 在该域下解析为同域绝对路径,同一 handler 覆盖。
 2. WebSettings:`javaScriptEnabled = true`、`domStorageEnabled = true`(localStorage 存档),其余保持默认(含媒体手势策略)。
 3. UA 追加 `" TDShell/1"`(空格分隔 token),供游戏侧识别壳环境。
 4. 全屏沉浸:edge-to-edge + `WindowInsetsControllerCompat` 隐藏系统栏(BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE)+ 主题 `layoutInDisplayCutoutMode=shortEdges`。
@@ -79,7 +79,7 @@ games/tower-defender/android/          # 独立 Gradle 工程
 ## 7. 构建 / 签名 / 安装 / 更新
 
 - **keystore(一次性)**:`keytool -genkeypair` 生成 `~/keystores/gamehub.jks`(alias `gamehub`,RSA 2048,validity 10000 天);`android/keystore.properties`(gitignored)存 `storeFile/storePassword/keyAlias/keyPassword`,release signingConfig 从中读取。密码不进 git(James 护栏:密钥不明文落盘 repo)。
-- **release 构建**:`isMinifyEnabled = false`(无可缩代码),默认 zipalign/签名由 AGP 完成。
+- **release 构建**:`isMinifyEnabled = false`(无可缩代码),默认 zipalign/签名由 AGP 完成。注:**首次构建需联网**下载 Gradle distribution 与 AGP 依赖(Mac 端一次性;之后可离线构建)。
 - **`scripts/build-apk.sh`(一键)**:校验 adb 设备在线 → `android/gradlew -p android assembleRelease` → `adb install -r app-release.apk` → `adb shell am start -n cn.jamesgu.towerdefender/.MainActivity`。游戏日后更新,重跑即完成"构建+覆盖安装+拉起",同签名覆盖安装存档保留。
 - **图标/应用名**:应用名「成都保卫战」;用 `assets/bg/select-bg.jpg`(国画选关背景)裁切生成 adaptive icon 前景,底色 `#2b1d12`(现 theme-color),macOS 自带 `sips` 生成各密度,零新依赖;splash 用 Android 12+ 默认(图标 + 同底色)。
 
@@ -90,7 +90,7 @@ games/tower-defender/android/          # 独立 Gradle 工程
 3. `adb install -r` 成功,`am start` 拉起。
 4. 冒烟期间 logcat `TDWeb` 过滤 **0 个 error 级**(如出现无害告警,white-list 并注明理由)。
 5. `adb exec-out screencap` 截图核验:首屏/选关正常渲染(人工看图)。
-6. 实机人工验收(James/孩子):触控建塔、BGM+配音出声、双击返回退出、杀进程重进存档在、横屏锁定生效。
+6. 实机人工验收(James/孩子):触控建塔、BGM+配音出声、**BGM 循环播过一遍结尾不断**(`el.loop=true` + `currentTime=0` 依赖可 seek,audio.js:140,157)、**切后台回前台对局与 BGM 恢复**(persistResume 已在 hidden 时存档,main.js:637)、双击返回退出、杀进程重进存档在、横屏锁定生效。
 7. 浏览器回归:Chrome 里游戏行为不变(全屏按钮与 HUB 链接照常显示)。
 
 ## 9. 风险与预案
