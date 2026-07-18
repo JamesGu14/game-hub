@@ -203,6 +203,7 @@ function leaveToSelect() { browserClearResume(); toSelect(); }
 // —— [全屏] 标准 + webkit 前缀(iPad Safari/Chrome 同 WebKit 内核走前缀);不支持(如 iPhone)按钮隐藏 ——
 const docEl = document.documentElement;
 const IS_SHELL = isShellEnv(typeof navigator !== 'undefined' ? navigator.userAgent : '');
+if (IS_SHELL) { const hub = document.getElementById('back-to-hub'); if (hub) hub.style.display = 'none'; }   // 壳内:module 加载即隐藏 HUB 链接(消 boot 前可点窗口)
 const fsSupported = () => !IS_SHELL && !!(docEl.requestFullscreen || docEl.webkitRequestFullscreen);
 const fsState = () => ({ supported: fsSupported(), active: isFs });
 function toggleFullscreen() {
@@ -562,7 +563,6 @@ async function boot() {
   audio.setMuted(save.settings.muted);                                    // [P6] 应用持久化静音（ctx 懒建后生效）
   state = newGameState(LEVELS[nextPlayableIndex(save, LEVELS.length)], { unlocked: effectiveRoster(save, cheats, Object.keys(GENERALS)) });   // 预建有效 state(供 resize/loop;boot 时 cheats 全关→等价 unlockedGenerals)
   resize();
-  if (IS_SHELL) { const hub = document.getElementById('back-to-hub'); if (hub) hub.style.display = 'none'; }
   screen = 'select';
   if (bannerEl) bannerEl.classList.remove('show');   // 改用 resultPanel,不再用 #banner
 

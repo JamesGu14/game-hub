@@ -3,8 +3,10 @@ package cn.jamesgu.towerdefender
 import android.annotation.SuppressLint
 import android.os.Bundle
 import android.util.Log
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.ConsoleMessage
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
@@ -42,6 +44,13 @@ class MainActivity : ComponentActivity() {
             webViewClient = object : WebViewClient() {
                 override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
                     assetLoader.shouldInterceptRequest(request.url)
+
+                override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean =
+                    request.url.host != "appassets.androidplatform.net"   // 锁定内部域:外链/根路径导航一律吞掉
+
+                override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+                    recreate(); return true   // 渲染进程被系统杀(低内存):自愈重建而非崩溃
+                }
             }
             webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
@@ -77,8 +86,8 @@ class MainActivity : ComponentActivity() {
         if (hasFocus) hideSystemBars()   // 从通知栏/后台回来重新沉浸
     }
 
-    // 后台停渲染省电;页面收到 visibilitychange → 游戏自身重置累加器并存档(main.js:629,637)
+    // 后台停渲染省电;页面收到 visibilitychange → 游戏自身重置累加器并存档(main.js persistResume / loop.onVisible)
     override fun onPause() { webView.onPause(); super.onPause() }
     override fun onResume() { super.onResume(); webView.onResume() }
-    override fun onDestroy() { webView.destroy(); super.onDestroy() }
+    override fun onDestroy() { (webView.parent as? ViewGroup)?.removeView(webView); webView.destroy(); super.onDestroy() }
 }
